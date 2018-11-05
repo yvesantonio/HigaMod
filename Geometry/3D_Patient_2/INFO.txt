@@ -1,0 +1,11 @@
+(1)  Case ID : C0096
+(2)  Patient ID : P0271
+(3)  Institution ID : Niguarda Hospital Milan
+(4)  Modality : 3D-RA
+(5)  Age : 67
+(6)  Sex : Male
+(7)  Aneurysm Type : TER
+(8)  Aneurysm Location : BAS
+(9)  Rupture Status : R
+(10) Multiple Aneurysms : Yes
+(11) History Available : No

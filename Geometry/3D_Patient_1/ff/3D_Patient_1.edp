@@ -1,0 +1,161 @@
+// Define the parameters of the mesh
+
+// int N=1000;
+
+// real maxHor=2;
+// real minHor=0;
+// real maxVer=1;
+// real minVer=0;
+// int numbHorNodes = N;
+// int numbVerNodes = N;
+// real horStep = (maxHor - minHor)/numbHorNodes;
+// real verStep = (maxVer - minVer)/numbVerNodes;
+
+// Define the boundary of the domain
+
+// real L = 4;
+// real W = 1;
+
+// real x1 = 0;
+// real x2 = L;
+// real x3 = L;
+// real x4 = 0;
+// real y1 = 0;
+// real y2 = 0;
+// real y3 = W;
+// real y4 = W;
+
+// border aa(t=0,1) {x = x1 + t * ( x2 - x1 ); y = y1 + t * ( y2 - y1 ); label=1;}
+// border bb(t=0,1) {x = x2 + t * ( x3 - x2 ); y = y2 + t * ( y3 - y2 ); label=2;}
+// border cc(t=0,1) {x = x3 + t * ( x4 - x3 ); y = y3 + t * ( y4 - y3 ); label=3;}
+// border dd(t=0,1) {x = x4 + t * ( x1 - x4 ); y = y4 + t * ( y1 - y4 ); label=4;}
+load "gmsh"
+load "medit"
+load "tetgen"
+load "iovtk"
+load "msh3" 
+load "tetgen"
+load "mshmet"
+load "freeyams"
+load "mmg3d-v4.0"
+
+mesh3 Th = gmshload3("3D_Patient_1.msh");
+
+cout << "--------------------" << endl;
+cout << "FINISHED IMPORT MESH" << endl;
+cout << "--------------------" << endl;
+
+fespace Vh1(Th,P1);
+Vh1 auxiliary = 1;
+mesh3 Th1 = trunc(Th,auxiliary>0,split=1,label=2);
+
+cout << "--------------------" << endl;
+cout << "FINISHED REFINE MESH" << endl;
+cout << "--------------------" << endl;
+
+// Plot the created mesh for evaluation
+
+plot(Th1);
+
+// Definition of the bilinear coefficients of the differential problem
+
+// func real poiFlow(real y)
+// {
+// 	real DeltaP = -1e7;   // Pressure drop in the tube [Pa]
+// 	real R = W * 0.5;    			// Radius of the tube [m]
+// 	real eta = 1.6e-4;   	// Dynamic Viscosity [Pa*s]
+// 
+// 	return  y*(y-2*R)*(DeltaP/(4*eta*L));
+// }
+
+real datoup,datodown;
+real chi = 1.0;
+real mu = 1;
+real beta1 = 0;
+real beta2 = 0;
+real beta3 = 0;
+real sigma = 0;
+
+func force = 1;
+
+fespace Vh(Th1,P1);
+Vh w,u,v,ux,uy;
+w=force;
+
+load "UMFPACK64"
+problem DirDir(u,v)=
+
+		int3d(Th1)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) + dz(u)*dz(v) ) )  // Laplacian operator
+		+ int3d(Th1)   ( beta1*dx(u)*v )						// Advection in x direction
+		+ int3d(Th1)   ( beta2*dy(u)*v )						// Advection in y direction
+		+ int3d(Th1)   ( beta3*dz(u)*v )						// Advection in z direction
+		+ int3d(Th1)   ( sigma*u*v     )						// Reaction
+		- int3d(Th1)   ( force*v       )						// Force term
+		+ on(11,u=0);										// Dirichlet
+
+DirDir;
+
+plot(u);
+
+//
+cout << "-----------------" << endl;
+cout << "FINISHED SOLUTION" << endl;
+cout << "-----------------" << endl;
+
+// Compute the mass matrix
+
+varf bid ( u, v ) = int3d ( Th1 ) ( u * v );
+	// + on(1,u=0)
+	// + on(2,u=0)
+	// + on(3,u=0)
+	// + on(4,u=0);
+
+matrix M = bid ( Vh, Vh );
+
+// Compute the stiffness matrix
+
+varf bilinearForm(u,v) 	= int3d(Th1)   ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) )  // Laplacian operator
+						+ int3d(Th1)   ( beta1*dx(u)*v )						// Advection in x direction
+						+ int3d(Th1)   ( beta2*dy(u)*v )						// Advection in y direction
+						+ int3d(Th1)   ( sigma*u*v     );						// Reaction
+						// + on(1,u=0)
+						// + on(2,u=0)
+						// + on(3,u=0)
+						// + on(4,u=0);
+
+matrix A = bilinearForm(Vh, Vh );
+
+// Save .VTK
+
+int[int] ffordervel = [1];
+savevtk("3D_Patient_1.vtk", Th1, u, dataname="Concentration", order=ffordervel);
+
+// Save the mesh file
+
+savemesh(Th1,"ffMesh.mesh");
+
+// Export the stiffness matrix
+
+{
+	ofstream fout("A.txt");
+	fout << A << endl;
+}
+
+// Export the mass matrix
+
+{
+	ofstream fout("M.txt");
+	fout << M << endl;
+}
+
+// Export the solution of the system
+
+load "medit"
+
+savesol("ffSolution.sol",Th1 , u );
+
+// DEBUG
+cout << endl;
+cout << "---------------------------------" << endl;
+cout << "FINISHED EXPORT SOLUTION AND MESH" << endl;
+cout << "---------------------------------" << endl;

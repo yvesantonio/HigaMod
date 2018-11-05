@@ -1,0 +1,11 @@
+(1)  Case ID : C0019
+(2)  Patient ID : P0232
+(3)  Institution ID : Niguarda Hospital Milan
+(4)  Modality : 3D-RA
+(5)  Age : 48
+(6)  Sex : Male
+(7)  Aneurysm Type : TER
+(8)  Aneurysm Location : MCA
+(9)  Rupture Status : U
+(10) Multiple Aneurysms : No
+(11) History Available : No

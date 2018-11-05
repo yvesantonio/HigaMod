@@ -1,0 +1,11 @@
+(1)  Case ID : C0039
+(2)  Patient ID : P0111
+(3)  Institution ID : Niguarda Hospital Milan
+(4)  Modality : 3D-RA
+(5)  Age : 59
+(6)  Sex : Female
+(7)  Aneurysm Type : LAT
+(8)  Aneurysm Location : ICA
+(9)  Rupture Status : U
+(10) Multiple Aneurysms : Yes
+(11) History Available : No
