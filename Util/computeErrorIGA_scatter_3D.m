@@ -104,7 +104,7 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     
     disp('FINISHED APPLY ISO ANALYSIS for PLOT')
 
-    solMat = zeros(nnx,M,M);
+    solMat = zeros(M,M,nnx);
 
     for h = 1:nnx
 
@@ -142,7 +142,7 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     for ii = 1:M
         for jj = 1:M
             for kk = 1:nnx
-                solMat(kk,ii,jj) = sol(kk,ii,jj);
+                solMat(ii,jj,kk) = sol(kk,ii,jj);
             end
         end
     end
@@ -151,14 +151,9 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     
     type = geoInfo.Type;
     
-    [X,Y,Z] = mapOut3DHiMod(evalNodesTrans,evalNodesX,evalNodesTrans,geoInfo,type);
+    type
     
-%     disp(size(X))
-%     disp(size(Y))
-%     disp(size(Z))
-%     disp(size(solMat))
-%     
-%     return
+    [X,Y,Z] = mapOut3DHiMod(evalNodesX,evalNodesTrans,evalNodesTrans,geoInfo,type);
     
     % PLOT SLICES
     
@@ -167,20 +162,19 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     set(gcf, 'Renderer', 'OpenGL')
 
     figure
-    subplot(1,3,1);
     scatter3( X(:), Y(:), Z(:), 3, solMat(:))
     set(gca, 'FontName', 'Times New Roman', 'FontSize', 14)
     xlabel('X')
     ylabel('Y')
     zlabel('Z')
-    title('HigaMod Solution')
-    pbaspect([4 1 1])
-    az = 45;
-    el = 15;
+    title('Concentration')
+    axis equal
+    az = 0;
+    el = 90;
     view(az, el);
     colorbar
     
-    Type = 'Slab';
+    Type = 'Patient_1';
     
 %     fileToRead1 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffMesh.mesh'];
 %     fileToRead2 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffSolution.sol'];
@@ -199,40 +193,6 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
                                                              fileToRead4);
                                                          
     disp('FINISHED EXTRACTING THE FREEFEM++ SOLUTION');
-    
-    % CREATE MATLAB FIGURE OF FREEFEM++ SOLUTION
-    
-    pts = structMesh.Points;
-    ffMat = griddata(pts(:,1),pts(:,2),pts(:,3),ffSol,X(:),Y(:),Z(:));
-    
-    subplot(1,3,2);
-    scatter3( X(:), Y(:), Z(:), 3, ffMat(:))
-    set(gca, 'FontName', 'Times New Roman', 'FontSize', 14)
-    xlabel('X')
-    ylabel('Y')
-    zlabel('Z')
-    title('Freefem++ Solution')
-    pbaspect([4 1 1])
-    az = 45;
-    el = 15;
-    view(az, el);
-    colorbar
-    
-    subplot(1,3,3);
-    scatter3( X(:), Y(:), Z(:), 3, abs(ffMat(:) - solMat(:)))
-    set(gca, 'FontName', 'Times New Roman', 'FontSize', 14)
-    xlabel('X')
-    ylabel('Y')
-    zlabel('Z')
-    title('Error')
-    pbaspect([4 1 1])
-    az = 45;
-    el = 15;
-    view(az, el);
-    colorbar
-    
-    
-    % INTERPOLATE HIGAMOD SOLUTION
     
     pts = structMesh.Points;
     higaSol = griddata(X,Y,Z,solMat,pts(:,1),pts(:,2),pts(:,3));
@@ -257,7 +217,7 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     s.MarkerFaceColor = [0 0.5 0.5];
     
     errL2 = sqrt(err' * massMat * err);
-    errH1 = sqrt(errL2^2 + err' * stiffMat * err);
+    errH1 = sqrt(errL2 + err' * stiffMat * err);
     
     disp('FINISHED COMPUTING THE ERROR NORMS');
 
@@ -274,23 +234,7 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     xyz = [pts(:,1),pts(:,2),pts(:,3)]';
     uvw = 0 .* [pts(:,1),pts(:,2),pts(:,3)]';
     
-    % CHECK IF OUTPUT FOLDER EXISTS
-    
-    folderVTK = [pwd,'/Geometry/3D_',Type,'/higamod'];
-    checkFolder = exist(folderVTK);
-
-    if (checkFolder == 7)
-        disp('Export folder already exists!')
-    else
-        disp('Export folder created!')
-        mkdir(folderVTK)
-    end
-    
-    % EXPORT HIGAMOD SOLUTION
-    
-    fileVTK = [pwd,'/Geometry/3D_',Type,'/higamod/HigaSol.vtk'];
-    
-%     fileVTK = 'HigaSol.vtk';
+    fileVTK = 'HigaSol.vtk';
     fid = fopen(fileVTK,'w');
     vtk_puvw_write (fid, fileVTK, node_num, element_num, ...
                     element_order, xyz, element_node', higaSol', uvw )
