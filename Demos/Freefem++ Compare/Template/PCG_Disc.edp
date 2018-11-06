@@ -1,0 +1,188 @@
+// Define the parameters of the mesh
+
+int N=1e3;
+
+real maxHor=2;
+real minHor=0;
+real maxVer=1;
+real minVer=0;
+int numbHorNodes = N;
+int numbVerNodes = N;
+real horStep = (maxHor - minHor)/numbHorNodes;
+real verStep = (maxVer - minVer)/numbVerNodes;
+
+// Define the equation of the centreline
+
+func real form(real x)
+{
+	return sqrt(1 - (x - 1)^2);
+}
+
+func real dform(real x)
+{
+	real temp = sqrt(1 - (x - 1)^2);
+	if(temp == 0) {temp = 1e-20; cout << "Here!" << endl;}
+
+	return -(x-1)/temp;
+}
+
+// Define the function to change the system coordinates
+
+// Create the boundary of the mesh
+
+real x1 = -0.5;
+real x2 = 0.5;
+real x3 = 1.5;
+real x4 = 2.5;
+
+real y1 = 0.5;
+real y2 = 0.5;
+real y3 = 0.5;
+real y4 = 0.5;
+
+border aa(t=0,1) {x = x1 + t * ( x2 - x1 ); y = y1 + t * ( y2 - y1 ); label=1;}
+border bb(t=0,1) {x = 0.5 + t; y = 0.5 + sqrt(0.25 - (t - 0.5)^2); label=2;}
+border cc(t=0,1) {x = x3 + t * ( x4 - x3 ); y = y3 + t * ( y4 - y3 ); label=3;}
+border dd(t=0,1) {x = 2.5 - 3 * t; y = 0.5 + sqrt(2.25 - (1.5 - 3 * t)^2); label=4;}
+mesh Th=buildmesh( aa(numbVerNodes) + bb(numbHorNodes) + cc(numbVerNodes) + dd(numbHorNodes) );
+
+// mesh Th = square(numbHorNodes, numbVerNodes, [x,y]);
+
+// Plot the created mesh for evaluation
+
+// plot(Th);
+
+// Definition of the bilinear coefficients of the differential problem
+
+real chi=1.0;
+real mu=1;
+real beta1=0;
+real beta2=0;
+real sigma=0;
+
+// Definition of the force coefficient
+
+func force = 1;//10 * ((x - 1)^2 + (y - 1.5)^2 < 0.25);
+
+// Definition of the functional space
+
+fespace Vh(Th,P1);
+Vh w,u,v,ux,uy;
+w=force;
+
+// Write the weak formulation of the problem
+
+varf bilinearForm(u,v) = 	int2d(Th)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) )  // Laplacian operator
+													+ int2d(Th)   ( beta1*dx(u)*v )						// Advection in x direction
+													+ int2d(Th)   ( beta2*dy(u)*v )						// Advection in y direction
+													+ int2d(Th)   ( sigma*u*v     )						// Reaction
+													+ on(1,u=0)
+											 		+ on(2,u=0)
+												 	+ on(3,u=0)
+												 	+ on(4,u=0);
+
+varf rhsTerm(u,v) = int2d(Th)(force*v);
+
+// Definition of auxiliary functions used inside the Preconditioned
+// Gradient Method
+
+real tgv=1.0e+30;
+real[int] bc = bilinearForm(0, Vh, tgv=tgv);
+
+func real[int] opA(real[int] &pp)
+  {
+  pp = bc ? 0.0 : pp; // SpMV operation only for inner
+  real[int] qq = A * pp;// node without Dirichlet bdry.
+  pp = bc ? 0.0 : qq;
+  return pp;
+  }
+
+
+func real[int] opQ(real[int] &pp) // diagonal scaling
+{
+  for (int i = 0; i < pp.n; i++) {
+  pp(i) = pp(i) / A(i, i);
+  }
+  pp = bc ? 0.0 : pp;
+  return pp;
+}
+
+// Compute the mass matrix
+
+varf bid ( u, v ) = int2d ( Th ) ( u * v )
+										+ on(1,u=0)
+										+ on(2,u=0)
+										+ on(3,u=0)
+										+ on(4,u=0);
+
+matrix M = bid ( Vh, Vh );
+
+// Compute the stiffness matrix
+
+matrix A = bilinearForm(Vh, Vh, tgv=tgv, solver=sparsesolver);
+
+// Modifications in the stiffness matrix due to the Lifting
+// operator used for the nonhomogeneous boundary conditions
+
+real[int] ff = rhsTerm(0, Vh);
+
+func g = 0;
+
+v = g; // g is valid only on the bdry 1
+
+u[] = bc ? v[] : 0.0; // u[] has Dirichlet data w/o tgv
+v[] = A * u[]; // v[] = A_{12}*g
+v[] = bc ? 0.0 : v[];
+ff -= v[]; // ff_{1} -= A_{12}*u_{2}
+ff = bc ? 0.0 : ff;
+
+// Solve the problem using the PCG Method
+
+LinearCG(opA, u[], ff, precon=opQ, nbiter=100000, eps=1.0e-10,verbosity=50);
+
+cout << "-----------------" << endl;
+cout << "FINISHED SOLUTION" << endl;
+cout << "-----------------" << endl;
+
+// Plot solution
+
+plot(u,fill=1,wait=1);
+
+// Save the mesh file
+
+savemesh(Th,"ffMesh.msh");
+
+// Save the solution file
+
+{
+	ofstream file("ffSolution.bb");
+	file << "2 1 1 "<< u[].n << " 2 \n";
+	for (int j=0;j<u[].n ; j++)
+		file << u[][j] << endl;
+}
+
+// Export the stiffness matrix
+
+{
+	ofstream fout("A.txt");
+	fout << A << endl;
+}
+
+// Export the mass matrix
+
+{
+	ofstream fout("M.txt");
+	fout << M << endl;
+}
+
+// Export the solution of the system
+
+load "medit"
+
+savesol("ffSolution.sol",Th , u );
+
+// DEBUG
+cout << endl;
+cout << "---------------------------------" << endl;
+cout << "FINISHED EXPORT SOLUTION AND MESH" << endl;
+cout << "---------------------------------" << endl;

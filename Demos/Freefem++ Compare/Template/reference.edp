@@ -1,0 +1,257 @@
+// Define the parameters of the mesh
+
+int N=1000;
+
+real maxHor=2;
+real minHor=0;
+real maxVer=1;
+real minVer=0;
+int numbHorNodes = N;
+int numbVerNodes = N;
+real horStep = (maxHor - minHor)/numbHorNodes;
+real verStep = (maxVer - minVer)/numbVerNodes;
+
+// Define the equation of the centreline
+
+func real form(real x)
+{
+	return sqrt(1 - (x - 1)^2);
+}
+
+func real dform(real x)
+{
+	real temp = sqrt(1 - (x - 1)^2);
+	if(temp == 0) {temp = 1e-20; cout << "Here!" << endl;}
+
+	return -(x-1)/temp;
+}
+
+// Define the function to change the system coordinates
+
+// Create the boundary of the mesh
+
+real x1 = -0.5;
+real x2 = 0.5;
+real x3 = 1.5;
+real x4 = 2.5;
+
+real y1 = 0.5;
+real y2 = 0.5;
+real y3 = 0.5;
+real y4 = 0.5;
+
+border aa(t=0,1) {x = x1 + t * ( x2 - x1 ); y = y1 + t * ( y2 - y1 ); label=1;}
+border bb(t=0,1) {x = 0.5 + t; y = 0.5 + sqrt(0.25 - (t - 0.5)^2); label=2;}
+border cc(t=0,1) {x = x3 + t * ( x4 - x3 ); y = y3 + t * ( y4 - y3 ); label=3;}
+border dd(t=0,1) {x = 2.5 - 3 * t; y = 0.5 + sqrt(2.25 - (1.5 - 3 * t)^2); label=4;}
+mesh Th=buildmesh( aa(numbVerNodes) + bb(numbHorNodes) + cc(numbVerNodes) + dd(numbHorNodes) );
+
+// mesh Th = square(numbHorNodes, numbVerNodes, [x,y]);
+
+// Plot the created mesh for evaluation
+
+// plot(Th);
+
+// Definition of the bilinear coefficients of the differential problem
+
+real datoup,datodown;
+real chi=1.0;
+real mu=1;
+real beta1=0;
+real beta2=0;
+real sigma=0;
+
+func force = 1;//10 * ((x - 1)^2 + (y - 1.5)^2 < 0.25);
+
+fespace Vh(Th,P2);
+Vh w,u,v,ux,uy;
+w=force;
+
+load "UMFPACK64"
+problem DirDir(u,v,solver=CG)=
+
+		int2d(Th)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) )  // Laplacian operator
+		+ int2d(Th)   ( beta1*dx(u)*v )						// Advection in x direction
+		+ int2d(Th)   ( beta2*dy(u)*v )						// Advection in y direction
+		+ int2d(Th)   ( sigma*u*v     )						// Reaction
+		- int2d(Th)   ( force*v       )						// Force term
+		+ on(1,u=0)
+    + on(2,u=0)
+		+ on(3,u=0)
+		+ on(4,u=0);									// Dirichlet su lato up.
+
+DirDir;
+
+// DEBUG
+cout << "-----------------" << endl;
+cout << "FINISHED SOLUTION" << endl;
+cout << "-----------------" << endl;
+
+// Save the mesh file
+
+savemesh(Th,"ffMesh.msh");
+
+// Save the solution file
+
+{
+	ofstream file("ffSolution.bb");
+	file << "2 1 1 "<< u[].n << " 2 \n";
+	for (int j=0;j<u[].n ; j++)
+		file << u[][j] << endl;
+}
+
+load "medit"
+
+savesol("ffSolution.sol",Th , u );
+
+// DEBUG
+cout << endl;
+cout << "---------------------------------" << endl;
+cout << "FINISHED EXPORT SOLUTION AND MESH" << endl;
+cout << "---------------------------------" << endl;
+
+/*
+// Create the mesh in the horizontal direction
+
+real[int] meshx((maxHor - minHor)*numbHorNodes + 1);
+
+for(int i = 0; i < (maxHor - minHor) * numbHorNodes + 1; i++)
+{
+	meshx[i]=i*horStep;
+}
+
+// Create the mesh in the vertical direction
+
+real[int] meshy((maxVer - minVer)*numbVerNodes + 1);
+
+for(int i = 0; i < (maxVer - minVer) * numbVerNodes + 1; i++)
+{
+	meshy[i]=i*verStep;
+}
+
+// DEBUG
+
+cout << meshx << endl;
+cout << meshy << endl;
+
+// Change the mesh to consider the shape of the centerline
+
+real[int,int] X(numbVerNodes + 1,numbHorNodes + 1);
+real[int,int] Y(numbVerNodes + 1,numbHorNodes + 1);
+real inv = 1;
+real currHorPos;
+real prevHorPos;
+
+for(int currHorNode = 0; currHorNode < numbHorNodes + 1; currHorNode++)
+{
+    currHorPos  = meshx[currHorNode];
+		real df = dform(currHorPos);
+		if (df == 0) {df = 1e-30;}
+
+    if (currHorNode > 0)
+		{
+        prevHorPos = meshx[currHorNode-1];
+
+        if ((-1/df) * (-1/df) < 0){
+            inv = inv + 1;
+        }
+		}
+
+    // ATTENTION!!!!
+    // %-----------------------------------------------------------------%
+    // % The original code in the next two lines work only when the point
+    // % in the Y direction are symmetric with respect to the X axis. I
+    // % perform some modifications to change this, but it still does not
+    // % work for the most general case (channel thickness varying).
+    // %-----------------------------------------------------------------%
+
+		// Apply the Jacobian to compute the set of coordinates of the curved system
+
+		/* DEBUG
+		cout << "----------------------------" << endl;
+		cout << "DERIVATIVE OF THE CENTRELINE" << endl;
+		cout.scientific <<  df << endl;
+		cout << "----------------------------" << endl;
+
+
+		real[int] currHorLine(numbVerNodes + 1);
+		real currBottom = currHorPos + (-1)^(inv) * ((maxVer - minVer)/2) * sin(-pi/2 + atan(-1/df));
+		real currTop 		= currHorPos - (-1)^(inv) * ((maxVer - minVer)/2) * sin(-pi/2 + atan(-1/df));
+		real modVerStep	= (currTop - currBottom)/numbVerNodes;
+
+		for (int i = 0; i < numbVerNodes + 1; i++)
+		{
+			currHorLine[i] = currBottom + i * modVerStep;
+		}
+
+		real[int] currVerLine(numbVerNodes + 1);
+		real currLeft 	= ((maxVer + minVer)/2) + form(currHorPos) - (-1)^(inv)*((maxVer - minVer)/2) * cos(-pi/2+atan(-1/df));
+		real currRight	= ((maxVer + minVer)/2) + form(currHorPos) + (-1)^(inv)*((maxVer - minVer)/2) * cos(-pi/2+atan(-1/df));
+		real modHorStep	= (currRight - currLeft)/numbVerNodes;
+
+		for (int i = 0; i < numbVerNodes + 1; i++)
+		{
+			currVerLine[i] = currLeft + i * modHorStep;
+		}
+
+		// Assign the new coordinates to the grid matrix
+
+		for (int i = 0; i < numbVerNodes + 1; i++)
+		{
+		    X(i,currHorNode) = currHorLine[i];
+				Y(i,currHorNode) = currVerLine[i];
+		}
+}
+
+// Export the coordinates in TXT file
+
+{
+	ofstream fout("X.txt");
+	fout << X << endl;
+}
+
+{
+	ofstream fout("Y.txt");
+	fout << Y << endl;
+}
+*/
+
+// Create the output file
+
+/*
+real[int] meshx(3*(maxHor-minHor)*N);
+for (int i=0;i<(maxHor-minHor)*N;i++)
+{
+	meshx[3*i]=i*h;
+	meshx[3*i+1]=i*h+h/2.;
+	meshx[3*i+2]=i*h+h;
+}
+
+{
+	ofstream file("DDFF.out");
+	file.scientific;
+    file.precision(16);
+    int M = 80;
+	int i, j;
+
+	// Attenzione qua!
+
+    int NN=(maxHor-minHor)*N*3;
+
+	file <<"            "<<NN<<endl;
+	file <<"             "<<M<<endl;
+	ux=dx(u);
+	uy=dy(u);
+	for ( int k=1;k<=N*(maxHor-minHor);k++)
+    {
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 0]<<"       "<<((j-1.)/(M-1.))*(maxVer-minVer)+minVer<<"       "<<u(meshx[ (k-1)*3 + 0],((j-1.)/(M-1.))*(maxVer-minVer)+minVer)<<"       "<<ux(meshx[ (k-1)*3 + 0],((j-1.)/(M-1.))*(maxVer-minVer)+minVer) <<"       "<<uy(meshx[ (k-1)*3 + 0],((j-1.)/(M-1.))*(maxVer-minVer)+minVer) <<endl;
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 1]<<"       "<<((j-1.)/(M-1.))*(maxVer-minVer)+minVer<<"       "<<u(meshx[ (k-1)*3 + 1],((j-1.)/(M-1.))*(maxVer-minVer)+minVer)<<"       "<<ux(meshx[ (k-1)*3 + 1],((j-1.)/(M-1.))*(maxVer-minVer)+minVer) <<"       "<<uy(meshx[ (k-1)*3 + 1],((j-1.)/(M-1.))*(maxVer-minVer)+minVer)<<endl;
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 2]<<"       "<<((j-1.)/(M-1.))*(maxVer-minVer)+minVer<<"       "<<u(meshx[ (k-1)*3 + 2],((j-1.)/(M-1.))*(maxVer-minVer)+minVer)<<"       "<<ux(meshx[ (k-1)*3 + 2],((j-1.)/(M-1.))*(maxVer-minVer)+minVer) <<"       "<<uy(meshx[ (k-1)*3 + 2],((j-1.)/(M-1.))*(maxVer-minVer)+minVer)<<endl;
+    }
+}
+plot(u,fill=1,wait=1);
+plot(ux,fill=1,wait=1);
+*/
