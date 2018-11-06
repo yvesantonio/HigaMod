@@ -125,6 +125,23 @@ classdef BoundaryConditionHandler
         % 'inflowInterpol', 'interfaceInterpol', 'imposeBoundaryP1'
         % and 'imposeBoundaryP2'.
         
+            %% Method 'computeFourierCoeff'
+            
+            function [liftCoeffA,liftCoeffB] = computeFourierCoeff(obj)
+
+                infBC = obj.infBoundCond;
+                outBC = obj.outBoundCond;
+                
+                valueInfBC = 
+                    
+                for ii = 1:obj.dimModalBasis
+                    
+                    projectInfCoeff = 
+                    
+                end
+                
+            end
+        
             %% Method 'liftBoundCond'
             
             function [liftCoeffA,liftCoeffB] = liftBoundCond(obj)

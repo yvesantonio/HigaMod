@@ -125,7 +125,7 @@ classdef IntegrateHandler
                     % Dirichlet-Dirichlet Boundary Conditions %
                     %-----------------------------------------%
 
-                    case 'dirdir',
+                    case 'dirdir'
                         for i= 1 : obj.numbEigenvalues
                             lambda(i) = i*pi;
                         end
@@ -134,7 +134,7 @@ classdef IntegrateHandler
                     % Robin-Dirichlet/Dirichlet-Robin Boundary Conditions %
                     %-----------------------------------------------------%
 
-                    case {'dirrob','robdir'},
+                    case {'dirrob','robdir'}
                         for i = 1 : obj.numbEigenvalues
                             a = -pi/2 + i*pi + 1e-2;
                             b =  -1e-2 + i*pi + pi/2;           % Attention!
@@ -146,7 +146,7 @@ classdef IntegrateHandler
                     % Robin-Robin Boundary Conditions %
                     %---------------------------------%
 
-                    case 'robrob',
+                    case 'robrob'
                         i=1;
 
                         %-------------------------------------------------------------%
@@ -162,16 +162,16 @@ classdef IntegrateHandler
                         b = pi/2-sv;
                         found = false;
                         
-                                while(~found && a < 1)
-                                        if obj.funcStourmLiou(a) * obj.funcStourmLiou(b)<0
-                                            
-                                            [lambda(i)] = fzero(obj.funcStourmLiou,[a,b]);
-                                            found = true;
-                                            
-                                        end
-                                    a = a * 10;
-                                    b = b * 10;
-                                end			
+                            while(~found && a < 1)
+                                    if obj.funcStourmLiou(a) * obj.funcStourmLiou(b)<0
+
+                                        [lambda(i)] = fzero(obj.funcStourmLiou,[a,b]);
+                                        found = true;
+
+                                    end
+                                a = a * 10;
+                                b = b * 10;
+                            end			
                             i=i+1;
                         end
                         
@@ -200,7 +200,7 @@ classdef IntegrateHandler
                             j=j+1;
                         end   
 
-                    otherwise,
+                    otherwise
                         disp('In computeEigenvalues: Boundary Conditions Not Recognized')
                 end
             end
