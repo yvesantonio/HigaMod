@@ -1407,8 +1407,7 @@ classdef AssemblerADRHandler
 
             [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
             
-            bcStruct.bcInfTag = BC_l;
-            bcStruct.bcOutTag = BC_r;
+            bcStruct.in
             bcStruct.infStruct = infStruct;
             bcStruct.outStruct = outStruct;
             bcStruct.numbControlPts = numbControlPts;

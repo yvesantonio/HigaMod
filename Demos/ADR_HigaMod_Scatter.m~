@@ -163,18 +163,14 @@
     igaBoundCond.rob.mu     = rob.mu;
     igaBoundCond.rob.chi    = rob.chi;
     
-    %%%%%%%%%%%%%%%%%
-    % CHANGE BC HERE!
-    %%%%%%%%%%%%%%%%%
-    
     igaBoundCond.BC_UP_TAG     = 'dir';
     igaBoundCond.BC_DOWN_TAG   = 'dir';
-    igaBoundCond.BC_INF_TAG   = 'dir';
-    igaBoundCond.BC_OUT_TAG  = 'neu';
-    igaBoundCond.BC_UP_DATA    = 0;
-    igaBoundCond.BC_DOWN_DATA  = 0;
-    igaBoundCond.BC_INF_DATA  = @(rho) 1 + 0 * rho + 0 * rho.^2;
-    igaBoundCond.BC_OUT_DATA = @(rho) 0 + 0 * rho + 0 * rho.^2;
+    igaBoundCond.BC_LEFT_TAG   = 'dir';
+    igaBoundCond.BC_RIGHT_TAG  = 'dir';
+    igaBoundCond.BC_UP_DATA    = @(rho) 1 + ;
+    igaBoundCond.BC_DOWN_DATA  = '';
+    igaBoundCond.BC_LEFT_DATA  = '';
+    igaBoundCond.BC_RIGHT_DATA = '';
 
     %% Physical domain
     %---------------------------------------------------------------------%

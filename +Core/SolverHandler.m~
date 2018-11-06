@@ -715,10 +715,10 @@ classdef SolverHandler
                 build_IGA.downBDomain_inY = obj.domainLimit_inY(1);
                 build_IGA.upBDomain_inY = obj.domainLimit_inY(2);
                 build_IGA.stepMeshX = obj.stepMeshX(1);
-                build_IGA.label_upBoundDomain = obj.dirCondFuncStruct.igaBoundCond.BC_UP_TAG;
-                build_IGA.label_downBoundDomain = obj.dirCondFuncStruct.igaBoundCond.BC_DOWN_TAG;
-                build_IGA.localdata_upBDomain = obj.dirCondFuncStruct.igaBoundCond.BC_UP_DATA;
-                build_IGA.localdata_downBDomain = obj.dirCondFuncStruct.igaBoundCond.BC_DOWN_DATA;
+                build_IGA.label_upBoundDomain = obj.label_upBoundDomain{1};
+                build_IGA.label_downBoundDomain = obj.label_downBoundDomain{1};
+                build_IGA.localdata_upBDomain = obj.data_upBoundDomain{1};
+                build_IGA.localdata_downBDomain = obj.data_downBoundDomain{1};
                 build_IGA.coefficientForm = obj.coefficientForm;
                 build_IGA.dirCondFuncStruct = obj.dirCondFuncStruct;
                 build_IGA.geometricInfo = obj.geometricInfo;

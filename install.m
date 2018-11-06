@@ -3,7 +3,7 @@
 addpath(cd)
 % This subfolder contain the utility, external toolbox, demos
 addpath(fullfile(cd,'nurbs_toolbox'))
-addpath(fullfile(cd,'PlotMat'))
+addpath(fullfile(cd,'matplotlib'))
 addpath(fullfile(cd,'Util'))
 addpath(fullfile(cd,'Demos'))
 addpath(fullfile(cd,'DataAssimilation'))

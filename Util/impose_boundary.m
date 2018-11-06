@@ -1,10 +1,18 @@
-function [Arid, brid]=impose_boundary(size_mb,numbNodes,BC_l, boundary_l, BC_r, boundary_r,A,b)
+function [Arid, brid]=impose_boundary(size_mb,BC_l, boundary_l, BC_r, boundary_r,A,b,nx)
 %
 % Impone tutte le condizioni di bordo relative ad interfacce, inflow e outflow.
 % Se necessario riduce il problema eliminando i dof di Dirichlet.
 %
 
-nx = numbNodes;
+% % ne intervalli e nx estremi
+% ne = round((omega_xr-omega_xl)/hx);
+% nx = ne+1;
+% % Mesh FEM in x: nodi equispaziati
+% meshx = zeros(nx,1);
+% meshx(1) = omega_xl;
+% for i=2:nx
+%     meshx(i) = meshx(i-1)+hx;
+% end
 
 % inizializzazione b ridotto: verranno aggiunti blocchi per ogni frequenza.
 brid=[];
@@ -14,54 +22,21 @@ if (strcmp(BC_l,'dir') && strcmp(BC_r,'dir'))
     
     for imb = 1 : size_mb     % Per ogni frequenza
         
-        % buff = zeros( nx-2, 1);
-        % 
-        % for jmb = 1 : size_mb
-        %     
-        %     Arid( (imb-1)*(nx-2) + 1 : imb*(nx-2) , (jmb-1)*(nx-2) + 1 : jmb*(nx-2) ) = ...
-        %         A( (imb-1)*nx + 2     : imb*nx - 1 , (jmb-1)*nx + 2     : jmb*nx - 1 );
-        %     
-        %     buff = buff + A( (imb-1)*nx + 2 : imb*nx-1, (jmb-1)*nx + 1 )*boundary_l( jmb ) ...
-        %         + A( (imb-1)*nx + 2 : imb*nx-1, jmb*nx         )*boundary_r( jmb );
-        %     
-        % end
-        % 
-        % brid = [ brid; b( (imb-1)*nx + 2 : imb*nx - 1 ) - buff ];
-        
-        % New
-        % .................................................................
-        
-        buff = zeros( nx-2, 1);
+        buff = zeros( nx-2, 1); % Inizializzo il contributo al termine noto del nodo di Dirichlet lungo quanto il numero dei nodi interni
         
         for jmb = 1 : size_mb
             
             Arid( (imb-1)*(nx-2) + 1 : imb*(nx-2) , (jmb-1)*(nx-2) + 1 : jmb*(nx-2) ) = ...
                 A( (imb-1)*nx + 2     : imb*nx - 1 , (jmb-1)*nx + 2     : jmb*nx - 1 );
             
-            Aaux((imb-1) * nx + 1 : imb * nx , (jmb-1) * nx + 1 : jmb * nx) = ...
-                [1e10                                                                        , ...
-                 zeros(1,nx-2)                                                            , ...
-                 0                                                                        ; ...
-                 zeros(nx-2,1)                                                            , ...
-                 Arid( (imb-1)*(nx-2) + 1 : imb*(nx-2) , (jmb-1)*(nx-2) + 1 : jmb*(nx-2) ), ...
-                 zeros(nx-2,1)                                                            ; ...
-                 0                                                                        , ...
-                 zeros(1,nx-2)                                                            , ...
-                 1e10];
-            
             buff = buff + A( (imb-1)*nx + 2 : imb*nx-1, (jmb-1)*nx + 1 )*boundary_l( jmb ) ...
                 + A( (imb-1)*nx + 2 : imb*nx-1, jmb*nx         )*boundary_r( jmb );
             
         end
         
-        Baux = [boundary_l( imb ) * 1e10; b( (imb-1)*nx + 2 : imb*nx - 1 ) - buff; boundary_r( imb ) * 1e10];
-        brid = [ brid; Baux ];
-        
-        % .................................................................
+        brid = [ brid; b( (imb-1)*nx + 2 : imb*nx - 1 ) - buff ];
         
     end
-    
-    Arid = Aaux;
     
 elseif ( strcmp(BC_l,'dir') && strcmp(BC_r,'neu') )
     for imb = 1 : size_mb

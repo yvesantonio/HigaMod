@@ -161,12 +161,10 @@ classdef BoundaryConditionHandler
                 
                 for ii = 1:obj.dimModalBasis
                     
-                    size(valueInfBC)
-                    size(modBasis)
-                    size(wghts)
+                    disp(size(modBasis))
                     
-                    projectInfCoeff = sum(valueInfBC .* modBasis(:,ii) .* wghts)/sqrt(sum((modBasis(:,ii).^2) .* wghts));
-                    projectOutCoeff = sum(valueOutBC .* modBasis(:,ii) .* wghts)/sqrt(sum((modBasis(:,ii).^2) .* wghts));
+                    projectInfCoeff = sum(valueInfBC .* modBasis(:,ii) .* wghts);
+                    projectOutCoeff = sum(valueOutBC .* modBasis(:,ii) .* wghts);
                     
                     infStruct(ii) = projectInfCoeff;
                     outStruct(ii) = projectOutCoeff;
@@ -185,10 +183,10 @@ classdef BoundaryConditionHandler
             
             function [uAug] = buildBoundCond(obj)
                 
-                BC_l    = obj.bcStruct.bcInfTag;
-                BC_r    = obj.bcStruct.bcOutTag;
-                nx      = obj.bcStruct.numbControlPts;
-                size_mb = obj.bcStruct.dimModalBasis;
+                BC_l    = obj.bcInfTag;
+                BC_r    = obj.bcOutTag;
+                nx      = obj.numbControlPts;
+                size_mb = obj.dimModalBasis;
                 uAug    = zeros(size_mb * nx);
                 
                 if (strcmp(BC_l,'dir') && strcmp(BC_r,'dir'))
@@ -206,36 +204,60 @@ classdef BoundaryConditionHandler
                     for imb = 1 : size_mb
 
                         uAug((imb-1) * nx + 1)            = obj.bcStruct.infStruct(imb);
-                        uAug((imb-1) * nx + 2 : imb * nx) = obj.uRid((imb-1) * (nx-1) + 1 : imb * (nx-1));
+                        uAug((imb-1) * nx + 2 : imb * nx) = obj.uRid((imb-1) * (nx-2) + 1 : imb * (nx-2));
+                        uAug(imb * nx)                        = obj.bcStruct.outStruct(imb);
                         
                     end
 
-                elseif (strcmp(BC_l,'neu') && strcmp(BC_r,'dir'))
+                elseif ( strcmp(BC_l,'neu') && strcmp(BC_r,'dir') )
 
                     for imb = 1 : size_mb
 
-                        uAug(imb * nx)                        = obj.bcStruct.outStruct(imb);
-                        uAug((imb-1) * nx + 1 : imb * nx - 1) = obj.uRid((imb-1) * (nx-1) + 1 : imb * (nx-1));
-                        
+                        buff = zeros( nx-1, 1);
+
+                        for jmb = 1 : size_mb
+                            Arid( (imb-1)*(nx-1) + 1 : imb*(nx-1) , (jmb-1)*(nx-1) + 1 : jmb*(nx-1) ) = ...
+                                A( (imb-1)*nx + 1     : imb*nx-1   , (jmb-1)*nx + 1     : jmb*nx - 1 );
+
+                            buff = buff + A( (imb-1)*nx + 1 : imb*nx - 1 , jmb*nx )*boundary_r( jmb );
+                        end
+
+                        brid = [ brid ; b( (imb-1)*nx + 1 : imb*nx - 1 ) - buff ];
+
+                        brid(end-nx+2)= brid(end-nx+2) + boundary_l( imb );
+
                     end
-                    
                 elseif ( strcmp(BC_l,'rob') && (strcmp(BC_r,'rob') || (strcmp(BC_r,'neu') ) ) ) %robrob e robneu condividono lo stesso codice.
 
-                    uAug = obj.uRid;
-                    
+                    Arid=A;
+                    brid=b;
+                    for imb = 1 : size_mb
+                        brid((imb-1)*nx+1) = brid((imb-1)*nx+1) + boundary_l ( imb );
+                        brid(imb*nx) = brid(imb*nx) + boundary_r ( imb );
+                    end
                 elseif ( strcmp(BC_l,'neu') && (strcmp(BC_r,'neu') ) )
-                    
-                    uAug = obj.uRid;
-                    
+                    Arid=A;
+                    brid=b;
+                    for imb = 1 : size_mb
+                        brid((imb-1)*nx+1) = brid((imb-1)*nx+1) + boundary_l ( imb );
+                        brid(imb*nx) = brid(imb*nx) + boundary_r ( imb );
+                    end
                 elseif ( strcmp(BC_l,'dir') && strcmp(BC_r,'rob') )
 
                     for imb = 1 : size_mb
 
-                        uAug((imb-1) * nx + 1)            = obj.bcStruct.infStruct(imb);
-                        uAug((imb-1) * nx + 2 : imb * nx) = obj.uRid((imb-1) * (nx-1) + 1 : imb * (nx-1));
-                        
+                        buff = zeros( nx-1, 1);
+
+                        for jmb = 1 : size_mb
+                            Arid( (imb-1)*(nx-1) + 1 : imb*(nx-1) , (jmb-1)*(nx-1) + 1 : jmb*(nx-1) ) = ...
+                                A( (imb-1)*nx + 2     : imb*nx     , (jmb-1)*nx + 2     : jmb*nx     );
+                            buff = buff + A( (imb-1)*nx + 2 : imb*nx, (jmb-1)*nx + 1 )*boundary_l(jmb);
+
+                        end
+
+                        brid= [ brid; b( (imb-1)*nx + 2 : imb*nx ) - buff ];
+                        brid(end) = brid( end ) + boundary_r ( imb ); % Dato di Robin Robin
                     end
-                    
                 end
                 
             end
