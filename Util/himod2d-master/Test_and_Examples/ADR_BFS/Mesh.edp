@@ -1,0 +1,9 @@
+border up(t=0,2) {x=t;    y=1;     label=1;};
+border ri(t=0,2)   {x=2;   y=1-t;   label=2;};
+border d1(t=0,1) {x=2-t; y=-1;    label=3;};
+border st(t=0,1)  {x=1;   y=-1+t; label=4;};
+border d2(t=0,1) {x=1-t; y=0;     label=5;};
+border le(t=0,1)  {x=0;    y=t;     label=6;};
+
+int Nmesh=100;
+mesh Th=buildmesh(up(-2*Nmesh)+ri(-2*Nmesh)+d1(-Nmesh)+st(-Nmesh)+d2(-Nmesh)+le(-Nmesh));

@@ -1,0 +1,34 @@
+include "Mesh.edp"
+
+fespace Xh(Th,P2);
+fespace Mh(Th,P1);
+Xh uh2,vh2;
+Xh uh1,vh1; 
+Mh ph,qh;
+real Po=200.0;
+real nu=1.0;
+problem BFSadv ([uh1,uh2,ph],[vh1,vh2,qh]) =
+  int2d(Th)( 2*nu*( dx(uh1)*dx(vh1) 
+		    + dy(uh1)*dy(vh1)/2. + dx(uh2)*dy(vh1)/2.
+		    + dy(uh1)*dx(vh2)/2. + dx(uh2)*dx(vh2)/2.
+		    + dy(uh2)*dy(vh2))   - ph*dx(vh1) - ph*dy(vh2)
+	            + dx(uh1)*qh + dy(uh2)*qh)
+  - int1d(Th,6) (Po*vh1)
+  + on(1,3,4,5,uh1=0,uh2=0);
+
+BFSadv;
+//plot(uh1,fill=true,value=true);
+// plot([uh1,uh2]);
+// plot(ph,fill=true,value=true  );
+
+string dir="./adv/";
+Mh uh11=uh1;
+Mh uh21=uh2;
+
+//out for freefem
+{
+ofstream f1(dir+"uh1.sol"); f1 << uh11[];
+}
+{
+ofstream f2(dir+"uh2.sol"); f2 << uh21[];
+}

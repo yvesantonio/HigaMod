@@ -1,0 +1,63 @@
+**********************************************************************
+*                       EF1D, 1 settembre 2011                       *
+**********************************************************************
+
+EF1D è un pacchetto di funzioni Octave/Matlab estremamente semplici
+per la risoluzione con il metodo degli elementi finiti di problemi
+ellittici ed iperbolici in dimensione uno. Tali funzioni hanno un
+intento esclusivamente di supporto alla didattica, e la semplicità del
+codice viene privilegiata rispetto a qualunque ricerca di efficienza
+(in particolare l'uso della sintassi vettorializzata è limitato).
+
+Il pacchetto è così organizzato:
+
+- guida.pdf: documentazione generale per l'uso. La documentazione
+  specifica di ciascuna funzione è inclusa nella funzione stessa, sia
+  come intestazione (da richiamarsi con "help nome_funzione" in
+  Octave/Matlab) sia come commenti inseriti nel codice.
+
+- LIBRERIA_UTENTE: funzioni che si presume siano direttamente
+  utilizzate dall'utente. Comprende le seguenti funzioni:
+
+  * interpolazione e integrazione
+  valuta_base_ef: valutazione base elementi finiti in punti arbitrari
+  pw_polyfitval: interpolazione polinomiale composita
+  ef_int: integrazione funzione di uno spazio di elementi finiti
+  trapint: quadratura con metodo dei trapezi
+  gaussint: quadratura gaussiana a due punti composita
+  
+  * generazione di griglie e spazi di elementi finiti
+  struttura_griglia: definizione della griglia di calcolo
+  struttura_base: definizione delle funzioni di forma
+  aggiunta_lapPHI: calcolo derivate seconde delle funzioni di forma
+
+  * discretizzazione di operatori differenziali
+  matrice_massa: costruzione matrice di massa
+  matrice_massa_lumping: costruzione matrice di massa con condensazione
+  termine_diffusione: costruzione matrice rigidezza
+  termine_reazione: discretizzazione termine reazione
+  termine_reazione_lumping: discr. termine reazione con condensazione
+  termine_noto: discretizzazione termine noto
+  termine_bordo: discretizzazione condizioni al bordo
+  termine_trasporto: discretizzazione termine trasporto
+  termine_trasporto_upwind: discr. termine trasporto + stab. upwind
+  termine_trasporto_SG: discr. termine trasp. + stab. Scharfetter-Gummel
+  termine_stab_FC: discr. termine trasp. + stab. fortemente consistente
+  valuta_parametro_d: parametro ottimale per stab. fortemente cons.
+
+  * visualizzazione e diagnostiche
+  norme_errore: calcolo errori nelle norme L2 e H1
+  visualizza_soluzione: grafico della soluzione elementi finiti
+
+  * trattamento di problemi evolutivi
+  theta_metodo: integrazione temporale con theta-metodo
+  visualizza_evoluzione: visualizzazione in tempo sol. elementi finiti
+
+- UTILITA: funzioni di supporto che l'utente non dovrebbe utilizzare
+  direttamente.
+
+- GRIGLIE: cartella contenente vettori di nodi non equispaziati,
+  utilizzati per la costruzione di griglie di calcolo non regolari.
+
+Per informazioni e/o commenti: mrestelli@gmail.com
+

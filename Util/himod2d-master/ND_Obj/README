@@ -1,0 +1,26 @@
+22 febbraio 2013
+Matteo Aletti & Andrea Bortolossi.
+
+teo.aletti@gmail.com
+andrea.bortolossi@mail.polimi.it
+
+
+Nella cartella @solver_GM sono presenti tutte le funzionalità della classe.
+
+La cartella EF1D è stata invece recuperata dal corso del mox modelli 
+numerici per l'ingegneria civile tenuto dal professore Sacco.
+
+I file .edp sono presenti tutti in ND_Obj.
+
+Per utilizzare il codice basta aprire main.m. Sono già presenti due sezione
+una per il caso stazionario e l'altra per il non stazionario.
+E' possibile modificare facilmente i set, per maggiori informazioni leggere
+gli help di ogni singola funzione.
+
+Per il caso stazionario è stato sviluppato un solo caso test allineato
+con il caso utilizzato in hi-mod.
+Per il caso non stazionario si sono sviluppati tre casi test, tuttavia nella
+relazione si è analizzato solamente il caso della "macchia".
+
+E' possibile anche fare video e scattare immagini con le funzioni MakeImg.m
+o MakeVideo.m, che verranno salvati nelle cartelle IMG e VIDEO.

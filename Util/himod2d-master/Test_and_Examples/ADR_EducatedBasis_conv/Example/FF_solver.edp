@@ -1,0 +1,95 @@
+/*
+	Matteo Aletti
+	teo.aletti@gmail.com
+*/
+
+// Creating a mesh on [0,5]X[0,1]
+int N=100;
+border aa(t=0,1) {x=5*t; y=0; label=1;}
+border bb(t=0,1) {x=5; y=t; label=2;}
+border cc(t=0,1) {x=5-5*t; y=1; label=3;}
+border dd(t=0,1) {x=0; y=1-t; label=4;}
+mesh Th=buildmesh( aa(5*N) + bb(N) + cc(5*N) + dd(N) );
+
+
+
+real	mu=1.;
+func	beta1=2+3*x;
+func	beta2=4*cos(2*pi*x/3);
+real	sigma=0.;
+
+real	datoup=0.0;
+real datodown=0.0;
+func uin= 0.05*y*(1-y);
+func force = 1.3*(0.5*(x-1)*(x-1)+0.4*(y-0.5)*(y-0.5)<0.03);
+
+fespace Vh(Th,P2);
+Vh u,v;
+
+problem DirDir(u,v)=
+
+		int2d(Th)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) )  // Laplacian operator
+		+ int2d(Th)   ( beta1*dx(u)*v )						// Advection in x direction
+		+ int2d(Th)   ( beta2*dy(u)*v )						// Advection in y direction
+		+ int2d(Th)   ( sigma*u*v     )						// Reaction
+		- int2d(Th)   ( force*v       )						// Force term
+		+ on(1,u=datodown)
+        + on(4,u=uin)										// Dirichlet Inflow
+		+ on(3,u=datoup);									// Dirichlet su lato up.
+		
+real h=1./N;
+cout<<"h= "<<h<<endl;
+DirDir;
+real[int] meshx(3*5*N);
+for (int i=0;i<5*N;i++)
+{	
+	meshx[3*i]=i*h;
+	meshx[3*i+1]=i*h+h/2.;
+	meshx[3*i+2]=i*h+h;
+}
+
+/*
+{
+	ofstream file("DD_monodom_FF.mtv");
+	int i, j;
+	// INTESTAZIONE PLOTMTV
+	file << "$ DATA=CONTCURVE " << endl;
+	file << "% contstyle=3" << endl;
+	//file << "% toplabel= \"FreeFem\" " << endl;
+	//file << "% xlabel= \"x\" " << endl;
+	//file << "% ylabel= \"y\" " << endl;
+	//file << "% zlabel= \"y\" " << endl;
+	file << "% axisguides=false" << endl;
+	file << "% contfill=true"<<endl;
+	// MESH E SOLUZIONE
+	for (i=0;i<Th.nt;i++)
+	{
+	 	for (j=0;j<3;j++)
+			{
+				file << Th[i][j].x << " " << Th[i][j].y << " " << u(Th[i][j].x,Th[i][j].y) << endl;
+			}
+		file << endl;
+	}
+	file << "$ END" << endl;
+}
+*/
+{
+	ofstream file("DDFF.out");
+	file.scientific;
+	file.precision(7);
+	int i, j;
+    int M=60;
+    int NN=5*N*3;
+	file <<"            "<<NN<<endl;
+	file <<"             "<<M<<endl;
+	for ( int k=1;k<=N*5;k++)
+    {
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 0]<<"       "<<(j-1.)/(M-1.)<<"       "<<u(meshx[ (k-1)*3 + 0],(j-1.)/(M-1.))<<endl;
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 1]<<"       "<<(j-1.)/(M-1.)<<"       "<<u(meshx[ (k-1)*3 + 1],(j-1.)/(M-1.))<<endl;
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 2]<<"       "<<(j-1.)/(M-1.)<<"       "<<u(meshx[ (k-1)*3 + 2],(j-1.)/(M-1.))<<endl;
+    }
+}
+plot(u,fill=false,wait=1);

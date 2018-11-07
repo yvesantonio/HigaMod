@@ -1,0 +1,30 @@
+verbosity=4; 
+border a(t=0,1){x=t;y=0;label=1;}; 
+border b(t=0,0.5){x=1;y=t;label=1;}; 
+border c(t=0,0.5){x=1-t;y=0.5;label=1;}; 
+border d(t=0.5,1){x=0.5;y=t;label=1;}; 
+border e(t=0.5,1){x=1-t;y=1;label=1;}; 
+border f(t=0,1){x=0;y=1-t;label=1;}; 
+func uu= sin(y*pi)/10; func vv= cos(x*pi)/10;
+int nn=2;
+mesh Th = buildmesh ( a(6*nn) + b(4*nn) + c(4*nn) +d(4*nn) + e(4*nn) + f(6*nn));
+
+//border C(t=0,2*pi){x=cos(t); y=sin(t);}
+//mesh Th = buildmesh (C(50));
+fespace Vh(Th,P1);
+Vh u,v;
+func so= 1.0;
+real cpu=clock();
+solve Poisson(u,v,solver=LU)=int2d(Th)(dx(u)*dx(v) + dy(u)*dy(v)) - int2d(Th)( so*v)+on(a,b,c,d,e,f,u=0);
+plot(Th,u);
+savemesh(Th,"Gilgamesh.msh"); // freefem
+
+{ 
+	ofstream file("Heat.bb"); 
+	file << "2 1 1 "<< u[].n << " 2 \n"; 
+	for (int j=0;j<u[].n ; j++)
+		file << u[][j] << endl;
+}
+
+
+cout << " CPU time = " << clock()-cpu << endl;

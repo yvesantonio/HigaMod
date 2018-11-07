@@ -1,0 +1,28 @@
+include "Mesh.edp"
+
+fespace Vh(Th,P1);
+Vh b1,b2;
+
+string dir="./adv/";
+ifstream f1(dir+"uh1.sol"); f1 >>b1[];
+ifstream f2(dir+"uh2.sol"); f2 >>b2[];
+//plot(b1,fill=true);
+int nPoints;
+ifstream list("./tmp/grid.dat"); 
+list >>nPoints;
+real [int] xv(nPoints);
+real [int] yv(nPoints);
+
+for (int k=0;k<nPoints;k++) {
+  list >> xv[k];
+  list >> yv[k];
+}
+
+ofstream b1out(dir+"b1.dat");
+for (int k=0;k<nPoints;k++) {
+  b1out<<b1(xv[k],yv[k])<<endl;
+}
+ofstream b2out(dir+"b2.dat");
+for (int k=0;k<nPoints;k++) {
+  b2out<<b2(xv[k],yv[k])<<endl;
+}

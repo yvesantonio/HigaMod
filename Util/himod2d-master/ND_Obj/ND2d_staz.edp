@@ -1,0 +1,181 @@
+ /*
+Questo file contiene la risoluzione di un problema 2D con esportazione dati per GM viene utilizzato in solver_GM
+STAZIONARIO!
+*/
+
+
+mesh Th=readmesh("mesh_2d.msh");
+
+//real dt;
+//real theta=2./3;
+/****PER KRPO**********/
+real krpo;
+real casotest;
+real full2d;
+real w;
+real mediaestremi;
+
+/***************************** LETTURA DATI INPUT **************************/
+/********Dato di neumann**********/
+real neum,neumold;
+{
+    ifstream file("neum");
+    file>>neum; //val_neum_interfaccia cambia ad ogni ciclo spaziale
+    file>>neumold; //val_neum_old cambia ad ogni ciclo temporale
+}
+
+cout<<"*************************"<<endl;
+cout<<"*****"<<neum<<"**********"<<endl;
+cout<<"*************************"<<endl;
+
+/*********Dati geometrici*********/
+real lun2d,lun1d,larghezza,spes;
+{
+	ifstream file("dati_geometrici");
+	file>>lun2d;
+	file>>lun1d;
+	file>>larghezza;
+	file>>spes;
+    //file>>dt;
+}
+/********Dati fisici**************/
+real Cest,chi,kappa,Cin,mu;
+{
+	ifstream file("dati_fisici");
+	file>>Cest;
+	file>>chi;
+	file>>kappa;
+	file>>Cin;
+	file>>mu;
+}
+
+/**********Flag per interfacciare Freefem e matlab*********/
+real first;
+{
+	ifstream file("first");
+	file>>first;
+    file>>krpo;
+    file>>full2d;
+    file>>casotest;
+}
+
+/************************* INIZIO RISOLUZIONE **********************/
+/*******spazi funzionali e dichiarazione funzioni ***********/
+fespace Vh(Th,P1);
+Vh u2d,v,u2dkmeno1,beta1,beta2;
+
+
+/*************Calcolo del profilo iniziale da Vele Villa***********/
+//real delta=larghezza*chi*(1-Cest/Cin)*(kappa+2)/((kappa+2)*(kappa+larghezza*chi/2)-larghezza*chi*Cest/Cin);
+real delta=0.5;
+
+
+Vh profilo1;
+
+//NOTARE � GESTITO SOLO IL CASO ROB ROB
+real b=0.01;
+real C=(chi*Cest+mu*b)/chi;
+real A=(chi*Cest-mu*b-b-(chi*Cest-mu*b)/chi )/(2*mu+chi);
+
+//Profilo con forzante (0,1)
+//profilo1=A*(y)^2+b*(y)+C;   //PROFILO ALLINEATO CON HIMOD
+
+//Profilo con forzante (-0.5,+0.5)
+profilo1=A*(y+larghezza/2)^2+b*(y+larghezza/2)+C;
+
+
+
+/*********** FORZANTE (DUE CAMINI o UN CAMINO) *****************/
+
+//Forzante due camini in (-0.5,+0.5)
+func forz=10*(( ((x-1.5)^2 + 0.4*(y+0.25)^2) < 0.01) + ( ((x-1.5)^2 + 0.4*(y-0.25)^2) < 0.01));
+//func forz=10*(((x-1.5)^2 + 0.4*(y-0.0)^2) < 0.01);
+/*********Dichiarazione e risoluzione problema**************************/
+func campo=15*(kappa+2)/(kappa+2*(1-delta))*(1-delta*(y*2/larghezza)^kappa); 
+//beta1=campo;
+beta1 = 20;
+beta2=0;
+
+//plot(beta1,wait=1);
+
+    problem zona2d(u2d,v)= 
+
+    //termine diffusivo
+        int2d(Th)( mu*(dx(u2d)*dx(v)+dy(u2d)*dy(v)) )
+
+    //dato di neumann
+        -int1d(Th,3)(mu*neum*v)
+
+    //dato di robin
+        +int1d(Th,2)(mu*chi*u2d*v)    
+        +int1d(Th,4)(mu*chi*u2d*v)
+
+        -int1d(Th,2)(mu*chi*Cest*v)
+        -int1d(Th,4)(mu*chi*Cest*v)
+
+    //trasporto
+        +int2d(Th)(v*(beta1*dx(u2d)+beta2*dy(u2d)))
+     
+    //forzante
+        -int2d(Th)(v*forz)
+
+    //dato di ingresso
+        +on(1,u2d=profilo1);
+
+    zona2d;//SOLVER
+
+    //Import soluzione passo spaziale precedente per errori
+    {
+        int garbage;
+        ifstream file("u2dkmeno1"); //soluzione all'iterata spaziale precedente tempo corrente
+        for (int l=0;l<5;l++)   file>>garbage;
+        for (int j=0;j<u2d[].n ; j++)   file >> u2dkmeno1[][j];
+    }
+
+    /******* Valutazione errtest2D e umedia e salvataggio degli stessi ******/
+
+    real errfront=sqrt(int1d(Th,3)((u2d-u2dkmeno1)^2))/larghezza;
+    real errdom=sqrt(int2d(Th)((u2d-u2dkmeno1)^2));
+
+    real umedia=int1d(Th,3)(u2d)/larghezza;
+
+    if(krpo)
+    {
+        /* 
+        *  CALCOLO COEFFICIENTE w(t) w contiene già U, 
+        *  che tuttavia nel caso stazionario non dipende
+        *  dalla coordinata spaziale
+        */
+        w=int1d(Th,3)(u2d/umedia*beta1)/larghezza;
+        
+        //w=int1d(Th,3)(beta1)/larghezza;
+        mediaestremi=(u2d(lun2d,larghezza/2)+u2d(lun2d,-larghezza/2))/(larghezza*umedia);
+		//EXPERIMENTAL Sembra funzionare
+		{
+			real Ndisplay=100;
+			real xmin=-larghezza/2.;
+			ofstream file("profile_at_interface");
+			for (int i=0;i<Ndisplay;i++)
+				file<<lun2d<<"    "<<xmin+i/(Ndisplay-1.)*larghezza<<"    "<<u2d(lun2d,xmin+i/(Ndisplay-1.)*larghezza)<<endl;
+		}
+
+    }
+    //OUTPUT
+    {
+        ofstream file("testedato2d");
+        file<<errfront<<endl;
+        file<<umedia<<endl;
+        file<<errdom<<endl;
+	    if(krpo) {file<<w<<endl;file<<mediaestremi<<endl;}
+    }
+	
+
+    /************** Salvataggio soluzione ***************/
+    {
+        ofstream file("u2dkmeno1"); //ora conterra' soluzione corrente
+        file << "2 1 1 "<< u2d[].n << " 2 \n"; 
+        for (int j=0;j<u2d[].n ; j++)
+            file << u2d[][j] << endl;
+    }
+
+

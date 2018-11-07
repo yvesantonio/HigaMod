@@ -1,0 +1,28 @@
+# Ignorare i file di recupero#
+##############################
+*~
+# alcuni file di output
+#############################
+*.zip
+*.out
+*.dat
+*.mtv
+*.eps
+*.ps
+*.jpg
+*.JPG
+*.fig
+*.mat
+*.pdf
+*.avi
+*.fig
+*.avi
+*.png
+*DS_Store*
+# ignorare la cartella delle immagini
+######################################
+IMG/
+# ignorare questa vecchia cartella, forse da cancellare anche in locale (malcomar)
+##########################################
+Verifica_convergenza_old/
+

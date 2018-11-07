@@ -1,0 +1,11 @@
+To create che advection field run AdvectionField.edp:
+it created to files:
+adv/uh1.sol
+adv/uh2.sol
+
+then launch importADV.m:
+it creates
+adv/allFields.mat
+adv/b1.dat
+adv/b2.dat
+tmp/grid.dat

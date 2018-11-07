@@ -1,0 +1,81 @@
+27 aprile 2013
+Matteo Aletti
+teo.aletti@gmail.com
+
+
+Riorganizzate le cartelle:
+
+Core
+- contiene il programma vero e proprio
+
+Debug
+- contiene alcune, poche e mal funzionanti, utilities per controllare velocemente alcune cose. Andrebbe sistemato e inserito in Util.
+	
+Test_and_Examples
+- contiene il test ADR sia globale che locale
+
+Util
+- contiene le funzioni per la grafica. 
+
+Verifica_convergenza
+- in fieri dovrebbe contenere dei test per la verifica dell'ordine di convergenza
+
+utility_per_testare_basi
+- qualche funzione utile per fare dei test sulle base, anche questo andrebbe in util.
+
+13 febbraio 2013
+Matteo Aletti & Andrea Bortolossi.
+
+teo.aletti@gmail.com
+andrea.bortolossi@mail.polimi.it
+
+LOCAL-HIMOD
+Un file di esempio è caricato nella cartella Local.
+
+Il codice è pensato per un approccio multidomino, tuttavia sembra funzionare anche su un singolo dominio, 
+sicuramente in quel caso si possono fare delle ottimizzazioni.
+
+nelle cartelle debug e utility_per_testare_basi ci sono
+degli script non aggiornati utilizzati in fase di debug per testare le nuove funzionalità.
+
+E' anche disponibile una semplicissima function save_img per salvare agilmente dei risultati.
+Eventuali immagini vengono salvate nella cartella IMG
+
+IPOTESI:
+il codice funziona con dati al bordo laterali costanti.
+neumann omogeneo
+e un generico dirichlet all'ingresso.
+alcuni tipi di BC laterali non sono ancora implementati ma non è difficilissimo ottenerle.
+Per quanto riguarda la parte di Domain-Decomposition ora è implementato un robin-robin, 
+prima c'era un dirichlet neumann 
+che da più garanzie riguardo alla continuità, ma sembrava meno stabile
+si potrebbe riprovarlo.
+
+nel plot se non viene visualizzato nulla è perchè la soluzione risulta essere costante
+i warning sono stati disabilitati perchè nelle prime iterazioni di DD capita sempre.
+
+POSSIBILI OTTIMIZZAZIONI:
+investigare prima con il profiler se ne vale la pena.
+
+
+Spostare il calcolo del rilevamento dalla funzione assembla_x a 
+build_system: il rilevamento è una 'proprietà' del singolo dominio
+non è necessario ricalcolarlo in ogni blocco.
+
+Controllare tutti i coefficienti relativi alla forma del dominio
+a, L, psi_X. Soprattutto in assembla_x.
+In questo modo si potrebbe gestire la fibra storta.
+
+Controllare tutti le chiamate a mu che nel codice è stata assunta costante.
+
+Trasformare tutte le chiamate a integrate in prodotti scalari (in c++ sarebbe da dichiarare inline la funzione integrate)
+Dovrebbero ridursi moltissimo i costi associati alla chiamata di integrate.
+
+Si dovrebbe provare a confrontare velocità e performance in quanto a
+qualità della soluzione di RR vs DN
+
+Eliminare calcolo e passaggio delle derivate della funzione di stourm-liouville.
+
+Ottimizzare la function extract solution: togliere un po' di cose inutili ed evitare di restituire la u quando non viene nemmeno modificata (non chiamare direttamente extract magari.
+
+Ottimizzare impose_boundary, il più delle volte il sistema ridotto non viene calcolato, inutile fare tante copie di quella matrice.

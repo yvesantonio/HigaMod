@@ -1,0 +1,50 @@
+//Import solution 2D side
+real lun2d,lun1d;
+{
+	ifstream file("./input/dati_geometricifull2d");
+	file>>lun2d;
+	file>>lun1d;
+}
+
+mesh Th=readmesh("./input/mesh_full2d.msh");
+fespace Vh(Th,P1);
+Vh u2dkmeno1;
+{
+int garbage;
+ifstream file("./input/u2dkmeno1full2d");
+for (int l=0;l<5;l++)   file>>garbage;
+for (int j=0;j<u2dkmeno1[].n ; j++)   file >> u2dkmeno1[][j];
+}
+plot(u2dkmeno1);
+plot(Th);
+int N=1800;
+real h=(lun2d+lun1d)/N;
+real[int] meshx(N+1);
+for (int i=0;i<=N;i++)
+{	
+	meshx[i]=i*h;
+}
+
+{
+	ofstream file("./input/Full2D.out");
+	file.scientific;
+	file.precision(7);
+	int i, j;
+    int M=100;
+//Salva il numero di vertici
+	file <<"            "<<N+1<<endl;
+	file <<"             "<<M<<endl;
+
+	for ( int k=0;k<=N;k++)
+    {
+	//Export tra -0.5 e +0.5
+        for (int j=-M/2;j<0;j++)
+          file<<"       "<<meshx[k]<<"       "<<(j+0.)/(M+0.)+0.5<<"       "<<u2dkmeno1(meshx[k],(j+0.)/(M+0.))<<endl;
+        for (int j=1;j<=M/2;j++)
+          file<<"       "<<meshx[k]<<"       "<<(j+0.)/(M+0.)+0.5<<"       "<<u2dkmeno1(meshx[k],(j+0.)/(M+0.))<<endl;
+
+		//Export tra 0.0 e 1.0
+       //for (int j=0;j<=M;j++)
+         //   file<<"       "<<meshx[k]<<"       "<<(j+0.)/(M+0.)<<"       "<<u2dkmeno1(meshx[k],(j+0.)/(M+0.))<<endl;
+    }
+}

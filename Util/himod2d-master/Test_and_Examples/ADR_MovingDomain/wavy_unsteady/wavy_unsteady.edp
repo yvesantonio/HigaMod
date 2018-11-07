@@ -1,0 +1,125 @@
+//The problem is mapped back to the reference domain
+macro YY(tt,xx,yhat) ((0.5*sin(50.*tt)*cos(pi/3.*xx+pi/2.)+1.)*yhat) //
+
+//Setting grafico
+/*
+real cmin=-0.01;
+real cmax=0.1;
+
+real niso=20;
+real cstep=(cmax-cmin)/(niso-1.0);
+real[int] viso(niso);
+for (int c=0;c<niso;c++)
+{
+    viso[c]=cmin+c*cstep;
+}
+*/
+//Creazione mesh per il dominio al tempo t=0;
+
+int nelem = 50;
+real L=5;
+mesh Th=square(nelem*L,nelem,[x*L,2*y-1]);
+savemesh(Th,"data/referencedomain.msh");
+
+//Definizione spazi e funzioni principali
+fespace Vh(Th,P1);
+Vh u, v,uold;
+
+//Forma bilineare
+real mu    = 1.;
+real betax = 10.;
+real betay = 0.;
+real sigma = 1.;
+real dt    = 0.01;
+
+//Inizializzazioni ciclo temporale
+real t=0;
+int ntimestep=100;
+mesh Thold=Th;
+//Ciclo temporale
+for (int k=0;k<ntimestep;k++)
+{  
+    t=t+dt;
+    // Mesh sul riferimento
+    func Jac = 1.0+0.5*sin(50.0*t)*cos(pi/3.0*x+pi/2.0);
+    func fy=1.0/(1.0+0.5*sin(50.0*t)*cos(pi/3.0*x+pi/2.0));
+    func fx=y*(1.0+0.5*sin(50.0*t)*cos(pi/3.0*x+pi/2.0))*0.5*sin(50.0*t)*pi/3.0*sin(pi/3.0*x+pi/2.0)/(1.0+0.5*sin(50.0*t)*cos(pi/3.0*x+pi/2.0))/(1.0+0.5*sin(50.0*t)*cos(pi/3.0*x+pi/2.0));
+    //force term and domain velocity defined on the reference domain.
+    func f= 10.*( ((x-0.5)*(x-0.5) + 0.4*YY(t,x,y)*YY(t,x,y) ) < 0.01 );
+    func w= ( y*25.*cos(pi/3.0*x+pi/2.0)*cos(50.0*t));
+    
+	problem wavyunsteady(u,v)=
+        int2d(Th)  ( Jac*mu*( dx(u)*dx(v) + fx*fx*dy(u)*dy(v) + fy*fy*dy(u)*dy(v)))            //Diff
+        +int2d(Th) ( Jac*(betax*(dx(u)*v+fx*dy(u)*v) + ( betay - w )*fy*dy(u)*v))     				//Adv
+        +int2d(Th) ( Jac*sigma*u*v)                                 							//Reaction
+        +int2d(Th) ( Jac*u*v/dt)                                    							//Mass-->time
+        -int2d(Th) ( Jac*uold*v/dt)                              								//Mass rhs -->time
+        -int2d(Th) ( Jac*f*v)                                       							//Force
+        +on(1,u=0)                                              								//Dirichlet on bottom
+        +on(3,u=0);                                             								//Dirichlet on top, neumann on inflow/outflow
+  
+    // solution of the problem
+    wavyunsteady;
+
+    // post process
+    //plot(u,fill=1,viso=viso,value=true);
+    {
+        ofstream file("data/wavy_unsteady_mappedback_ffem"+k+".dat"); 
+        file << "0 0 0 "<< u[].n << " 0 \n"; 
+        for (int j=0;j<u[].n ; j++)
+            file << u[][j] << endl;
+    }
+
+	// Export for python
+	real n=nelem;
+	real h=1./n;
+	real[int] meshx(3*L*n);
+	for (int i=0;i<L*n;i++)
+	{	
+		meshx[3*i]=i*h;
+		meshx[3*i+1]=i*h+h/2.;
+		meshx[3*i+2]=i*h+h;
+	}
+	if(k==19||k==39||k==59||k==79||k==99)
+	{
+		ofstream file("DDFF"+t+".out");
+		file.scientific;
+		file.precision(7);
+		int i, j;
+		int M=60;
+		int NN=L*n*3;
+		file <<"            "<<NN<<endl;
+		file <<"             "<<M<<endl;
+		real Xcoord=0.0;
+		real Ycoord=0.0;
+		real Yhat=0.0;
+		for ( int k=1;k<=n*L;k++)
+		{
+		       
+		    for (int j=1;j<=M;j++)
+		    {
+		        Xcoord=meshx[ (k-1)*3 + 0];
+		        Yhat=2.*(j-1.)/(M-1.)-1;
+		        Ycoord = YY(t,Xcoord,Yhat);
+		        file<<"       "<<Xcoord<<"       "<<Ycoord<<"       "<<u(Xcoord,Yhat)<<endl;
+		    }
+		    for (int j=1;j<=M;j++)
+		    {
+		        Xcoord=meshx[ (k-1)*3 +1];
+		        Yhat=2.*(j-1.)/(M-1.)-1;               
+		        Ycoord = YY(t,Xcoord,Yhat);
+        	    file<<"       "<<Xcoord<<"       "<<Ycoord<<"       "<<u(Xcoord,Yhat)<<endl;
+      		}
+		    for (int j=1;j<=M;j++)
+		    {
+		        Xcoord=meshx[ (k-1)*3 +2];
+		        Yhat=2.*(j-1.)/(M-1.)-1;
+		        Ycoord = YY(t,Xcoord,Yhat);
+		        file<<"       "<<Xcoord<<"       "<<Ycoord<<"       "<<u(Xcoord,Yhat)<<endl;
+		    }
+		}
+	}
+    // update u_old
+    uold=u;
+    cout<<"t="<<t<<endl;
+}

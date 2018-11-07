@@ -1,0 +1,10 @@
+//ausiliario necessario al caso stazionario
+mesh Th=readmesh("mesh_2d.msh");
+fespace Vh(Th,P1);
+Vh u;
+{
+	        ofstream file("u2dkmeno1"); //soluzione al tempo e spazio corrente
+	        file << "2 1 1 "<< u[].n << " 2 \n"; 
+	        for (int j=0;j<u[].n ; j++)
+	            file << 1e3<<endl;//u[][j] << endl;
+}

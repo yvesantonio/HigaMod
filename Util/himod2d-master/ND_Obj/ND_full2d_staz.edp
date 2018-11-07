@@ -1,0 +1,139 @@
+/*
+Questo file contiene la risoluzione di un problema 2D, viene utilizzato solo come confronto dentro solver_GM
+STAZIONARIO!
+*/
+verbosity=3;
+
+mesh Th=readmesh("mesh_full2d.msh");
+plot(Th);
+real neum=0;
+real neumold=0;
+
+/***************************** LETTURA DATI INPUT **************************/
+
+/*********Dati geometrici*********/
+real lun2d,lun1d,larghezza,spes;
+{
+	ifstream file("dati_geometrici");
+	file>>lun2d;
+	file>>lun1d;
+	file>>larghezza;
+	file>>spes;
+}
+/********Dati fisici**************/
+real Cest,chi,kappa,Cin,mu;
+{
+	ifstream file("dati_fisici");
+	file>>Cest;
+	file>>chi;
+	file>>kappa;
+	file>>Cin;
+	file>>mu;
+}
+/**********Flag per interfacciare Freefem e matlab*********/
+real first;
+real krpo,full2d,casotest;
+{
+	ifstream file("first");
+	file>>first;
+    file>>krpo;
+    file>>full2d;
+    file>>casotest;
+}
+/************************* INIZIO RISOLUZIONE **********************/
+/*******spazi funzionali e dichiarazione funzioni ***********/
+fespace Vh(Th,P1);
+Vh u2d,v,u2dkmeno1,beta1,beta2;
+
+/*************Calcolo del profilo iniziale da Vele Villa***********/
+//real delta=larghezza*chi*(1-Cest/Cin)*(kappa+2)/((kappa+2)*(kappa+larghezza*chi/2)-larghezza*chi*Cest/Cin);
+real delta=0.5;
+Vh profilo1;
+
+real b=0.01;
+
+//RICORDARSI DI CAMBIARE QUANDO SI VUOLE UN FULL2D APPROPRIATO
+//rob rob
+real C=(chi*Cest+mu*b)/chi;
+real A=(chi*Cest-mu*b-b-(chi*Cest-mu*b)/chi )/(2*mu+chi);
+cout<<A<<endl;
+cout<<C<<endl;
+//dir rob
+//real C=(chi*Cest+mu*b)/chi;
+//real A=Cin-b-C;
+
+//dir dir solo caso entrambe uguali le condizioni
+//real C=Cin;
+//real A=Cin-b-C;
+
+//if(casotest==1) profilo1=A*(y+larghezza/2)^2+b*(y+larghezza/2)+C;   //PROFILO ALLINEATO CON HIMOD
+if(casotest==2) profilo1=Cin*(kappa+2)/(kappa+2*(1-delta))*(1-delta*(y*2/larghezza)^kappa); //PROFILO DI VELE VILLA
+if(casotest==1) profilo1=A*(y+larghezza/2)^2+b*(y+larghezza/2)+C;
+
+/*********** FORZANTE (DUE CAMINI o UN CAMINO) *****************/
+func forz=10*(( ((x-1.5)^2 + 0.4*(y+0.25)^2) < 0.01) + ( ((x-1.5)^2 + 0.4*(y-0.25)^2) < 0.01));
+//func forz=10*(( (x-1.5)^2 + 0.4*(y-0.0)^2) < 0.01);
+
+/*********Dichiarazione e risoluzione problema**************************/
+// func campo=20*(kappa+2)/(kappa+2*(1-delta))*(1-delta*(y*2/larghezza)^kappa); 
+    beta1=20;//campo;
+    beta2=0;
+
+    problem zona2d(u2d,v)= 
+
+    //termine diffusivo
+        int2d(Th)( mu*(dx(u2d)*dx(v)+dy(u2d)*dy(v)) )
+
+    //dato di neumann
+        -int1d(Th,3)(mu*neum*v)
+
+    //dato di robin
+       +int1d(Th,2)(mu*chi*u2d*v)    
+       +int1d(Th,4)(mu*chi*u2d*v)
+
+        -int1d(Th,2)(mu*chi*Cest*v)
+        -int1d(Th,4)(mu*chi*Cest*v)
+
+    //trasporto
+        +int2d(Th)(v*(beta1*dx(u2d)+beta2*dy(u2d)))
+
+    //forzante
+        -int2d(Th)(v*forz)
+
+    //eventuale condizioni di dirichlet per fare altri casi full2d
+        //+on(2,u2d=Cin)
+       //+on(4,u2d=Cin)
+    //dato di ingresso
+        +on(1,u2d=profilo1);
+
+    zona2d;//SOLVER
+
+plot(Th,u2d);
+
+real ltot=(lun2d+lun1d)/23;
+
+ofstream file("mediaestremi_mu1_chi6_b10");
+for(int i=1;i<23;i++)
+{
+	real umedia=int1d(Th,(i+6))(u2d)/larghezza;
+	real mediaestremi=(u2d(i*ltot,larghezza/2)+u2d(i*ltot,-larghezza/2))/(larghezza*umedia);  
+        file <<i*ltot<<"    "<<mediaestremi<<endl;
+}
+
+{
+
+ofstream file("conc_slice_mu1_chi6_b10");
+for(int i=1;i<23;i++)
+{
+	real umedia=int1d(Th,(i+6))(u2d)/larghezza;
+  	//umedia= Cest/umedia;    
+    file <<i*ltot<<"    "<<umedia<<endl; 
+}
+}
+
+{
+        ofstream file("u2dkmeno1"); 
+        file << "2 1 1 "<< u2d[].n << " 2 \n"; 
+        for (int j=0;j<u2d[].n ; j++)
+           file << u2d[][j] << endl;
+}

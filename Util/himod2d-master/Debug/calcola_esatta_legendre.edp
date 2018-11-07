@@ -1,0 +1,21 @@
+verbosity=0;
+mesh Th= square(100,100,[6*x,2*y-1]);
+
+fespace Vh(Th,P1);
+Vh u,v;
+real chi =  3;
+real sigma = 1;
+real beta1 =  20.;
+real mu    =   1.;
+func f = 10*(  ( (x-1.5)*(x-1.5)+.4*(y-0.75)*(y-0.75)<0.01) + ((x-1.5)*(x-1.5)+.4*(y+0.75)*(y+0.75)<0.01) );
+
+problem leg(u,v) = 
+		 int2d(Th)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) ) //Laplaciano
+		 + int2d(Th)   ( beta1*dx(u)*v )                     //Trasporto
+         + int2d(Th)   ( sigma*u*v )
+		 + int1d(Th,1) ( chi*u*v )						   //Funzionale Robin
+		 + int1d(Th,3) ( chi*u*v ) 
+         - int2d(Th)   ( f*v );
+leg;
+
+plot(u,value=true, fill=true, nbiso=20);

@@ -1,0 +1,152 @@
+/*
+Questo file contiene la risoluzione di un problema 2D, viene utilizzato solo come confronto dentro solver_GM
+
+*/
+verbosity=0;
+
+mesh Th=readmesh("mesh_full2d.msh");
+
+real dt;
+real theta=2./3;
+real neum=0;
+real neumold=0;
+
+/***************************** LETTURA DATI INPUT **************************/
+
+/*********Dati geometrici*********/
+real lun2d,lun1d,larghezza,spes;
+{
+	ifstream file("dati_geometrici");
+	file>>lun2d;
+	file>>lun1d;
+	file>>larghezza;
+	file>>spes;
+    file>>dt;
+}
+/********Dati fisici**************/
+real Cest,chi,kappa,Cin,mu;
+{
+	ifstream file("dati_fisici");
+	file>>Cest;
+	file>>chi;
+	file>>kappa;
+	file>>Cin;
+	file>>mu;
+}
+/**********Flag per interfacciare Freefem e matlab*********/
+real first,krpo,full2d,casotest;
+{
+	ifstream file("first");
+	file>>first;
+    file>>krpo;
+    file>>full2d;
+    file>>casotest;
+}
+/************************* INIZIO RISOLUZIONE **********************/
+/*******spazi funzionali e dichiarazione funzioni ***********/
+fespace Vh(Th,P1);
+Vh u2dold,u2d,v,u2dkmeno1,beta1,beta2;
+
+/*************Calcolo del profilo iniziale da Vele Villa***********/
+real delta=larghezza*chi*(1-Cest/Cin)*(kappa+2)/((kappa+2)*(kappa+larghezza*chi/2)-larghezza*chi*Cest/Cin);
+Vh profilo1=Cin*(kappa+2)/(kappa+2*(1-delta))*(1-delta*(y*2/larghezza)^kappa);
+
+/********* Soluzione passo precedente e dato iniziale *********/
+if(first)   
+{ 
+	
+    if(casotest==1) u2dold=Cin*(x<lun2d/6)+Cest*(x>=lun2d/6);
+    if(casotest==2) u2dold=Cin*(x<lun2d/1.2)+Cest*(x>=lun2d/1.2);
+    if(casotest==3) u2dold=Cin*(x<lun2d/4)+Cest*(x>=lun2d/4);
+
+	{
+	        ofstream file("u2dold"); //soluzione al tempo e spazio corrente
+	        file << "2 1 1 "<< u2dold[].n << " 2 \n"; 
+	        for (int j=0;j<u2dold[].n ; j++)
+	            file << u2dold[][j] << endl;
+	}
+}//chiude if
+else
+{ 
+    if(casotest==1) profilo1=Cin;
+    if(casotest==2) profilo1=Cin;
+    if(casotest==3) profilo1=Cest;
+	 {
+		int garbage;
+		ifstream file("u2dold");//soluzione al passo temporale precedente
+		for (int l=0;l<5;l++)   file>>garbage;
+		for (int j=0;j<u2dold[].n ; j++)   file >> u2dold[][j];
+         }
+
+    /**********Importazione velocita' calcolata con navier stokes (punto fisso)******/
+    /****prima componente******/
+    
+    {
+	int garbage;
+	ifstream file("NSu1");
+	for (int l=0;l<5;l++)   file>>garbage;
+	for (int j=0;j<beta1[].n ; j++)   file >> beta1[][j];
+    }
+    
+
+    /******seconda componente****/
+    
+    {
+	int garbage;
+	ifstream file("NSu2");
+	for (int l=0;l<5;l++)   file>>garbage;
+	for (int j=0;j<beta2[].n ; j++)   file >> beta2[][j];
+    }
+    
+
+    /*********Dichiarazione e risoluzione problema**************************/
+
+    //fespace Qh(Th,P0);
+    //real pe=int2d(Th)(beta1)*0.01/2;
+    //mu=mu*(1+pe);
+
+    problem zona2d(u2d,v)= 
+
+    //avanzamento temporale
+        int2d(Th)(u2d*v/dt)
+        -int2d(Th)(u2dold*v/dt)
+
+    //termine diffusivo
+        +int2d(Th)( theta*mu*(dx(u2d)*dx(v)+dy(u2d)*dy(v)) )
+        +int2d(Th)( (1-theta)*mu*(dx(u2dold)*dx(v)+dy(u2dold)*dy(v)) )
+
+    //dato di neumann
+        -int1d(Th,3)(theta*mu*neum*v)
+        -int1d(Th,3)((1-theta)*mu*neumold*v)
+
+    //dato di robin
+        +int1d(Th,2)(theta*mu*chi*u2d*v)    
+        +int1d(Th,4)(theta*mu*chi*u2d*v)
+        +int1d(Th,9)(theta*mu*chi*u2d*v)
+        +int1d(Th,2)((1-theta)*mu*chi*u2dold*v)
+        +int1d(Th,4)((1-theta)*mu*chi*u2dold*v)
+        +int1d(Th,9)((1-theta)*mu*chi*u2dold*v)
+
+        -int1d(Th,2)(mu*chi*Cest*v)
+        -int1d(Th,4)(mu*chi*Cest*v)
+        -int1d(Th,9)(mu*chi*Cest*v)
+
+    //trasporto
+        +int2d(Th)(theta*v*(beta1*dx(u2d)+beta2*dy(u2d)))
+        +int2d(Th)((1-theta)*v*(beta1*dx(u2dold)+beta2*dy(u2dold)))
+
+    //dato di ingresso
+        +on(1,u2d=profilo1);
+
+    zona2d;//SOLVER
+
+
+    /************** Salvataggio soluzione ***************/
+    {
+        ofstream file("u2dold"); 
+        file << "2 1 1 "<< u2d[].n << " 2 \n"; 
+        for (int j=0;j<u2d[].n ; j++)
+            file << u2d[][j] << endl;
+    }
+
+}

@@ -1,0 +1,30 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  Internal Error (safepoint.cpp:555), pid=6832, tid=2985294656
+#  Error: Deadlock in safepoint code.  Should have called back to the VM before blocking.
+#
+# JRE version: 6.0_17-b04
+# Java VM: Java HotSpot(TM) Client VM (14.3-b01 mixed mode linux-x86 )
+# If you would like to submit a bug report, please visit:
+#   http://java.sun.com/webapps/bugreport/crash.jsp
+#
+
+---------------  T H R E A D  ---------------
+
+Current thread (0xb15ed800):  JavaThread "main" [_thread_in_native_trans, id=6876, stack(0xb16ff000,0xb1f00000)]
+
+Stack: [0xb16ff000,0xb1f00000],  sp=0xb1ef6ac0,  free space=8158k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+V  [libjvm.so+0x3fb71a]
+V  [libjvm.so+0x191d6c]
+V  [libjvm.so+0x35fa80]
+V  [libjvm.so+0x3cc3ce]
+V  [libjvm.so+0x21fba5]
+C  [libmwjmi.so+0x1aa07]  _ZN22mljLocalReferenceFrameC1EP7JNIEnv_i+0x21
+C  [libnativecmdwin.so+0xc864]  _ZN22JavaCmdWinStreamBuffer8privsyncEb+0x80
+C  [libnativecmdwin.so+0xca1e]  _ZN22JavaCmdWinStreamBuffer8overflowEi+0x32
+
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+J  com.mathworks.jmi.bean.UDDObject.directGetPropertyFromMatlab(JJ)[Ljava/lang/Object;
+C  0x2e2e2f36

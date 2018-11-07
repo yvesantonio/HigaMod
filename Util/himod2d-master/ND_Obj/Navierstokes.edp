@@ -1,0 +1,177 @@
+verbosity=0;
+mesh Th=readmesh("mesh_2d.msh");
+cout<<"mesh 2d caricata in Navierstokes..."<<endl;
+
+real nu=0.01;
+int maxiter=100;
+real tol = 1e-3;
+
+// Finite-element space definition
+
+fespace Xh(Th,[P2,P2]);
+fespace Mh(Th,P1);
+fespace Yh(Th,P2);
+
+Xh [uh1,uh2], [uh1old,uh2old], [erru1,erru2];
+uh1old[]=1;
+uh2old[]=1;
+Mh ph, phold, errp;
+Yh phi, psi;
+real dimXh=Xh.ndof; 
+real dimMh=Mh.ndof;
+
+/****** Dati geometrici *****/
+real lun2d,lun1d,larghezza,spes;
+{
+ifstream file("dati_geometrici");
+file>>lun2d;
+file>>lun1d;
+file>>larghezza;
+file>>spes;
+}
+
+
+// Definition of variational forms
+
+varf a([u1,u2],[v1,v2]) =   // diffusion + BC
+         int2d(Th)((dx(u1)*dx(v1)+dy(u1)*dy(v1)+
+                    dx(u2)*dx(v2)+dy(u2)*dy(v2))*nu)
+       + on(2,u1=0,u2=0)
+       +on (4,u1=0,u2=0)
+       + on(1,u1=0.01*(y*y-(larghezza/2)^2),u2=0); //PROFILO INIZIALE PARABOLICO!!!
+ 
+varf b([u1,u2],[q]) =       // div/grad operator
+       - int2d(Th)((dx(u1)+dy(u2))*q);
+
+varf j(p,q) =               // pressure mass
+       int2d(Th)(p*q/nu);
+
+// advection bilinear form
+varf c([u1,u2],[v1,v2]) = int2d(Th)((uh1old*dx(u1)+uh2old*dy(u1))*v1 +
+                                    (uh1old*dx(u2)+uh2old*dy(u2))*v2);
+
+// Construction of matrices
+matrix A=a(Xh,Xh,solver=UMFPACK); // stiffness
+matrix B=b(Xh,Mh);                // div/grad
+matrix J=j(Mh,Mh,solver=UMFPACK); // pressure mass
+matrix T;                         // advection
+matrix C;                         // stiffness + advection
+C=A;
+
+real[int] f(dimXh);    // RHS with Dirichlet BC
+f=a(0,Xh);
+
+real[int] yy(dimXh), ww(dimXh);     
+real[int] pp(dimMh), fp(dimMh);     
+
+real normu, normu0, normp, normp0; 
+
+// pressure matrix (for linearGMRES)
+func real[int] matP(real[int] &xx)
+{
+  // define the matrix vector product  pp=B*C^-1*B'*xx
+  yy=B'*xx; 
+  ww=C^-1*yy;
+  pp=B*ww;
+  return pp;
+}
+
+// Preconditioner 
+func real[int] precDiag(real[int] &xx)
+{
+  //definisce il residuo precondizionato pp=J^-1*xx
+  pp=J^-1*xx;
+  return pp;
+}
+
+// Stokes initialization
+ww=C^-1*f; // RHS for the pressure equation
+fp=B*ww;
+
+// solution for the pressure equation
+LinearGMRES(matP, phold[], fp, eps=1.e-4, nbiter=1000,precon=precDiag);
+
+// velocity computation
+yy=B'*phold[]; yy=-yy; yy+=f;
+ww=C^-1*yy;
+uh1old[]=ww;
+
+// norm of the initial solution
+normu0 = int2d(Th)(dx(uh1old)*dx(uh1old) + dy(uh1old)*dy(uh1old) +
+                   dx(uh2old)*dx(uh2old) + dy(uh2old)*dy(uh2old) +
+                  (uh1old)*(uh1old)+ (uh2old)*(uh2old));
+normp0 = int2d(Th)((phold)*(phold));
+
+
+// Fixed-point iteration
+
+int i=1;
+real err=1;
+
+while (i<=maxiter & err > tol)
+{
+cout << "========================================================" << endl;
+cout << " Fixed-point iteration i= " << i << endl;
+
+T=c(Xh,Xh); C=T+A;
+set(C,solver=UMFPACK);
+
+// RHS for the pressure equation
+//cout << " - updating the RHS for the pressure" << endl;
+ww=C^-1*f;
+fp=B*ww;
+
+// solution of the pressure equation
+//cout << " - solution of the pressure equation (GMRES for BA^-1B') " << endl;
+LinearGMRES(matP, ph[], fp, eps=1.e-4, nbiter=1000,precon=precDiag);
+
+// velocity compuatation
+yy=B'*ph[]; yy=-yy; yy+=f;
+//cout << " - velocity compuatation " << endl;
+ww=C^-1*yy;
+uh1[]=ww; 
+
+//convergence test
+[erru1,erru2] = [uh1-uh1old, uh2-uh2old];
+errp=ph-phold;
+normu = int2d(Th)(dx(erru1)*dx(erru1) + dy(erru1)*dy(erru1) +
+                  dx(erru2)*dx(erru2) + dy(erru2)*dy(erru2) +
+                  (erru1)*(erru1)+ (erru2)*(erru2));
+normp = int2d(Th)((errp)*(errp));
+
+cout << "      velocity increment: " << sqrt(normu)/sqrt(normu0) << endl;
+cout << "      pressure increment: " << sqrt(normp)/sqrt(normp0) << endl;
+
+
+i++;
+err = sqrt(normu)/sqrt(normu0) + sqrt(normp)/sqrt(normp0);
+
+// reinitialization
+[uh1old, uh2old] = [uh1, uh2];
+phold=ph;
+
+}
+
+cout << "========================================================" << endl;
+cout << "END OF THE FIXED POINT ITERATIONS" << endl;
+cout << "\n convergence in " << i-1 << " iterarations \n\n";
+cout << "========================================================" << endl;
+
+plot([uh1,uh2],nbarrow=200,coef=0.1,wait=1);
+
+{
+	ofstream file("NSu1");
+	file << "2 1 1 "<< uh1[].n << " 2 \n"; 
+	for (int j=0;j<uh1[].n ; j++)
+		file << uh1[][j] << endl;
+}
+
+
+
+{
+	ofstream file("NSu2");
+	file << "2 1 1 "<< uh2[].n << " 2 \n"; 
+	for (int j=0;j<uh2[].n ; j++)
+		file << uh2[][j] << endl;
+}
+

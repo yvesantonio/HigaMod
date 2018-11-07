@@ -1,0 +1,212 @@
+/*
+Questo file crea le mesh ed esporta anche altre cose tipo dati iniziali o campo di moto
+*/
+verbosity=0;
+
+/********************Mesh zona 2d***********************************/
+
+int n2d=20;
+real lun2d;
+real lun1d;
+real larghezza;
+real spes;
+real nonstaz;
+real full2d;
+real dt;//di comodo per togliere una voce
+{
+ifstream file("dati_geometrici");
+file>>lun2d;
+file>>lun1d;
+file>>larghezza;
+file>>spes;
+file>>dt;
+file>>nonstaz;
+file>>full2d;
+}
+
+real rho=larghezza/2;
+real rapp=ceil(lun2d/larghezza);
+real rapp1=ceil((lun2d-2*rho)/(2*larghezza));
+real rapp2=ceil(2*rho/larghezza);
+real rapp3=ceil((lun2d+lun1d)/lun2d);
+
+//MESH PER I METODI RIDOTTI-----------------------------------
+mesh Th;
+
+//Lati comuni alla mesh stazionaria e non---------------------
+border up(t=0,1){x=lun2d-lun2d*t;y=larghezza;label=4;};
+border out(t=0,1){x=lun2d;y=larghezza*t;label=3;};
+border in(t=0,1){x=0;y=larghezza-larghezza*t;label=1;};
+//border ausiliario(t=0,1){x=lun2d-lun2d/10;y=+larghezza*t;label=5;};
+
+
+real startC=(lun2d-2*rho)/3;
+real endC=startC+2*rho;
+real centroXC=startC+rho;
+real restoDom=lun2d-endC;
+
+if(nonstaz) //se non � stazionario impostiamo la griglia con l'occlusione
+{
+border down1(t=0,1){x=startC*t;y=-larghezza/2;label=2;};
+border down2(t=startC,endC){x=t;y=-larghezza/2+sqrt(rho^2-(t-centroXC)^2);label=8;};
+border down3(t=0,1){x=endC+t*restoDom;y=-larghezza/2;label=9;};
+
+Th=buildmesh(down1(rapp1*n2d)+down2(rapp2*n2d)+down3(rapp1*n2d)+out(n2d)+up(rapp*n2d)+in(n2d));
+}
+else
+{
+border down(t=0,1){x=lun2d*t;y=0;label=2;};
+
+Th=buildmesh(down(rapp*n2d)+out(n2d)+up(rapp*n2d)+in(n2d));
+}
+
+savemesh(Th,"mesh_2d.msh");
+
+//MESH PER IL FULL2D---------------------------------------------------
+
+mesh Thfull;
+
+//lati comuni alla mesh stazionaria e non
+border up2d(t=0,1){x=(lun2d+lun1d)-(lun2d+lun1d)*t;y=larghezza;label=4;};
+border out2d(t=0,1){x=(lun2d+lun1d);y=larghezza*t;label=3;};
+border in2d(t=0,1){x=0;y=larghezza-larghezza*t;label=1;};
+
+if(nonstaz&&full2d) //se non � stazionario impostiamo la griglia con l'occlusione
+{
+restoDom=restoDom+lun1d;
+border down12d(t=0,1){x=startC*t;y=0;label=2;};
+border down22d(t=startC,endC){x=t;y=-larghezza/2+sqrt(rho^2-(t-centroXC)^2);label=8;};
+border down32d(t=0,1){x=endC+t*restoDom;y=-larghezza/2;label=9;};
+
+Thfull=buildmesh(down12d(rapp1*n2d)+down22d(rapp2*n2d)+down32d(rapp3*n2d)+out2d(n2d)+up2d(rapp3*n2d*rapp)+in2d(n2d));
+}
+else
+{
+border down2d(t=0,1){x=(lun2d+lun1d)*t;y=0.0;label=2;};
+
+real hx=(lun2d+lun1d)/(rapp*n2d*rapp3);
+real ltot=(lun2d+lun1d)/23;
+
+border out2d1(t=0,1){x=hx*floor(ltot/hx);y=larghezza*t;label=7;};
+border out2d2(t=0,1){x=hx*floor(2*ltot/hx);y=larghezza*t;label=8;};
+border out2d3(t=0,1){x=hx*floor(3*ltot/hx);y=larghezza*t;label=9;};
+border out2d4(t=0,1){x=hx*floor(4*ltot/hx);y=larghezza*t;label=10;};
+border out2d5(t=0,1){x=hx*floor(5*ltot/hx);y=larghezza*t;label=11;};
+border out2d6(t=0,1){x=hx*floor(6*ltot/hx);y=larghezza*t;label=12;};
+border out2d7(t=0,1){x=hx*floor(7*ltot/hx);y=larghezza*t;label=13;};
+border out2d8(t=0,1){x=hx*floor(8*ltot/hx);y=larghezza*t;label=14;};
+border out2d9(t=0,1){x=hx*floor(9*ltot/hx);y=larghezza*t;label=15;};
+border out2d10(t=0,1){x=hx*floor(10*ltot/hx);y=larghezza*t;label=16;};
+border out2d11(t=0,1){x=hx*floor(11*ltot/hx);y=larghezza*t;label=17;};
+border out2d12(t=0,1){x=hx*floor(12*ltot/hx);y=larghezza*t;label=18;};
+border out2d13(t=0,1){x=hx*floor(13*ltot/hx);y=larghezza*t;label=19;};
+border out2d14(t=0,1){x=hx*floor(14*ltot/hx);y=larghezza*t;label=20;};
+border out2d15(t=0,1){x=hx*floor(15*ltot/hx);y=larghezza*t;label=21;};
+border out2d16(t=0,1){x=hx*floor(16*ltot/hx);y=larghezza*t;label=22;};
+border out2d17(t=0,1){x=hx*floor(17*ltot/hx);y=larghezza*t;label=23;};
+border out2d18(t=0,1){x=hx*floor(18*ltot/hx);y=larghezza*t;label=24;};
+border out2d19(t=0,1){x=hx*floor(19*ltot/hx);y=larghezza*t;label=25;};
+border out2d20(t=0,1){x=hx*floor(20*ltot/hx);y=larghezza*t;label=26;};
+border out2d21(t=0,1){x=hx*floor(21*ltot/hx);y=larghezza*t;label=27;};
+border out2d22(t=0,1){x=hx*floor(22*ltot/hx);y=larghezza*t;label=28;};
+
+
+//plot(down2d(rapp*n2d*rapp3)+out2d(n2d)+up2d(rapp*n2d*rapp3)+in2d(n2d)+out2d1(n2d)+out2d2(n2d)+out2d3(n2d));
+Thfull=buildmesh(down2d(rapp*n2d*rapp3)+out2d(n2d)+up2d(rapp*n2d*rapp3)+in2d(n2d)+out2d1(n2d)+out2d2(n2d)+out2d3(n2d)+out2d4(n2d)+out2d5(n2d)+out2d6(n2d)+out2d7(n2d)+out2d8(n2d)+out2d9(n2d)+out2d10(n2d)+out2d11(n2d)+out2d12(n2d)+out2d13(n2d)+out2d14(n2d)+out2d15(n2d)+out2d16(n2d)+out2d17(n2d)+out2d18(n2d)+out2d19(n2d)+out2d20(n2d)+out2d21(n2d)+out2d22(n2d));
+//plot(Thfull);
+}
+
+
+savemesh(Thfull,"mesh_full2d.msh");
+
+cout<<"mesh 2d salvata..."<<endl;
+
+if(nonstaz)//se � non stazionario risolviamo navier stokes
+{
+/******************************************************************/
+/*************Creazione ed Esportazione campo di trasporto 2d******/
+/******************************************************************/
+cout<<"*****************************************"<<endl;
+cout<<"STO RISOLVENDO NAVIER STOKES STABILIZZATO"<<endl;
+cout<<"*****************************************"<<endl;
+
+if(full2d) Th=Thfull;
+
+real Re=100;
+
+real delta = 0.1; 
+
+// Finite-element space definition
+
+fespace Xh(Th,[P1,P1]);
+fespace Mh(Th,P1);
+fespace Qh(Th,P0);
+Xh [u1,u2], [u1old,u2old], [v1,v2];
+Mh p,q;
+Qh umedio, Reloc, deltaT;
+
+varf aveU(u,v)=int2d(Th)(sqrt(u1old^2+u2old^2)*v);
+
+varf NSSUPG(u1,u2,p,v1,v2,q) = 
+ int2d(Th)( (dx(u1)*dx(v1)+dy(u1)*dy(v1)+ dx(u2)*dx(v2)+dy(u2)*dy(v2))/Re 
+            + (u1old*dx(u1)+u2old*dy(u1))*v1 + (u1old*dx(u2)+u2old*dy(u2))*v2
+            - (dx(v1)+dy(v2))*p + (dx(u1)+dy(u2))*q 
+// stabilizzazione eq. momento
+   + deltaT*(((u1old*dx(u1)+u2old*dy(u1)) + (dx(u1old)+dy(u2old))*u1/2 - (dxx(u1)+dyy(u1))/Re + dx(p))*
+              ((u1old*dx(v1)+u2old*dy(v1)) + (dx(u1old)+dy(u2old))*v1/2 + dx(q))
+             +((u1old*dx(u2)+u2old*dy(u2)) + (dx(u1old)+dy(u2old))*u2/2 - (dxx(u2)+dyy(u2))/Re + dy(p))*
+              ((u1old*dx(v2)+u2old*dy(v2)) + (dx(u1old)+dy(u2old))*v2/2 + dy(q)))
+// stabilizzazione eq. massa
+   + deltaT*((dx(u1)+dy(u2))*(dx(v1)+dy(v2)))
+           )
+// rhs stabilizzazione 
+   - int2d(Th)(deltaT*(((u1old*dx(v1)+u2old*dy(v1)) + (dx(u1old)+dy(u2old))*v1/2 + dx(q))
+              + ((u1old*dx(v2)+u2old*dy(v2)) + (dx(u1old)+dy(u2old))*v2/2 + dy(q)))
+                )  
+    + on(2,4,u1=0,u2=0)
+    + on(8,9,u1=0,u2=0)
+    + on(1,u1=5,u2=0);
+
+// initial solution
+[u1old,u2old]=[0.9,0.];
+
+
+// stabilization parameter
+umedio[]=aveU(0,Qh);
+umedio=umedio/area;
+Reloc=umedio*hTriangle*Re;
+deltaT=delta*hTriangle*min(1.,Reloc)/max(1e-10,umedio);
+
+solve NavierStokes(u1,u2,p,v1,v2,q,solver=GMRES)=NSSUPG;
+
+plot([u1,u2]);
+/**************** ESPORTAZIONE DEL CAMPO DI MOTO *******************/
+{
+	ofstream file("NSu1");
+	file << "2 1 1 "<< u1[].n << " 2 \n"; 
+	for (int j=0;j<u1[].n ; j=j+2)
+		file << u1[][j] << endl;
+        
+}
+
+{
+	ofstream file("NSu2");
+	file << "2 1 1 "<< u1[].n << " 2 \n"; 
+	for (int j=1;j<u2[].n ; j=j+2)
+		file << u2[][j] << endl;
+}
+}
+
+/*************Mesh per visualizzazione soluzione 1D***************/
+
+int n1d=300; //Attenzione deve coincidere con il numero di elementi di ND1d
+
+
+border down1(t=0,1){x=lun2d+lun1d*t;y=-spes/2;label=2;};
+border up1(t=0,1){x=lun2d+lun1d-lun1d*t;y=spes/2;label=2;};
+border out1(t=0,1){x=lun2d+lun1d;y=-spes/2+spes*t;label=3;};
+border in1(t=0,1){x=lun2d;y=spes/2-spes*t;label=1;};
+
+mesh Th1d =buildmesh(down1(n1d)+out1(1)+up1(n1d)+in1(1));
+savemesh(Th1d,"mesh_1d.msh");
+cout<<"mesh 1d salvata..."<<endl;

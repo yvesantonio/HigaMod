@@ -1,0 +1,57 @@
+verbosity=0;
+
+int n=100;
+border down(t=0,6)  { x=t;   y=-1.;      label=1;};
+border right(t=0,1) { x=6;   y=-1.+2.*t; label=2;};
+border up(t=0,6)    { x=6-t; y=1;        label=3;};
+border left(t=0,1)  { x=0;   y=1-2.*t;   label=4;};
+
+mesh Th= buildmesh(down(6*n)+right(2*n)+up(6*n)+left(2*n));
+
+fespace Vh(Th,P1);
+Vh u,v;
+
+func beta1 =   2.+3*x;
+func beta2 =   2.*cos(2*pi*x/3);
+
+real mu    =   1.;
+func f     =   1.3*((0.5*(x-1.)^2.+0.4*y^2.)<0.05);
+
+problem identity(u,v) = 
+		   int2d(Th) (mu*( dx(u)*dx(v) + dy(u)*dy(v) ) ) //Laplaciano
+		 + int2d(Th) (beta1*dx(u)*v)                     //Trasporto
+		 + int2d(Th) (beta2*dy(u)*v)                     //Trasporto
+         - int2d(Th) (f*v)
+         + on(1,3,u=0);
+identity;
+
+//plot(u,value=true, fill=true, nbiso=20);
+
+real h=1./n;
+real[int] meshx(3*6*n);
+for (int i=0;i<6*n;i++)
+{	
+	meshx[3*i]=i*h;
+	meshx[3*i+1]=i*h+h/2.;
+	meshx[3*i+2]=i*h+h;
+}
+
+{
+	ofstream file("DDFF.out");
+	file.scientific;
+	file.precision(7);
+	int i, j;
+    int M=60;
+    int NN=6*n*3;
+	file <<"            "<<NN<<endl;
+	file <<"             "<<M<<endl;
+	for ( int k=1;k<=n*6;k++)
+    {
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 0]<<"       "<<2*(j-1.)/(M-1.)-1<<"       "<<u(meshx[ (k-1)*3 + 0],2*(j-1.)/(M-1.)-1)<<endl;
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 1]<<"       "<<2*(j-1.)/(M-1.)-1<<"       "<<u(meshx[ (k-1)*3 + 1],2*(j-1.)/(M-1.)-1)<<endl;
+        for (int j=1;j<=M;j++)
+            file<<"       "<<meshx[ (k-1)*3 + 2]<<"       "<<2*(j-1.)/(M-1.)-1<<"       "<<u(meshx[ (k-1)*3 + 2],2*(j-1.)/(M-1.)-1)<<endl;
+    }
+}
