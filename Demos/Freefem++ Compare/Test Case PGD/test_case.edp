@@ -1,0 +1,21 @@
+int nn = 100;
+mesh Th = square(5*nn, nn, [-1.+6.*x, y]);
+//plot(Th);
+
+fespace Vh(Th, P1);
+Vh u, v;
+
+real mu = .24;
+real sigma = 0.;
+//func by = .5*sin(2.*pi*(x+1.)/3.);
+real bx = -5., by = 0.;
+func f = 50.*( (x>=2.7)*(x<=3.)*(y>=.35)*(y<=.65) + 
+	(x>=3.6)*(x<=3.9)*(y>=.35)*(y<=.65) );
+problem prob(u, v, solver = UMFPACK) = 
+	int2d(Th)(mu*dx(u)*dx(v) + mu*dy(u)*dy(v)) +
+	int2d(Th)(bx*dx(u)*v) + int2d(Th)(by*dy(u)*v) +
+	int2d(Th)(sigma*u*v) -
+	int2d(Th)(f*v) + on(1,2,3,4, u = 0.);
+prob;
+
+plot(u, fill=1, value=0, dim=2);

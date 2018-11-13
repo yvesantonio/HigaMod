@@ -152,21 +152,24 @@ function [errL2,errH1] = computeErrorIGA_scatter(size_mb,a_ril,b_ril,cutx,...
     err = higaSol - ffSol;
     
     errL2 = sqrt(err * massMat * err');
-    errH1 = sqrt(errL2 + err * stiffMat * err');
+    errH1 = sqrt(errL2^2 + err * stiffMat * err');
     
     disp('Finished COMPUTING THE ERROR NORMS');
     
     figure;
     pdeplot(p,e,t,'XYData',higaSol,'Contour','on','ColorMap','jet');
     title('HigaMod Solution')
+    % export_fig(sprintf('HigaMod'),'-pdf');
     
     figure;
     pdeplot(p,e,t,'XYData',ffSol,'Contour','on','ColorMap','jet');
     title('Freefem++ Solution')
+    % export_fig(sprintf('Freefem++'),'-pdf');
     
     figure;
     pdeplot(p,e,t,'XYData',err,'Contour','on','ColorMap','jet');
     title('Solution Error')
+    % export_fig(sprintf('Error'),'-pdf');
     
     disp('Finished PLOTTING INFO');
     

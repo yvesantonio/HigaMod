@@ -1,6 +1,6 @@
 // Define the parameters of the mesh
 
-int N=2000;
+int N=500;
 
 real maxHor=2;
 real minHor=0;
