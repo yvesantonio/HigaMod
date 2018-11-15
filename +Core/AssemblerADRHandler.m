@@ -1404,6 +1404,7 @@ classdef AssemblerADRHandler
             obj_bcCoeff.augVerWeights = augVerWeights;
             obj_bcCoeff.modalBasis = modalBasis;
             obj_bcCoeff.dimModalBasis = obj.dimModalBasis;
+            obj_bcCoeff.coefficientForm = obj.coefficientForm;
 
             [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
             

@@ -83,7 +83,7 @@
     
     numbModes       = 5;
     nd              = length(numbModes); 
-    stepHorMesh     = (maxHor-minHor)*0.02*ones(size(numbModes));
+    stepHorMesh     = (maxHor-minHor)*0.05*ones(size(numbModes));
     numbElements    = round((maxHor-minHor)/stepHorMesh);
     
     %% Isogeometric basis properties
@@ -170,10 +170,10 @@
     igaBoundCond.BC_UP_TAG     = 'dir';
     igaBoundCond.BC_DOWN_TAG   = 'dir';
     igaBoundCond.BC_INF_TAG   = 'dir';
-    igaBoundCond.BC_OUT_TAG  = 'dir';
+    igaBoundCond.BC_OUT_TAG  = 'neu';
     igaBoundCond.BC_UP_DATA    = 0;
     igaBoundCond.BC_DOWN_DATA  = 0;
-    igaBoundCond.BC_INF_DATA  = @(rho) 0 + 0 * rho + 0 * rho.^2;
+    igaBoundCond.BC_INF_DATA  = @(rho) 0 + 1 * rho + 1 * -rho.^2;
     igaBoundCond.BC_OUT_DATA = @(rho) 0 + 0 * rho + 0 * rho.^2;
 
     %% Physical domain
@@ -225,8 +225,8 @@
         % RECTANGLE %
         %%%%%%%%%%%%%
         
-        minX = -1.0;
-        maxX = +5.0;
+        minX = +0.0;
+        maxX = +3.0;
         minY = +0.0;
         maxY = +1.0;
                 
@@ -541,8 +541,8 @@
     switch caso
     case {1,2,3,4,5,6}
         
-        mu    = @(x,y) (  0.24 + 0*x + 0*y ); % Difusion
-        beta1 = @(x,y) (  -5.0 + 0*x + 0*y ); % Horizontal Advection
+        mu    = @(x,y) (  1.00 + 0*x + 0*y ); % Difusion
+        beta1 = @(x,y) (  0.00 + 0*x + 0*y ); % Horizontal Advection
         beta2 = @(x,y) (  0.00 + 0*x + 0*y ); % Vertical Advection
         sigma = @(x,y) (  0.00 + 0*x + 0*y ); % Reaction
         
@@ -626,9 +626,7 @@
     case {1,2,4,5,6,7,8,9,10}
         
         dato_dir = @(y) 0;
-        % force = @(x,y) 1 + 0 * x + 0 * y;
-        
-        force = @(x,y) 50.*( (x>=2.7).*(x<=3.).*(y>=.35).*(y<=.65) + (x>=3.6).*(x<=3.9).*(y>=.35).*(y<=.65) );
+        force = @(x,y) 1 + 0 * x + 0 * y;
     
     case {3}
         

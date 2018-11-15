@@ -177,18 +177,18 @@ function [errL2,errH1] = plot_solution_IGA_scatter(   size_mb,a_ril,b_ril,cutx,.
     
     % SURF PLOT OF THE SOLUTION
     
-    figure;
-    mesh(Xeval,Yeval,higaSol);
-    colormap(jet);
-    cmin = min(min(higaSol));
-    cmax = max(max(higaSol));
-    caxis([cmin cmax])
-    colorbar();
-    axis([minX maxX minY maxY cmin cmax]);
-    axis equal
-    daspect([1 1 scale])
-    pbaspect([1 1 scale])
-    set(gca, 'FontSize', 14)
+%     figure;
+%     mesh(Xeval,Yeval,higaSol);
+%     colormap(jet);
+%     cmin = min(min(higaSol));
+%     cmax = max(max(higaSol));
+%     caxis([cmin cmax])
+%     colorbar();
+%     axis([minX maxX minY maxY cmin cmax]);
+%     axis equal
+%     daspect([1 1 scale])
+%     pbaspect([1 1 scale])
+%     set(gca, 'FontSize', 14)
     
     % SURF PLOT OF THE CUTS IN THE SOLUTION
     

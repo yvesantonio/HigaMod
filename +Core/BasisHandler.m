@@ -415,10 +415,9 @@ classdef BasisHandler
 
                     otherwise
                         disp('In newModalBasis: Boundary Conditions Not Recognized or Not Yet Available')
+                        
                 end
                 
-                disp(lambda)
-
                 % Evaluation of the Coefficient in the New Basis
 
                 %---------------------------------------------------------------------%
@@ -457,6 +456,7 @@ classdef BasisHandler
                             end
                         end
                 end
+                
             end            
                     
             %% Method 'newModalBasisFourier'

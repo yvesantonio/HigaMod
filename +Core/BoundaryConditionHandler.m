@@ -118,6 +118,8 @@ classdef BoundaryConditionHandler
             uRid;
             
             numbControlPts;
+            
+            coefficientForm;
 
     end
     
@@ -146,6 +148,17 @@ classdef BoundaryConditionHandler
             %% Method 'computeFourierCoeff'
             
             function [infStruct,outStruct] = computeFourierCoeff(obj)
+                
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+                
+                %% IMPORT FEATURES
 
                 infBC = obj.infBoundCond;
                 outBC = obj.outBoundCond;
@@ -153,31 +166,43 @@ classdef BoundaryConditionHandler
                 wghts = obj.augVerWeights;
                 modBasis = obj.modalBasis;
                 
-                valueInfBC = infBC(nodes);
-                valueOutBC = outBC(nodes);
+                %% COMPUTE REFINED QUADRATURE NODES
+                
+                obj_gaussLegendre_2 = IntegrateHandler();
+                obj_gaussLegendre_2.numbQuadNodes = 128;
+                [~, verGLNodes, verWeights] = gaussLegendre(obj_gaussLegendre_2);  
+                
+                %% COMPUTE REFINED MODAL BASIS
+                
+                obj_newModalBasis = BasisHandler();
+            
+                obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
+                obj_newModalBasis.evalNodesY = verGLNodes;
+                obj_newModalBasis.labelUpBoundCond = 'dir';
+                obj_newModalBasis.labelDownBoundCond = 'dir';
+                obj_newModalBasis.coeffForm = obj.coefficientForm;
+
+                [refModalBasis, ~] = newModalBasis(obj_newModalBasis);
+                
+                %% COMPUTE PROJECTION
+                
+                valueInfBC = infBC(verGLNodes);
+                valueOutBC = outBC(verGLNodes);
                 
                 infStruct = zeros(obj.dimModalBasis,1);
                 outStruct = zeros(obj.dimModalBasis,1);
                 
                 for ii = 1:obj.dimModalBasis
                     
-                    size(valueInfBC)
-                    size(modBasis)
-                    size(wghts)
-                    
-                    projectInfCoeff = sum(valueInfBC .* modBasis(:,ii) .* wghts)/sqrt(sum((modBasis(:,ii).^2) .* wghts));
-                    projectOutCoeff = sum(valueOutBC .* modBasis(:,ii) .* wghts)/sqrt(sum((modBasis(:,ii).^2) .* wghts));
-                    
-                    infStruct(ii) = projectInfCoeff;
-                    outStruct(ii) = projectOutCoeff;
-                    
-%                     projectInfCoeff = sum(valueInfBC .* (ones(obj.dimModalBasis,1) * modBasis(ii,:)') .* wghts);
-%                     projectOutCoeff = sum(valueOutBC .* (ones(obj.dimModalBasis,1) * modBasis(ii,:)') .* wghts);
-% 
-%                         infStruct(ii) = sqrt(sum(projectInfCoeff'.^2 .* wghts));
-%                         outStruct(ii) = sqrt(sum(projectOutCoeff'.^2 .* wghts));
+                    infStruct(ii) = (valueInfBC .* refModalBasis(:,ii))' * verWeights;
+                    outStruct(ii) = (valueOutBC .* refModalBasis(:,ii))' * verWeights;                                                                                                                          
                     
                 end
+                
+                aux1 = infStruct;
+                aux2 = outStruct;
+                infStruct = fliplr(aux1);
+                outStruct = fliplr(aux2);
                 
             end
             

@@ -106,7 +106,6 @@ classdef AssemblerStokesHandler
         
         %% ASSEMBLER STOKES HANDLER - BUILDING METHODS
         
-        
             %% Method 'buildSystemIGA'
             
             function [A,b,modalBasisU,modalBasisP,liftCoeffAX,liftCoeffBX,liftCoeffAY,liftCoeffBY,...
@@ -743,12 +742,12 @@ classdef AssemblerStokesHandler
             disp('FINISHED ASSEMBLING Q_Y');
 
             end
+            
     end
 end
 
 %% ASSEMBLER STOKES HANDLER - ASSEMBLING METHODS
 
-   
 %% Method 'assemblerIGA'
             
 function [Al,bl,aLift,bLift] = assemblerIGA(imb,kmb,numbControlPts, ...
@@ -1043,7 +1042,6 @@ function [Al,bl,aLift,bLift] = assemblerIGA(imb,kmb,numbControlPts, ...
     %disp('Finished ASSEMBLING LOOP');
 end
 
-
 %% Method 'assemblerIGA_PX'
             
 function Al = assemblerIGA_PX(~,~,numbControlPtsU,numbControlPtsP, ...
@@ -1278,7 +1276,6 @@ function Al = assemblerIGA_PX(~,~,numbControlPtsU,numbControlPtsP, ...
 
     %disp('Finished ASSEMBLING LOOP');
 end
-
 
 %% Method 'assemblerIGA_PY'
             
@@ -1516,7 +1513,6 @@ function Al = assemblerIGA_PY(~,~,numbControlPtsU,numbControlPtsP, ...
 
     %disp('Finished ASSEMBLING LOOP');
 end
-
 
 %% Method 'assemblerIGA_QX'
             
