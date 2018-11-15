@@ -189,7 +189,7 @@ classdef BoundaryConditionHandler
                 BC_r    = obj.bcStruct.bcOutTag;
                 nx      = obj.bcStruct.numbControlPts;
                 size_mb = obj.bcStruct.dimModalBasis;
-                uAug    = zeros(size_mb * nx);
+                uAug    = zeros(size_mb * nx, 1);
                 
                 if (strcmp(BC_l,'dir') && strcmp(BC_r,'dir'))
     
