@@ -545,11 +545,13 @@ classdef BasisHandler
                 %   (2) coeffModalBaseLegendreDer : Matrix Conatining the Derivative of the Base
                 %                                   Functions (Columns)
                 %                                   Evaluated at the Nodes (Rows) 
+                
+                evalNodesLeg = obj.evalLegendreNodes - 0.5;
 
                 if(strcmp(obj.labelUpBoundCond,'rob') && strcmp(obj.labelDownBoundCond,'rob'))
 
-                    coeffModalBaseLegendre = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
-                    coeffModalBaseLegendreDer = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
+                    coeffModalBaseLegendre = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
 
                     obj_polyLegendre = IntegrateHandler();
                     obj_polyLegendre.degreePolyLegendre = obj.dimLegendreBase;
@@ -561,15 +563,15 @@ classdef BasisHandler
 
                         % Loop on the Section
 
-                        coeffModalBaseLegendre(:,n) = polyval(P{n},obj.evalLegendreNodes);
-                        coeffModalBaseLegendreDer(:,n) = polyval(Pd{n},obj.evalLegendreNodes);
+                        coeffModalBaseLegendre(:,n) = polyval(P{n},evalNodesLeg);
+                        coeffModalBaseLegendreDer(:,n) = polyval(Pd{n},evalNodesLeg);
 
                     end
 
                 elseif(strcmp(obj.labelUpBoundCond,'dir') && strcmp(obj.labelDownBoundCond,'dir'))
 
-                    coeffModalBaseLegendre   = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
-                    coeffModalBaseLegendreDer = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
+                    coeffModalBaseLegendre   = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
 
                     % Loop on the Base Functions
 
@@ -577,10 +579,10 @@ classdef BasisHandler
 
                         % Loop on the Section
 
-                        for i = 1:length(obj.evalLegendreNodes)
-                            coeffModalBaseLegendre  ( i, n ) = obj.evalLegendreNodes(i).^(n-1)*(1 - obj.evalLegendreNodes(i).^2);
-                            coeffModalBaseLegendreDer( i, n ) = (n-1) * obj.evalLegendreNodes(i).^(n-2) * (1 - obj.evalLegendreNodes(i).^2) ...
-                                            + obj.evalLegendreNodes(i).^(n-1) * (-2 * obj.evalLegendreNodes(i));
+                        for i = 1:length(evalNodesLeg)
+                            coeffModalBaseLegendre  ( i, n ) = evalNodesLeg(i).^(n-1)*(1 - evalNodesLeg(i).^2);
+                            coeffModalBaseLegendreDer( i, n ) = (n-1) * evalNodesLeg(i).^(n-2) * (1 - evalNodesLeg(i).^2) ...
+                                            + evalNodesLeg(i).^(n-1) * (-2 * evalNodesLeg(i));
                         end
 
                     end
