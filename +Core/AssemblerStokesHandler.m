@@ -17,9 +17,6 @@ classdef AssemblerStokesHandler
         % bellow, from the support methods to the final building methods.
         
         % BUILDING PROPERTIES
-                
-        dimModalBasisU;              % Dimension of the Modal Basis for the velocity         
-        dimModalBasisP;              % Dimension of the Modal Basis for the pressure
         
         leftBDomain_inX;            % Left Limit of the Domain in the X Direction
    
@@ -85,7 +82,32 @@ classdef AssemblerStokesHandler
                                     
         numbVerQuadNodes;           % Number of vertical nodes to apply the quadrature
                                     % formula
+                                    
+        dimModalBasisP              % Dimension of the modal basis for the pressure
         
+        dimModalBasisUx             % Dimension of the modal basis for the X component
+                                    % of the velocity field
+                                    
+        dimModalBasisUy             % Dimension of the modal basis for the Y component
+                                    % of the velocity field
+                                    
+        label_upBoundDomainP        % Tag of the boundary condition on the top lateral boundary
+                                    % for the pressure
+        
+        label_downBoundDomainP      % Tag of the boundary condition on the bottom lateral boundary
+                                    % for the pressure
+                                    
+        label_upBoundDomainUx       % Tag of the boundary condition on the top lateral boundary
+                                    % for the pressure
+        
+        label_downBoundDomainUx     % Tag of the boundary condition on the bottom lateral boundary
+                                    % for the pressure
+                                    
+        label_upBoundDomainUy       % Tag of the boundary condition on the top lateral boundary
+                                    % for the pressure
+        
+        label_downBoundDomainUy     % Tag of the boundary condition on the bottom lateral boundary
+                                    % for the pressure
     end
     
     methods (Access = public)
@@ -106,10 +128,9 @@ classdef AssemblerStokesHandler
         
         %% ASSEMBLER STOKES HANDLER - BUILDING METHODS
         
-            %% Method 'buildSystemIGA'
+            %% Method 'buildIGAScatter'
             
-            function [A,b,modalBasisU,modalBasisP,liftCoeffAX,liftCoeffBX,liftCoeffAY,liftCoeffBY,...
-                      verGLNodes,verGLWeights] = buildSystemIGA(obj)
+            function [AA,bb,modalBasis,liftCoeffA,liftCoeffB,space,refDomain1D,bcStruct] = buildSystemIGAScatter(obj)
                                                          
             %%
             % buildSystemIGA - This function computes the assembled matrices
@@ -122,85 +143,72 @@ classdef AssemblerStokesHandler
             %
             % The inputs are:
             %%
-            %   (1)  dimModalBasisU          : Dimension of the Modal basis for velocity
-            %   (2)  dimModalBasisP            : Dimension of the Modal basis for pressure             
-            %   (3)  leftBDomain_inX           : Left Limit of the Domain in the X Direction
-            %   (4)  rightBDomain_inX          : Right Limit of the Domain in the X Direction
-            %   (5)  stepMeshX                 : Vector Containing the Step of the Finite
-            %                                    Element Mesh
-            %   (6)  label_upBoundDomainX      : Contains the Label Identifying the Nature of
-            %                                    the Boundary Conditions on the Upper Limit of
-            %                                    the Domain for u_x
-            %   (7)  label_upBoundDomainY      : Contains the Label Identifying the Nature of
-            %                                    the Boundary Conditions on the Upper Limit of
-            %                                    the Domain for u_y
-            %   (8)  label_downBoundDomainX    : Contains the Label Identifying the Nature of
-            %                                    the Boundary Conditions on the Lower Limit of
-            %                                    the Domain for u_x
-            %   (9)  label_downBoundDomainY    : Contains the Label Identifying the Nature of
-            %                                    the Boundary Conditions on the Lower Limit of
-            %                                    the Domain for u_y
-            %   (10)  localdata_upBDomainX     : Contains the Values of the Boundary Conditions
-            %                                    on the Upper Limir of the
-            %                                    Domain for u_x
-            %   (11)  localdata_upBDomainY     : Contains the Values of the Boundary Conditions
-            %                                    on the Upper Limir of the
-            %                                    Domain for u_y
-            %   (12) localdata_downBDomainX    : Contains the Values of the Boundary Conditions
-            %                                    on the Lower Limir of the
-            %                                    Domain for u_x
-            %   (13) localdata_downBDomainY    : Contains the Values of the Boundary Conditions
-            %                                    on the Lower Limir of the
-            %                                    Domain for u_y
-            %   (14) coefficientForm            : Data Strusture Containing All the @-Functions
-            %                                    and the Constants Relative to the Bilinear Form
-            %   (15) dirCondFuncStruct         : Data Structure Containing All the @-Functions
-            %                                    for the Dirichlet Conditions at the Inflow and
-            %                                    for the Exciting Forces
-            %   (16) geometricInfo             : Data Structure Containing All the
-            %                                    Geometric Information regarding the
-            %                                    Domain. The current version of the code
-            %                                    works only for the specific condition of:
-            %                                    (L = 1, a = 0, psi_x = 0)
-            %   (17) physicMesh_inX            : Vector Containing the Physical Mesh in the X
-            %                                    Direction
-            %   (18) physicMesh_inY            : Vector Containing the Physical Mesh in the Y
-            %                                    Direction
-            %   (19) jacAtQuadNodes            : Data Sturcture Used to Save the Value of the
+            %   (1)  dimModalBasis              : Dimension of the Modal Basis
+            %   (2)  leftBDomain_inX            : Left Limit of the Domain in the X Direction
+            %   (3)  rightBDomain_inX           : Right Limit of the Domain in the X Direction
+            %   (4)  stepMeshX                  : Vector Containing the Step of the Finite
+            %                                     Element Mesh
+            %   (5)  label_upBoundDomain        : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Upper Limit of
+            %                                     the Domain
+            %   (6)  label_downBoundDomain      : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Lower Limit of
+            %                                     the Domain
+            %   (7)  localdata_upBDomain        : Contains the Values of the Boundary Conditions
+            %                                     on the Upper Limir of the Domain
+            %   (8) localdata_downBDomain       : Contains the Values of the Boundary Conditions
+            %                                     on the Lower Limir of the Domain
+            %   (9) domainPosition              : Current domain used in the domain decomposition
+            %                                     Computations
+            %   (10) coefficientForm            : Data Strusture Containing All the @-Functions
+            %                                     and the Constants Relative to the Bilinear Form
+            %   (11) dirCondFuncStruct          : Data Structure Containing All the @-Functions
+            %                                     for the Dirichlet Conditions at the Inflow and
+            %                                     for the Exciting Force
+            %   (12) geometricInfo              : Data Structure Containing All the
+            %                                     Geometric Information regarding the
+            %                                     Domain. The current version of the code
+            %                                     works only for the specific condition of:
+            %                                     (L = 1, a = 0, psi_x = 0)
+            %   (13) robinCondStruct            : Data Structure Containing the Two Values of the
+            %                                     Coefficients (R, L) for the Robin Condition Used
+            %                                     in the Domain Decomposition
+            %   (14) numbDimMBEachDomain        : Number of Elements in the Vector Containing the
+            %                                     Dimensions of the Modal Basis in Each Domain
+            %   (15) couplingCond_DD            : Contains the Label Adressing the Coupling Condition
+            %                                     of the Problem
+            %   (16) physicMesh_inX             : Vector Containing the Physical Mesh in the X
+            %                                     Direction
+            %   (17) physicMesh_inY             : Vector Containing the Physical Mesh in the Y
+            %                                     Direction
+            %   (18) jacAtQuadNodes             : Data Sturcture Used to Save the Value of the
             %                                     Jacobians Computed in the Quadratures Nodes 
-            %   (20) degreePolySplineBasisU    : Degree of the Polynomial
-            %                                    B-Spline Basis for the velocity
-            %   (21) degreePolySplineBasisP    : Degree of the Polynomial B-Spline Basis
-            %   (22) continuityParameterU      : Degree of Continuity of
-            %                                    the Basis 'C^(p-k)' for the velocity
-            %   (23) continuityParameterP      : Degree of Continuity of
-            %                                     the Basis 'C^(p-k)' for the pressure
-            %   (24) domainProfile             : Symbolic Function Defining the Profile of the
-            %                                    Simulation Domain
-            %   (25) domainProfileDer          : Symbolic Function Defining the Derivative of
-            %                                    the Profile of the Simulation Domain
+            %   (19) degreePolySplineBasis      : Degree of the Polynomial B-Spline Basis
+            %   (20) continuityParameter        : Degree of Continuity of the Basis 'C^(p-k)'
+            %   (21) domainProfile              : Symbolic Function Defining the Profile of the
+            %                                     Simulation Domain
+            %   (22) domainProfileDer           : Symbolic Function Defining the Derivative of
+            %                                     the Profile of the Simulation Domain
             % 
             % The outputs are:
             %%
             %   (1) A                   : Final Assembled Block Matrix Using IGA Basis
             %   (2) b                   : Final Assembled Block Vector Using IGA Basis
             %   (3) modalBasis          : Modal Basis Obtained
-            %   (3) aLiftX              : First Offset Adjustment Coefficient for u_x
-            %   (4) bLiftX              : Second Offset Adjustment Coefficient for u_x
-            %   (5) aLiftY              : First Offset Adjustment Coefficient for u_y
-            %   (6) bLiftY              : Second Offset Adjustment Coefficient for u_y
+            %   (3) liftCoeffA          : First Offset Adjustment Coefficient
+            %   (4) liftCoeffB          : Second Offset Adjustment Coefficient
             %   (5) intNodesGaussLeg    : Gauss-Legendre Integration Nodes
             %   (6) intNodesWeights     : Weights of the Gauss-Legendre Integration Nodes
             
             %% IMPORT CLASSES
             
-            import Core.AssemblerStokesHandler
+            import Core.AssemblerADRHandler
             import Core.BoundaryConditionHandler
             import Core.IntegrateHandler
             import Core.EvaluationHandler
             import Core.BasisHandler
             import Core.SolverHandler
-
+            
             %% NUMBER OF NODES IN THE QUADRATURE FORMULA
             %-------------------------------------------------------------%
             % The values of 'nqnx' and 'nqny' does not change during the
@@ -230,20 +238,20 @@ classdef AssemblerStokesHandler
             %-------------------------------------------------------------%
             % Total number of control points used in the isogeometric
             % approach. Note that this number is equal to the dimension of
-            % the basis used to define the Spline curve.
+            % the basis used to define the Spline curve and that the
+            % formula used bellow corresponds to use a straight line as
+            % reference supporting fiber.
             %-------------------------------------------------------------%
             
-            numbControlPtsU = numbKnots*obj.continuityParameterU + obj.degreePolySplineBasisU +...
-                              1 - obj.continuityParameterU;
-            numbControlPtsP = numbKnots*obj.continuityParameterP + obj.degreePolySplineBasisP +...
-                              1 - obj.continuityParameterP;
-            
+            numbControlPts = numbKnots*(obj.degreePolySplineBasis - obj.continuityParameter) + ...
+                             1 + obj.continuityParameter;
+
             %% GAUSS-LEGENDRE INTEGRATION NODES
             %-------------------------------------------------------------%
             % The following method reveives the number of integration nodes
             % in the horizontal and vertical direction and retruns the
             % respective Gauss-Legendre nodes and weigths for the
-            % integration interval [0,1].
+            % integration interval [0,1].   
             %
             % Mesh FEM in X: Equispaced Nodes                            
             %  (1) horGLNodes  : Vector of the Standard Nodes on the X 
@@ -257,152 +265,108 @@ classdef AssemblerStokesHandler
             %  (2) verGLWeights : Vector of the Standard Weights on the Y 
             %                     Direction
             %-------------------------------------------------------------%
-
-            % Horizontal direction
-            
-            obj_gaussLegendre_1 = IntegrateHandler();
-            obj_gaussLegendre_1.numbQuadNodes = numbHorNodes;
-            [~, horGLNodes, horGLWeights] = gaussLegendre(obj_gaussLegendre_1); 
             
             % Vertical direction
             
             obj_gaussLegendre_2 = IntegrateHandler();
             obj_gaussLegendre_2.numbQuadNodes = numbVerNodes;
-            [~, verGLNodes, ~] = gaussLegendre(obj_gaussLegendre_2);             
+            [~, verGLNodes, verWeights] = gaussLegendre(obj_gaussLegendre_2);        
             
-            %% ISOGEOMETRIC MESH IN THE X DIRECTION 
-            %-------------------------------------------------------------%
-            % Creation of the isogeometric mesh in the X direction
-            % considering the control point assigned to the desired spline
-            % curve. The mesh is created using the total number of control
-            % point. The number of control points depend of the degree of
-            % the spline basis, the continuity parameter 'k' and the number
-            % of knots with which the physical mesh was divided.
-            %-------------------------------------------------------------%
+            %% EXTRACT GEOMETRIC INFORMATION
             
-            % Isogeometric mesh for u
-            stepKnotU = 1/(numbControlPtsU-1);
-            meshIGAU = zeros(1,numbControlPtsU);
+            geometry  = obj.geometricInfo.geometry;
+            map       = @(x,y) obj.geometricInfo.map(x,y);
+            Jac       = @(x,y) obj.geometricInfo.Jac(x,y);
+            Hes       = @(x,y) obj.geometricInfo.Hes(x,y);
             
-            for i = 2:numbControlPtsU
-                 meshIGAU(i) = meshIGAU(i-1) + stepKnotU;
+            %% COMPUTE REFERENCE KNOT AND CONTROL POINTS
+            % Note: Create the knots and control points of the reference
+            % supporting fiber where the coupled 1D problems will be
+            % solved.
+            
+            refDomain1D = geo_load(nrbline ([0 0], [1 0]));
+            
+            nsub = numbKnots;
+            degree = obj.degreePolySplineBasis;
+            regularity = obj.continuityParameter;
+            
+            [knots, zeta] = kntrefine (refDomain1D.nurbs.knots, nsub-1, degree, regularity);
+            
+            %% GENERATE ISOGEOMETRIC MESH FUNCTION
+            % Note: Use the number of quadrature nodes to generate the
+            % quadrature rule using the gauss nodes. Then, use this
+            % information with the computed knots and control points to
+            % generate the isogeometric mesh of the centreline.
+            
+            rule     = msh_gauss_nodes (numbHorNodes);
+            [qn, qw] = msh_set_quad_nodes (zeta, rule);
+            msh      = msh_cartesian (zeta, qn, qw, refDomain1D);
+            
+            %% CONSTRUCT THE ISOGEOMETRIC FUNCTIONAL SPACE
+            % Note: Construct the functional space used to discretize the
+            % problem along the centreline and perform the isogeometric
+            % analysis. 
+            % Here, we also evaluate the functional spaces in the specific
+            % element. This will be used in the assembling loop to compute
+            % the operators using the basis functions.
+            
+            space    = sp_bspline (knots, degree, msh);
+            
+            numbKnots = msh.nel_dir;
+            
+            for iel = 1:numbKnots
+                
+                msh_col = msh_evaluate_col (msh, iel);
+                
+                %---------------------------------------------------------%
+                % Evaluated space to compute the operators
+                %---------------------------------------------------------%
+                
+                gradFunc = sp_evaluate_col (space, msh_col, 'value', false, 'gradient', true);
+                shapFunc = sp_evaluate_col (space, msh_col);
+                
+                %---------------------------------------------------------%
+                % Store the spaces in the cell matrix
+                %---------------------------------------------------------%
+                
+                spaceFunc{iel,1} = shapFunc;
+                spaceFunc{iel,2} = gradFunc;
+                spaceFunc{iel,3} = msh_col;
+
             end
             
-            % Isogeometric mesh for p
-            stepKnotP = 1/(numbControlPtsP-1);
-            meshIGAP = zeros(1,numbControlPtsP);
+            %% AUGMENTED HORIZONTAL POINTS 
+            % Note: The FOR loop runs over the knots in the centerline ans
+            % compute the required quadrature nodes. The quadrature nodes
+            % will be necessary to evaluate the bilinear coefficients and
+            % the forcing component.
+
+            horEvalNodes = zeros(numbKnots * numbHorNodes,1);
             
-            for i = 2:numbControlPtsP
-                 meshIGAP(i) = meshIGAP(i-1) + stepKnotP;
+            for iel = 1:numbKnots
+                
+                msh_col = msh_evaluate_col (msh, iel);
+                
+                localNodes = reshape (msh_col.geo_map(1,:,:), msh_col.nqn, msh_col.nel);  
+                horEvalNodes((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes) = localNodes;  
+                
             end
             
-                        %% AUGMENTED ISOGEOMETRIC MESH + WEIGHTS
-            %-------------------------------------------------------------%
-            % Creation of the finite element mesh in the X direction
-            % considering equispaced nodes. The mesh is created using the
-            % total number of nodes and the left limit of the domain. Both
-            % information come from the demo file and are passed here as a
-            % property of the object.
-            %-------------------------------------------------------------%
-
-            augMeshIGAU = zeros( (numbControlPtsU-1)*numbHorNodes, 1);
-            augMeshIGAP = zeros( (numbControlPtsP-1)*numbHorNodes, 1);
-
-            %-------------------------------------------------------------%
-            % Note: The loop allocates the correponding quadrature nodes
-            % and weights corresponding to each knot of the physical mesh
-            % in the isogeometric analysis.
-            %-------------------------------------------------------------%
+            %% AUGMENTED VERTICAL POINTS
+            % Note: Since we are using the full map from the physical
+            % domain to the reference domain, then the whole modal analysis
+            % has to be performed in the vertical direction in the interval
+            % [0,1];
             
-            % Velocity
-            for i = 1:numbKnots 
-                
-                % STEP 1
-                %---------------------------------------------------------%
-                % In the first step, the Gauss-Legendre nodes computed
-                % previously are rescaled to fit the interval corresponding
-                % to the current element.
-                %---------------------------------------------------------%
-                
-                obj_quadratureRule = IntegrateHandler();
-                
-                obj_quadratureRule.leftBoundInterval = meshIGAU(i);
-                obj_quadratureRule.rightBoundInterval = meshIGAU(i+1);
-                obj_quadratureRule.inputNodes = horGLNodes;
-                obj_quadratureRule.inputWeights = horGLWeights;
-                
-                [augMeshIGAU((i-1)*numbHorNodes+1 : i*numbHorNodes), ~] = ...
-                                                 quadratureRule(obj_quadratureRule);
-             
-                % STEP 2
-                %---------------------------------------------------------%
-                % In the second step, the nodes and weights are again
-                % rescaled to take in consideration the geometry of the
-                % domain, more specifically the profile of the centerline.
-                %---------------------------------------------------------%
+            objVertQuadRule = IntegrateHandler();
 
-                auxMesh = augMeshIGAU((i-1)*numbHorNodes+1 : i*numbHorNodes);
+            objVertQuadRule.leftBoundInterval = 0;
+            objVertQuadRule.rightBoundInterval = 1;
+            objVertQuadRule.inputNodes = verGLNodes;
+            objVertQuadRule.inputWeights = verWeights;
 
-                for hp = 1: numbHorNodes
-                    
-                    obj_gaussLegendre = IntegrateHandler();
-                    obj_gaussLegendre.numbQuadNodes = 16;
-                    
-                    [~,auxPoints,auxWeights] = gaussLegendre(obj_gaussLegendre);
-                    
-                    auxPoints = auxMesh(hp) * auxPoints;
-                    auxWeights = auxMesh(hp) * auxWeights;
-                    auxMesh(hp) = sum(sqrt(1+(obj.domainProfileDer(auxPoints)).^2).*auxWeights); 
-                                       
-                end
-                augMeshIGAU((i-1)*numbHorNodes+1 : i*numbHorNodes) = auxMesh;
-                                                    
-            end
+            [augVerNodes, augVerWeights] = quadratureRule(objVertQuadRule);
             
-            % Pressure
-            for i = 1:numbKnots
-                
-                % STEP 1
-                %---------------------------------------------------------%
-                % In the first step, the Gauss-Legendre nodes computed
-                % previously are rescaled to fit the interval corresponding
-                % to the current element.
-                %---------------------------------------------------------%
-                
-                obj_quadratureRule = IntegrateHandler();
-                
-                obj_quadratureRule.leftBoundInterval = meshIGAP(i);
-                obj_quadratureRule.rightBoundInterval = meshIGAP(i+1);
-                obj_quadratureRule.inputNodes = horGLNodes;
-                obj_quadratureRule.inputWeights = horGLWeights;
-                
-                [augMeshIGAP((i-1)*numbHorNodes+1 : i*numbHorNodes), ~] = ...
-                                                 quadratureRule(obj_quadratureRule);
-             
-                % STEP 2
-                %---------------------------------------------------------%
-                % In the second step, the nodes and weights are again
-                % rescaled to take in consideration the geometry of the
-                % domain, more specifically the profile of the centerline.
-                %---------------------------------------------------------%
-
-                auxMesh = augMeshIGAP((i-1)*numbHorNodes+1 : i*numbHorNodes);
-
-                for hp = 1: numbHorNodes
-                    
-                    obj_gaussLegendre = IntegrateHandler();
-                    obj_gaussLegendre.numbQuadNodes = 16;
-                    
-                    [~,auxPoints,auxWeights] = gaussLegendre(obj_gaussLegendre);
-                    
-                    auxPoints = auxMesh(hp) * auxPoints;
-                    auxWeights = auxMesh(hp) * auxWeights;
-                    auxMesh(hp) = sum(sqrt(1+(obj.domainProfileDer(auxPoints)).^2).*auxWeights); 
-                                       
-                end
-                augMeshIGAP((i-1)*numbHorNodes+1 : i*numbHorNodes) = auxMesh;
-                                                    
-            end
             %% COMPUTATION OF THE MODAL BASIS IN THE Y DIRECTION
             %-------------------------------------------------------------%
             % The next method takes the coefficients of the bilinear form,
@@ -412,35 +376,98 @@ classdef AssemblerStokesHandler
             % transverse fiber.
             %-------------------------------------------------------------%
             
-            % Velocity
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % MODAL BASIS FOR THE PRESSURE %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
             obj_newModalBasis = BasisHandler();
             
-            obj_newModalBasis.dimModalBasis = obj.dimModalBasisU;
+            % Set variables to use a Legendre Modal Base
+            
+            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
+            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            
+            % Set variables to use a Educated Modal Basis
+            
+            obj_newModalBasis.dimModalBasis = obj.dimModalBasisP;
             obj_newModalBasis.evalNodesY = verGLNodes;
-            obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomain;
-            obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
+            obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomainP;
+            obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomainP;
             obj_newModalBasis.coeffForm = obj.coefficientForm;
 
-            [modalBasisU, modalBasisDerU] = newModalBasis(obj_newModalBasis);
-                      
+            [modalBasisP, modalBasisDerP] = newModalBasis(obj_newModalBasis);
             
-            % Pressure: I choose Neumann boundary conditions since no
-            % Dirichlet conditions are assigned to the pressure.
-            obj_newModalBasis2 = BasisHandler();
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % MODAL BASIS FOR THE VELOCITY IN X %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            obj_newModalBasis2.dimModalBasis = obj.dimModalBasisP;
-            obj_newModalBasis2.evalNodesY = verGLNodes;
-            obj_newModalBasis2.labelUpBoundCond = 'neu';
-            obj_newModalBasis2.labelDownBoundCond = 'neu';
-            obj_newModalBasis2.coeffForm = obj.coefficientForm;
+            obj_newModalBasis = BasisHandler();
+            
+            % Set variables to use a Legendre Modal Base
+            
+            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
+            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            
+            % Set variables to use a Educated Modal Basis
+            
+            obj_newModalBasis.dimModalBasis = obj.dimModalBasisUx;
+            obj_newModalBasis.evalNodesY = verGLNodes;
+            obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomainUx;
+            obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomainUx;
+            obj_newModalBasis.coeffForm = obj.coefficientForm;
 
-            [modalBasisP, modalBasisDerP] = newModalBasis(obj_newModalBasis2);
+            [modalBasisUx, modalBasisDerUx] = newModalBasis(obj_newModalBasis);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % MODAL BASIS FOR THE VELOCITY IN Y %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            obj_newModalBasis = BasisHandler();
+            
+            % Set variables to use a Legendre Modal Base
+            
+            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
+            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            
+            % Set variables to use a Educated Modal Basis
+            
+            obj_newModalBasis.dimModalBasis = obj.dimModalBasisUy;
+            obj_newModalBasis.evalNodesY = verGLNodes;
+            obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomainUy;
+            obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomainUy;
+            obj_newModalBasis.coeffForm = obj.coefficientForm;
+
+            [modalBasisUy, modalBasisDerUy] = newModalBasis(obj_newModalBasis);
             
             %% MEMORY ALLOCATION FOR SYSTEM MATRICES
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % BLOCK COMPONENTS OF THE MASS MATRIX %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-            A = sparse( 2*numbControlPtsU*obj.dimModalBasisU + numbControlPtsP*obj.dimModalBasisP, ...
-                        2*numbControlPtsU*obj.dimModalBasisU + numbControlPtsP*obj.dimModalBasisP );
-            b = zeros ( 2*numbControlPtsU*obj.dimModalBasisU + numbControlPtsP*obj.dimModalBasisP, 1);
+            Mxx = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisUx) );
+            Myy = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisUy) );
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % BLOCK COMPONENTS OF THE STIFFNESS MATRIX %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+            Axx = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisUx) );
+            Bxy = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisUy) );
+            Byx = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisUx) );
+            Ayy = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisUy) );
+            Px  = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisP) );
+            Py  = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisP) );
+            Qx  = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisUx) );
+            Qy  = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisUy) );            
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % BLOCK COMPONENTS OF THE SOURCE TERM %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            Fx = zeros ( numbControlPts*(obj.dimModalBasisUx), 1);
+            Fy = zeros ( numbControlPts*(obj.dimModalBasisUx), 1);
+            Fp = zeros ( numbControlPts*(obj.dimModalBasisUx), 1);
             
             %% EVALUATION OF THE GEOMETRIC PROPERTIES OF THE DOMAIN
             %-------------------------------------------------------------%
@@ -448,26 +475,39 @@ classdef AssemblerStokesHandler
             % thickness and the vertical coordinate of the centerline of
             % the channel.
             %-------------------------------------------------------------%
-
-            [horEvalNodesU,verEvalNodesU]   = meshgrid( augMeshIGAU, verGLNodes-0.5 );%!!!!!!
-            [horEvalNodesP,~]   = meshgrid( augMeshIGAP, verGLNodes-0.5 );%!!!!!!
             
-            % THICKNESS
+            verEvalNodes = augVerNodes;
             
-            evalLU     = obj.geometricInfo.L(horEvalNodesU)';
-            evalLP     = obj.geometricInfo.L(horEvalNodesP)';
-               
+            X = mapOut(horEvalNodes,verEvalNodes,map,1);
+            Y = mapOut(horEvalNodes,verEvalNodes,map,2);
+            
+            geoData.X = X;
+            geoData.Y = Y;
+            geoData.horNodes = horEvalNodes;
+            geoData.verNodes = verEvalNodes;
             
             %% EVALUATION OF THE BILINEAR COEFFICIENTS OF THE DOMAIN
             %-------------------------------------------------------------%
-            % We use the horizontal and vertical meshes to evaluate the
-            % coefficients of the bilinear form of the original equation in
-            % the entire domain.
+            % We need to evaluate all the coefficients of the bilinear form
+            % in the quadrature nodes along the vertical direction to
+            % perform the first integral (along the transverse fiber) to
+            % obtain a the coefficients of the 1D coupled problem. The
+            % result will be coefficients as a function of 'x'.
             %-------------------------------------------------------------%
+            
 
             % DIFFUSION
-            evalMu    = obj.coefficientForm.mu(horEvalNodesU,verEvalNodesU)';
+
+            evalMu    = obj.coefficientForm.mu(X,Y);
             
+            % ADVECTION
+            
+            evalBeta1 = obj.coefficientForm.beta1(X,Y);
+            evalBeta2 = obj.coefficientForm.beta2(X,Y);
+            
+            % REACTION
+            
+            evalSigma = obj.coefficientForm.sigma(X,Y);
             
             %% EVALUATION OF THE EXCITING FORCE 
             %-------------------------------------------------------------%
@@ -476,8 +516,7 @@ classdef AssemblerStokesHandler
             % domain.
             %-------------------------------------------------------------%
 
-            evalForceX = obj.dirCondFuncStruct.forceX(horEvalNodesU,verEvalNodesU)';
-            evalForceY = obj.dirCondFuncStruct.forceY(horEvalNodesU,verEvalNodesU)';
+            evalForce = obj.dirCondFuncStruct.force(X,Y);
             
             %-------------------------------------------------------------%
             % Note: All of the coefficients of the bilinear form and the
@@ -486,85 +525,54 @@ classdef AssemblerStokesHandler
             % "Computed" to be treated in the assembler function.
             %-------------------------------------------------------------%
 
-            ComputedX = struct('mu_c',evalMu,'force_c',evalForceX,'y',verEvalNodesU);
-            ComputedY = struct('mu_c',evalMu,'force_c',evalForceY,'y',verEvalNodesU);
-
+            Computed = struct('mu_c',evalMu,'beta1_c',evalBeta1,'beta2_c',evalBeta2, ...
+                              'sigma_c',evalSigma,'force_c',evalForce,'y',verEvalNodes);
                           
+            % Debug
+            %-------------------------------------------------------------%
+            %[~,~] = contourf(horEvalNodes,verEvalNodes,evalForce',20);    
+            %colormap(jet); title('Force in Assembler!')
+            %-------------------------------------------------------------%
+            
+            %% EVALUATION OF THE GEOMETRY PROPERTIES
+            % Note: Since there is a transformation from the physical domain to the
+            % physical domain, we must compute the map contribution used in the
+            % computation of the coefficients and the Jacobian contribution to be
+            % inserted in the integral (quadrature formula).
+            
+            evalJac     = jacOut(horEvalNodes,verEvalNodes,Jac);
+            evalDetJac  = detJac(horEvalNodes,verEvalNodes,Jac);
+            
+            Phi1_dx = invJac(1,1,evalJac);
+            Phi1_dy = invJac(1,2,evalJac);
+            Phi2_dx = invJac(2,1,evalJac);
+            Phi2_dy = invJac(2,2,evalJac);
+            
+            jacFunc.evalJac     = evalJac;
+            jacFunc.evalDetJac  = evalDetJac;
+            jacFunc.Phi1_dx     = Phi1_dx;
+            jacFunc.Phi1_dy     = Phi1_dy;
+            jacFunc.Phi2_dx     = Phi2_dx;
+            jacFunc.Phi2_dy     = Phi2_dy;
+                                                    
             %% LIFTING
             %-------------------------------------------------------------%
             % Compute the lifting contribution in the force vector due to
             % the non homogeneous Dirichlet boundary conditions in the
             % lower and upper boundary.
-            % Actually, it is not used at the moment, since homogeneous
-            % Dirichlet conditions are considered.
             %-------------------------------------------------------------%
             
             obj_liftBoundCond = BoundaryConditionHandler();
     
             obj_liftBoundCond.labelUpBoundCond = obj.label_upBoundDomain;
             obj_liftBoundCond.labelDownBoundCond = obj.label_downBoundDomain;
-            obj_liftBoundCond.dataUpBoundCond = obj.localdata_upBDomainX;
-            obj_liftBoundCond.dataDownBoundCond = obj.localdata_downBDomainX;
+            obj_liftBoundCond.dataUpBoundCond = obj.localdata_upBDomain;
+            obj_liftBoundCond.dataDownBoundCond = obj.localdata_downBDomain;
             obj_liftBoundCond.coeffForm = obj.coefficientForm;
 
-            [aLiftX,bLiftX] = liftBoundCond(obj_liftBoundCond);
-            
-            obj_liftBoundCond.dataUpBoundCond = obj.localdata_upBDomainY;
-            obj_liftBoundCond.dataDownBoundCond = obj.localdata_downBDomainY;
-            
-            [aLiftY,bLiftY] = liftBoundCond(obj_liftBoundCond);
-            liftFuncX = @(x,y) aLiftX * y + bLiftX;
-            liftFuncY = @(x,y) aLiftY*y + bLiftY;
-            liftingX = liftFuncX(0,ComputedX.y)';
-            liftingY = liftFuncY(0,ComputedY.y)';
-            
-            
-            
-            %% JACOBIAN
-            %-------------------------------------------------------------%
-            % This section computes the curved domain and extract the
-            % Jacobian vector that maps the centerline in the physical
-            % domain to the computational domain.
-            %-------------------------------------------------------------%
-            
-            % Mesh IGA of the curved domain
-            
-            meshIGACurved    = zeros(numbKnots + 1,1);
-            [verGLNodes,verGLWeights] = gauss(numbVerNodes);
-            
-            verGLWeights = (obj.rightBDomain_inX - obj.leftBDomain_inX)*(obj.stepMeshX)*(verGLWeights*0.5);
-                        
-            for j=1:numbKnots
-        
-                scalingVec = zeros(1,numbVerNodes);
-                auxNodes = (obj.rightBDomain_inX - obj.leftBDomain_inX)*obj.stepMeshX*(verGLNodes * 0.5 + 0.5) ...
-                           + obj.leftBDomain_inX + (j-1)*obj.stepMeshX*(obj.rightBDomain_inX - obj.leftBDomain_inX);
-
-                for i=1:numbVerNodes
-                    scalingVec(i) = sqrt(1+(obj.domainProfileDer(auxNodes(i)))^2);
-                end
-
-                meshIGACurved(j+1) = meshIGACurved(j) + sum(scalingVec * verGLWeights);
-
-            end
-            
-            % Jacobian loop
-            
-            Jac = [];
-   
-            for iel = 1:numbKnots
-
-                x_dx = meshIGACurved(iel);                         % Right Extreme
-                x_sx = meshIGACurved(iel+1);                       % Left Extreme
-
-                point = (x_sx-x_dx)*(0.5*verGLNodes + 0.5) + x_dx;
-
-                for j = 1 : numbVerNodes
-                    Jac = [Jac sqrt(1+(obj.domainProfileDer(point(j)))^2)];
-                end
-            end
-            
-            
+            [aLift,bLift] = liftBoundCond(obj_liftBoundCond);
+            liftFunc = @(x,y) aLift * y + bLift;
+            lifting = liftFunc(0,Computed.y);
             
             %% ASSEMBLING LOOP
             %-------------------------------------------------------------%
@@ -573,173 +581,60 @@ classdef AssemblerStokesHandler
             % loop is repeated m^2 times to complete the macrostructure of
             % the system.
             %-------------------------------------------------------------%
-            
-            % Assembling loop for A_x
-            for imb = 1:obj.dimModalBasisU
-                for kmb = 1:obj.dimModalBasisU
 
-                    [Amb,bmb,liftCoeffAX,liftCoeffBX] = assemblerIGA( imb, kmb, numbControlPtsU, ...
-                                            verGLWeights,modalBasisU(:,imb), ...
-                                            modalBasisDerU(:,imb),modalBasisU(:,kmb),...
-                                            modalBasisDerU(:,kmb), evalLU, ...
-                                            ComputedX,obj.stepMeshX,...
-                                            obj.degreePolySplineBasisU,obj.continuityParameterU,...
-                                            obj.leftBDomain_inX,...
-                                            obj.rightBDomain_inX,liftingX,aLiftX,bLiftX,Jac,...
-                                            numbHorNodes,numbVerNodes,...
-                                            numbKnots,horGLWeights);
+            for imb = 1:obj.dimModalBasis
+                for kmb = 1:obj.dimModalBasis
+
+                    [Amb,bmb,liftCoeffA,liftCoeffB] = assemblerIGAScatter( imb, kmb, ...
+                                            augVerWeights,modalBasis(:,imb),modalBasisDer(:,imb),modalBasis(:,kmb),...
+                                            modalBasisDer(:,kmb),geoData,Computed,lifting,aLift,bLift,msh,space,jacFunc,...
+                                            spaceFunc,obj.dirCondFuncStruct.igaBoundCond);
 
                     % Assignment of the Block Matrix Just Assembled
 
-                    A(1+(imb-1)*numbControlPtsU : imb*numbControlPtsU , ...
-                      1+(kmb-1)*numbControlPtsU : kmb*numbControlPtsU) = Amb;      
+                    A(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Amb;
+                    
+                    disp(['FINISHED ASSEMBLING LOOP (',num2str(imb),' , ',num2str(kmb),')']);
+
                 end
 
                 % Assignment of the Block Vector Just Assembled
-                b( 1+(imb-1)*numbControlPtsU : imb*numbControlPtsU ) = bmb;               
+                b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb;
             end
-            disp('FINISHED ASSEMBLING A_X');
             
-            %assembling loop for A_y
-            for imb = 1:obj.dimModalBasisU
-                for kmb = 1:obj.dimModalBasisU
-
-                    [Amb,bmb,liftCoeffAY,liftCoeffBY] = assemblerIGA( imb, kmb, numbControlPtsU, ...
-                                            verGLWeights,modalBasisU(:,imb), ...
-                                            modalBasisDerU(:,imb),modalBasisU(:,kmb),...
-                                            modalBasisDerU(:,kmb), evalLU, ...
-                                            ComputedY,obj.stepMeshX,...
-                                            obj.degreePolySplineBasisU,obj.continuityParameterU,...
-                                            obj.leftBDomain_inX,...
-                                            obj.rightBDomain_inX,liftingY,aLiftY,bLiftY,Jac,...
-                                            numbHorNodes,numbVerNodes,...
-                                            numbKnots,horGLWeights);
-
-                    % Assignment of the Block Matrix Just Assembled           
-                    A(1+(obj.dimModalBasisU+imb-1)*numbControlPtsU : ...
-                      (imb+ obj.dimModalBasisU)*numbControlPtsU ...
-                      ,1+(obj.dimModalBasisU+kmb-1)*numbControlPtsU :...
-                      (kmb+obj.dimModalBasisU)*numbControlPtsU) = Amb;
-                end
-
-                % Assignment of the Block Vector Just Assembled                
-                b( 1+(obj.dimModalBasisU+imb-1)*numbControlPtsU :...
-                    (imb+obj.dimModalBasisU)*numbControlPtsU ) = bmb;
-
-            end
-            disp('FINISHED ASSEMBLING A_Y');         
+            %% IMPOSE BOUNDARY CONDITIONS
             
-            % Assembling loop for P_x
-            for imb = 1:obj.dimModalBasisU
-                for kmb = 1:obj.dimModalBasisP
-
-                    Amb   = assemblerIGA_PX( imb, kmb,...
-                                            numbControlPtsU, numbControlPtsP, ...
-                                            verGLWeights,modalBasisU(:,imb), modalBasisDerU(:,imb), ...
-                                            modalBasisP(:,kmb), ...
-                                            evalLU, obj.stepMeshX,...
-                                            obj.degreePolySplineBasisU,obj.degreePolySplineBasisP,...
-                                            obj.continuityParameterU,obj.continuityParameterP, ...
-                                            obj.leftBDomain_inX, obj.rightBDomain_inX,...
-                                            Jac,numbHorNodes,numbVerNodes, ...
-                                            numbKnots,horGLWeights);
-
-                    % Assignment of the Block Matrix Just Assembled
-
-                    A(1+(imb-1)*numbControlPtsU : imb*numbControlPtsU , ...
-                      2*numbControlPtsU*obj.dimModalBasisU+1+(kmb-1)*numbControlPtsP : ...
-                      2*numbControlPtsU*obj.dimModalBasisU+kmb*numbControlPtsP) = -Amb;
-
-                end
-
-            end
-            disp('FINISHED ASSEMBLING P_X');    
+            %-------------------------------------------------------------%
+            % Compute the lifting contribution in the force vector due to
+            % the non homogeneous Dirichlet boundary conditions in the
+            % lower and upper boundary.
+            %-------------------------------------------------------------%
             
-            % Assembling loop for P_y
-            for imb = 1:obj.dimModalBasisU
-                for kmb = 1:obj.dimModalBasisP
-
-                    Amb   = assemblerIGA_PY( imb, kmb, ...
-                                            numbControlPtsU, numbControlPtsP, ...
-                                            verGLWeights,modalBasisU(:,imb), modalBasisDerU(:,imb), ...
-                                            modalBasisP(:,kmb),  ...
-                                            evalLU, obj.stepMeshX,...
-                                            obj.degreePolySplineBasisU,obj.degreePolySplineBasisP,...
-                                            obj.continuityParameterU,obj.continuityParameterP, ...
-                                            obj.leftBDomain_inX, obj.rightBDomain_inX,...
-                                            Jac,numbHorNodes,numbVerNodes, ...
-                                            numbKnots,horGLWeights);
-
-                    % Assignment of the Block Matrix Just Assembled
-
-                    A(numbControlPtsU*obj.dimModalBasisU+1+(imb-1)*numbControlPtsU : ...
-                      numbControlPtsU*obj.dimModalBasisU+imb*numbControlPtsU , ...
-                      2*numbControlPtsU*obj.dimModalBasisU+1+(kmb-1)*numbControlPtsP : ...
-                      2*numbControlPtsU*obj.dimModalBasisU+kmb*numbControlPtsP) = -Amb;
-
-                end
-
-            end
-            disp('FINISHED ASSEMBLING P_Y'); 
+            BC_l = obj.igaBoundCond.BC_INF_TAG;
+            BC_r = obj.igaBoundCond.BC_OUT_TAG;
+            infBoundCond = obj.igaBoundCond.BC_INF_DATA;
+            outBoundCond = obj.igaBoundCond.BC_OUT_DATA;
             
-            % Assembling loop for Q_x
-            for imb = 1:obj.dimModalBasisP
-                for kmb = 1:obj.dimModalBasisU
+            obj_bcCoeff = BoundaryConditionHandler();
+    
+            obj_bcCoeff.infBoundCond  = infBoundCond;
+            obj_bcCoeff.outBoundCond  = outBoundCond;
+            obj_bcCoeff.augVerNodes   = augVerNodes;
+            obj_bcCoeff.augVerWeights = augVerWeights;
+            obj_bcCoeff.modalBasis = modalBasis;
+            obj_bcCoeff.dimModalBasis = obj.dimModalBasis;
+            obj_bcCoeff.coefficientForm = obj.coefficientForm;
 
-                    [Amb,bmb]  = assemblerIGA_QX( imb, kmb, ...
-                                            numbControlPtsP, numbControlPtsU, ...
-                                            verGLWeights,modalBasisP(:,imb), ...
-                                            modalBasisU(:,kmb), modalBasisDerU(:,kmb), ...
-                                            evalLP, obj.stepMeshX,...
-                                            obj.degreePolySplineBasisP,obj.continuityParameterP,...
-                                            obj.degreePolySplineBasisU,obj.continuityParameterU, ...
-                                            obj.leftBDomain_inX, obj.rightBDomain_inX,...
-                                            liftingX,aLiftX,bLiftX,Jac,numbHorNodes,numbVerNodes, ...
-                                            numbKnots,horGLWeights);
-
-                    % Assignment of the Block Matrix Just Assembled
-
-                    A(2*numbControlPtsU*obj.dimModalBasisU+1+(imb-1)*numbControlPtsP :...
-                      2*numbControlPtsU*obj.dimModalBasisU+imb*numbControlPtsP , ...
-                      1+(kmb-1)*numbControlPtsU : ...
-                      kmb*numbControlPtsU) = -Amb;
-
-
-                end
-                
-                b(2*numbControlPtsU*obj.dimModalBasisU+1+(imb-1)*numbControlPtsP : ...
-                2*numbControlPtsU*obj.dimModalBasisU+imb*numbControlPtsP) = bmb;
-
-            end
-            disp('FINISHED ASSEMBLING Q_X');
+            [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
             
-            % Assembling loop for Q_y
-            for imb = 1:obj.dimModalBasisP
-                for kmb = 1:obj.dimModalBasisU
-
-                    [Amb,bmb] = assemblerIGA_QY( imb, kmb,...
-                                            numbControlPtsP, numbControlPtsU, ...
-                                            verGLWeights,modalBasisP(:,imb),  ...
-                                            modalBasisU(:,kmb), modalBasisDerU(:,kmb), ...
-                                            evalLP, obj.stepMeshX,...
-                                            obj.degreePolySplineBasisP,obj.continuityParameterP,...
-                                            obj.degreePolySplineBasisU,obj.continuityParameterU, ...
-                                            obj.leftBDomain_inX, obj.rightBDomain_inX,...
-                                            liftingY,aLiftY,bLiftY,Jac,numbHorNodes,numbVerNodes, ...
-                                            numbKnots,horGLWeights);
-
-                    % Assignment of the Block Matrix Just Assembled
-
-                    A(2*numbControlPtsU*obj.dimModalBasisU+1+(imb-1)*numbControlPtsP :...
-                      2*numbControlPtsU*obj.dimModalBasisU+imb*numbControlPtsP , ...
-                      numbControlPtsU*obj.dimModalBasisU+1+(kmb-1)*numbControlPtsU : ...
-                      numbControlPtsU*obj.dimModalBasisU+kmb*numbControlPtsU) = -Amb;
-
-                end
-                b(2*numbControlPtsU*obj.dimModalBasisU+1+(imb-1)*numbControlPtsP : ...
-                2*numbControlPtsU*obj.dimModalBasisU+imb*numbControlPtsP) = bmb;
-            end
-            disp('FINISHED ASSEMBLING Q_Y');
+            bcStruct.bcInfTag = BC_l;
+            bcStruct.bcOutTag = BC_r;
+            bcStruct.infStruct = infStruct;
+            bcStruct.outStruct = outStruct;
+            bcStruct.numbControlPts = numbControlPts;
+            bcStruct.dimModalBasis = obj.dimModalBasis;
+            
+            [AA,bb] = impose_boundary(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,b,numbControlPts);
 
             end
             
@@ -748,61 +643,10 @@ end
 
 %% ASSEMBLER STOKES HANDLER - ASSEMBLING METHODS
 
-%% Method 'assemblerIGA'
+%% Method 'assemblerIGAScatter'
             
-function [Al,bl,aLift,bLift] = assemblerIGA(imb,kmb,numbControlPts, ...
-                                verGLWeights,mb_i,mb_yi,mb_k,mb_yk, ...
-                                L, Computed, ...
-                                horStep,p,k, ...
-                                domainLeftLimit,domainRightLimit, ...
-                                ~,aLift,bLift,jacIGA,...
-                                numbHorQuadNodes,~,...
-                                nknots,horWeights)
-
-    %%
-    % assemblerIGA   - This function computes the assembled matrices
-    %                  relative to the variational problem considering 
-    %                  IGA modal basis.
-    %
-    % The inputs are:
-    %%
-    %   (1)  imb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (2)  kmb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (3)  numbControlPts    : Size of the Functional Basis. Equal to the 
-    %                            Dimention of the Spline Basis (Number of
-    %                            Control Points)
-    %   (4)  verGLWeights      : Vector Containing the Weights of the Quadrature 
-    %                            Nodes in the Whole Mesh 
-    %   (5)  mb_i              : Modal Basis referring for coeff. (imb,kmb)
-    %   (6)  mb_yi             : Modal Basis in the Y Direction for coeff. (imb,kmb)
-    %   (7)  mb_k              : Modal Basis referring to coeff. (imb,kmb)
-    %   (8)  mb_yk             : Modal Basis in the Y Direction for coeff. (imb,kmb)
-    %   (10) L                 : Thickness of the Channel Used in the Example
-    %   (11) Computed          : Structure containing the coefficiets mu  and the force exciting the system 
-    %   (12) horStep           : Step of the Finite Element Mesh
-    %   (13) p                 : Degree of the Polynomial B-Spline Basis
-    %   (14) k                 : Degree of Continuity of the Basis 'C^(p-k)'
-    %   (15) domainLeftLimit,
-    %        domainRightLimit  : Extremes of the domain
-    %   (16) aLift             : Coefficient of lifting
-    %   (17) bLift             : Coefficient of lifting
-    %   (18) jacIGA            : Jacobian computed at the quadrature nodes
-    %   (19) numbHordQuadNodes : Number of quadrature nodes in the
-    %                            horizontal direction
-    %   (20) nKnots            : Number of knots for the isogeometric mesh
-    %   (21) horGLWeights      : Horizontal Gauss Legendre integration
-    %                            nodes
-    % 
-    %
-    % The outputs are:
-    %%
-    %   (1) Al    : Final Assembled Block Matrix Using IGA Basis
-    %   (2) bl    : Final Assembled Block Vector Using IGA Basis
-    %   (3) aLift : Primo Coefficiente di Rilevamento
-    %   (4) bLift : Secondo Coefficiente di Rilevamento
-    
+function [Al,bl,aLift,bLift] = assemblerIGAScatter(imb,kmb,augVerWeights,mb_i,mb_yi,mb_k,mb_yk,geoData,...
+                                Computed,lifting,aLift,bLift,msh,space,jacFunc,spaceFunc,BoundCond)
 
     %% IMPORT CLASS
     
@@ -813,17 +657,6 @@ function [Al,bl,aLift,bLift] = assemblerIGA(imb,kmb,numbControlPts, ...
     import Core.BasisHandler
     import Core.SolverHandler
     
-    %% JACOBIAN IMPOSITIONS
-    %---------------------------------------------------------------------%
-    % This values will come from the demo when the code is changed to
-    % incorporate also cases where L(x) is not constant. Note that the name
-    % of the variables were chosen to match the same name in the reference
-    % paper used to create this function.
-    %---------------------------------------------------------------------%
-    
-    D1 = 0;
-    D2 = 1;
-    
     %% EXCITATION FORCE
     %---------------------------------------------------------------------%
     % Computation of the excitation force condiering the boundary
@@ -831,15 +664,15 @@ function [Al,bl,aLift,bLift] = assemblerIGA(imb,kmb,numbControlPts, ...
     % integration are the Gauss-Legendre nodes used in the horizontal
     % mesh.
     %---------------------------------------------------------------------%
-
-    objForceInt = IntegrateHandler();
     
-    objForceInt.funcToIntegrate =   L.*Computed.force_c;
+    funcToIntegrale = (Computed.force_c - ...
+                      (aLift).* Computed.beta2_c - ...
+                      Computed.sigma_c .* lifting) .* ...
+                      jacFunc.evalDetJac;
                                 
-    objForceInt.funcWeight = mb_i.*verGLWeights;
+    funcWeight = mb_i .* augVerWeights;
     
-    forceVec  = integrate(objForceInt);
-
+    forceVec  = sum(funcToIntegrale .* funcWeight , 1);
     
     %% MODAL BASIS INTEGRATION
     %---------------------------------------------------------------------%
@@ -847,1186 +680,82 @@ function [Al,bl,aLift,bLift] = assemblerIGA(imb,kmb,numbControlPts, ...
     % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
     % the parts to be assembled.
     %---------------------------------------------------------------------%
-        
-    obj_integrate_1 = IntegrateHandler();
-    obj_integrate_2 = IntegrateHandler();
-    obj_integrate_3 = IntegrateHandler();
-    obj_integrate_4 = IntegrateHandler();
-
     
-    obj_integrate_1.funcToIntegrate = L.*Computed.mu_c;
-    obj_integrate_2.funcToIntegrate = L.*Computed.mu_c;
-    obj_integrate_3.funcToIntegrate = L.*Computed.mu_c;
-    obj_integrate_4.funcToIntegrate = L.*Computed.mu_c;
-
+    alpha1      = jacFunc.Phi1_dx.^2 + jacFunc.Phi1_dy.^2;
+    alpha2      = jacFunc.Phi2_dx.^2 + jacFunc.Phi2_dy.^2;
+    varbeta1    = Computed.beta1_c .* jacFunc.Phi1_dx + ...
+                  Computed.beta2_c .* jacFunc.Phi1_dy;
+    varbeta2    = Computed.beta1_c .* jacFunc.Phi2_dx + ...
+                  Computed.beta2_c .* jacFunc.Phi2_dy;
+    delta       = jacFunc.Phi1_dx .* jacFunc.Phi2_dx + ...
+                  jacFunc.Phi1_dy .* jacFunc.Phi2_dy;
     
-    obj_integrate_1.funcWeight = mb_k  .*mb_i  .*verGLWeights;
-    obj_integrate_2.funcWeight = mb_k  .*mb_yi .*verGLWeights;
-    obj_integrate_3.funcWeight = mb_yk .*mb_i  .*verGLWeights;
-    obj_integrate_4.funcWeight = mb_yk .*mb_yi .*verGLWeights;
-
+    funcToIntegrate_1 = jacFunc.evalDetJac .* Computed.mu_c .* alpha1;
+    funcToIntegrate_2 = jacFunc.evalDetJac .* Computed.mu_c .* delta;
+    funcToIntegrate_3 = jacFunc.evalDetJac .* varbeta1;
+    funcToIntegrate_4 = jacFunc.evalDetJac .* Computed.mu_c .* delta;
+    funcToIntegrate_5 = jacFunc.evalDetJac .* Computed.mu_c .* alpha2;
+    funcToIntegrate_6 = jacFunc.evalDetJac .* varbeta2;
+    funcToIntegrate_7 = jacFunc.evalDetJac .* Computed.sigma_c;
     
-    lambda_1   = integrate(obj_integrate_1);
-    lambda_2   = integrate(obj_integrate_2);
-    lambda_3   = integrate(obj_integrate_3);
-    lambda_4   = integrate(obj_integrate_4);
-
+    funcWeight_1 = mb_k  .* mb_i  .* augVerWeights;
+    funcWeight_2 = mb_k  .* mb_yi .* augVerWeights;
+    funcWeight_3 = mb_k  .* mb_i  .* augVerWeights;
+    funcWeight_4 = mb_yk .* mb_i  .* augVerWeights;
+    funcWeight_5 = mb_yk .* mb_yi .* augVerWeights;
+    funcWeight_6 = mb_yk .* mb_i  .* augVerWeights;
+    funcWeight_7 = mb_k  .* mb_i  .* augVerWeights;
     
-    r00 = lambda_4 * (D1^2 + D2^2);
-    r10 = lambda_2 * D1;
-    r01 = lambda_3 * D1;
-    r11 = lambda_1;
-
-    %% ISOGEOMETRIC BASIS AND DERIVATIVES
-    %---------------------------------------------------------------------%
-    % Precomputes the value of the shape function and its first derivative
-    % evaluated in the Gauss points. Note that the shape functions
-    % mentioned here are the functions named by in the reference
-    % papers.
-    %---------------------------------------------------------------------%
+    aux1   = sum(funcToIntegrate_1 .* funcWeight_1 , 1);
+    aux2   = sum(funcToIntegrate_2 .* funcWeight_2 , 1);
+    aux3   = sum(funcToIntegrate_3 .* funcWeight_3 , 1);
+    aux4   = sum(funcToIntegrate_4 .* funcWeight_4 , 1);
+    aux5   = sum(funcToIntegrate_5 .* funcWeight_5 , 1);
+    aux6   = sum(funcToIntegrate_6 .* funcWeight_6 , 1);
+    aux7   = sum(funcToIntegrate_7 .* funcWeight_7 , 1);
     
-    objBasisIGA = BasisHandler();
+    r00 = aux5 + aux6 + aux7;
+    r10 = aux2 + aux3;
+    r01 = aux4;
+    r11 = aux1;
     
-    objBasisIGA.degreePolySplineBasis = p;
-    objBasisIGA.continuityParameter   = k;
-    objBasisIGA.numbElements          = nknots;
-    objBasisIGA.numbQuadPointPerElem  = numbHorQuadNodes;
-    objBasisIGA.leftBoundDomainX      = domainLeftLimit;
-    objBasisIGA.rightBoundDomainX     = domainRightLimit;
-    
-    [basisIGA,derBasisIGA,controlPts] = newIsoGeoBasis(objBasisIGA);
-    
-    %% LOOP OF ASSEMBLING LOCAL ELEMENTS
-    %---------------------------------------------------------------------%
-    % This loop computes the local coefficients (diffusion, advection and
-    % reaction) and the local force components necessary to assemble the
-    % global matrices. 
-    %---------------------------------------------------------------------%
-    
-    % Vector Initialization
-    
-    globalForce  = zeros(numbControlPts,1);
-    row   = zeros(1,numbControlPts^2);
-    col   = zeros(1,numbControlPts^2);
-    icount = 0;
-    
-    for iel = 1:nknots
-        
-        dl = horStep/2;
-        
-        % MEMORY ALLOCATION FOR BILINEAR COEFFICIENTS
-        
-        forceElem  = zeros(p+1,1);
-        
-        deltaElem1 = zeros(p+1,p+1);
-        deltaElem2 = zeros(p+1,p+1);
-        deltaElem3 = zeros(p+1,p+1);
-        deltaElem4 = zeros(p+1,p+1);
-        
-        % INTEGRAL OVER THE SUPPORTING FIBER
-        %-----------------------------------------------------------------%
-        % We compute the coefficients referring to the integrals along the
-        % supporting fiber.
-        %-----------------------------------------------------------------%
-        
-        for igauss = 1:numbHorQuadNodes
-
-            % SHAPE FUNCTIONS
-            %-------------------------------------------------------------%
-            % Compute the shape functions and their derivatives with
-            % respect to the parametric variable, evaluated over the
-            % Gauss-Legendre integration points.
-            %-------------------------------------------------------------%
-
-            shape  = basisIGA((iel-1) * numbHorQuadNodes + igauss,(k-1) * (iel-1) + iel + p:-1:(k-1) * (iel-1) + iel);
-            dshape = derBasisIGA((iel-1) * numbHorQuadNodes + igauss,(k-1) * (iel-1) + iel + p:-1:(k-1) * (iel-1) + iel);
-            cpi    = controlPts((k-1) * (iel-1) + iel + p:-1:(k-1) * (iel-1) + iel);
-            
-            % JACOBIAN EVALUATED AT THE GAUSS POINT
-            
-            J      = dshape*cpi';
-
-            % SHAPE FUNCTION DERIVATIVE WITH RESPECT TO THE PHYSICAL DOMAIN
-
-            dshape = dshape/(J*jacIGA((iel-1)*numbHorQuadNodes+igauss));
-
-            % INTEGRATION WEIGHTS IN THE PHYSICAL DOMAIN
-
-            gwt = horWeights(igauss)*(J*jacIGA((iel-1)*numbHorQuadNodes+igauss))*dl;
-
-            % LOCAL RHS VECTOR
-
-            forceElem       = forceElem  + shape'*forceVec((iel-1)*numbHorQuadNodes+igauss)*gwt;    % Force
-            
-            % LOCAL COMPONENTS OF THE STIFFNESS MATRIX
-            
-            deltaElem1 = deltaElem1 + r00((iel-1)*numbHorQuadNodes+igauss) * (shape' * shape) * gwt;
-            deltaElem2 = deltaElem2 + r10((iel-1)*numbHorQuadNodes+igauss) * (shape' *dshape) * gwt;
-            deltaElem3 = deltaElem3 + r01((iel-1)*numbHorQuadNodes+igauss) * (dshape'* shape) * gwt;
-            deltaElem4 = deltaElem4 + r11((iel-1)*numbHorQuadNodes+igauss) * (dshape'*dshape) * gwt;
-        end
-
-        % LOOP OF ASSEMBLING GLOBAL ELEMENTS
-        %-----------------------------------------------------------------%
-        % The coeeficients computed in the previous loops are assigned to
-        % the correct position in the global matrix to assemble the global
-        % stiffeness and the gloabl rhs matrix.
-        %-----------------------------------------------------------------%
-
-        for a = 1:p+1
-            
-            i = (k-1)*(iel-1) + iel + p - (a - 1);
-
-            if (i>1)
-
-                globalForce(i) = globalForce(i) + forceElem(a);
-
-                for b = 1:p+1
-                    
-                    j = (k-1)*(iel-1) + iel + p - (b - 1);
-                    icount = icount + 1;
-                    
-                    row(icount)   = i;
-                    col(icount)   = j;
-                    
-                    deltaLocal1(icount) = deltaElem1(a,b);
-                    deltaLocal2(icount) = deltaElem2(a,b);
-                    deltaLocal3(icount) = deltaElem3(a,b);
-                    deltaLocal4(icount) = deltaElem4(a,b);
-                    
-                end
-            else 
-                icount = icount + 1;
-                row(icount)  = i;
-                col(icount)  = i;
-                
-                deltaLocal1(icount) = 0;
-                deltaLocal2(icount) = 0;
-                deltaLocal3(icount) = 0;
-                deltaLocal4(icount) = 1;
-                
-            end
-        end
-    end
-
-    row = row(1:icount);
-    col = col(1:icount);
+    coeff.r00 = r00;
+    coeff.r10 = r10;
+    coeff.r01 = r01;
+    coeff.r11 = r11;
     
     %% ASSEMBLE OF STIFFNESS MATRIX AND RHS VECTOR
     
-    Delta1 = sparse(row,col,deltaLocal1,numbControlPts,numbControlPts);
-    Delta2 = sparse(row,col,deltaLocal2,numbControlPts,numbControlPts);
-    Delta3 = sparse(row,col,deltaLocal3,numbControlPts,numbControlPts);
-    Delta4 = sparse(row,col,deltaLocal4,numbControlPts,numbControlPts);
+    numbKnots = msh.nel_dir;
+    numbHorNodes = length(r00)/numbKnots;
     
-    Al   = Delta1 + Delta2 + Delta3 + Delta4;
-    bl   = globalForce;
+    Local_00 = spalloc (space.ndof, space.ndof, 3*space.ndof);
+    Local_10 = spalloc (space.ndof, space.ndof, 3*space.ndof);
+    Local_01 = spalloc (space.ndof, space.ndof, 3*space.ndof);
+    Local_11 = spalloc (space.ndof, space.ndof, 3*space.ndof);
+    rhs      = zeros (space.ndof, 1);
     
-    %% IMPOSITION OF DIRICHLET BOUNDARY CONDITION
-    %---------------------------------------------------------------------%
-    % This step is necessary to guarantee that the resulting linear system
-    % is not singular.
-    %---------------------------------------------------------------------%
-    
-    if (imb == kmb)
-        Al(1,1)  = 1;
-        Al(1,2)  = 0;
-        Al(1,3)  = 0;
+    for iel = 1:numbKnots
         
-    else
-        Al(1,1)  = 0;
-        Al(1,2)  = 0;
-        Al(1,3)  = 0;
+        r00Local = r00((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
+        r10Local = r10((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
+        r01Local = r01((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
+        r11Local = r11((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
+        fLocal   = forceVec((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
+        
+        Local_00 = Local_00 + op_u_v(spaceFunc{iel,1}, spaceFunc{iel,1}, spaceFunc{iel,3}, r00Local);
+        Local_10 = Local_10 + op_gradu_v(spaceFunc{iel,2}, spaceFunc{iel,1}, spaceFunc{iel,3}, r10Local);
+        Local_01 = Local_01 + op_u_gradv(spaceFunc{iel,1}, spaceFunc{iel,2}, spaceFunc{iel,3}, r01Local);
+        Local_11 = Local_11 + op_gradu_gradv(spaceFunc{iel,2}, spaceFunc{iel,2}, spaceFunc{iel,3}, r11Local);
+        
+        rhs      = rhs + op_f_v (spaceFunc{iel,1}, spaceFunc{iel,3}, fLocal);
+
     end
 
-    %disp('Finished ASSEMBLING LOOP');
+    
+    Al       = Local_11 + Local_10 + Local_01 + Local_00;
+    bl       = rhs;
+
+
+    
 end
-
-%% Method 'assemblerIGA_PX'
-            
-function Al = assemblerIGA_PX(~,~,numbControlPtsU,numbControlPtsP, ...
-                                verGLWeights,mb_i,mb_yi,mb_k, ...
-                                LU, ...
-                                horStep,pU,pP,kU,kP, ...
-                                domainLeftLimit,domainRightLimit, ...
-                                jacIGA,...
-                                numbHorQuadNodes,~,...
-                                nknots,horWeights)
-
-    %%
-    % assemblerIGA_PX   - This function computes the assembled matrices
-    %                     relative to the coupling of pressure and x component of velocity considering 
-    %                     IGA modal basis.
-    %
-        % The inputs are:
-    %%
-    %   (1)  imb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (2)  kmb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (3)  numbControlPts    : Size of the Functional Basis. Equal to the 
-    %                            Dimention of the Spline Basis (Number of
-    %                            Control Points)
-    %   (4)  verGLWeights      : Vector Containing the Weights of the Quadrature 
-    %                            Nodes in the Whole Mesh 
-    %   (5)  mb_i              : Modal Basis referring for coeff. (imb,kmb)
-    %                            for velocity
-    %   (6)  mb_yi             : Modal Basis in the Y Direction for coeff. (imb,kmb)
-    %                            for velocity
-    %   (7)  mb_k              : Modal Basis referring to coeff. (imb,kmb)
-    %                            for pressure
-    %   (8) LU                 : Thickness of the Channel Used in the Example
-    %   (9) Computed           : Structure containing the coefficiets mu  and the force exciting the system 
-    %   (10) horStep           : Step of the Finite Element Mesh
-    %   (11) pU                : Degree of the Polynomial B-Spline Basis
-    %                            for the velocity
-    %   (12) pP                : Degree of the Polynomial B-Spline Basis
-    %                            for the pressure
-    %   (13) kU                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the velocity
-    %   (14) kP                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the pressure
-    %   (15) domainLeftLimit,
-    %        domainRightLimit  : Extremes of the domain
-    %   (16) jacIGA            : Jacobian computed at the quadrature nodes
-    %   (17) numbHordQuadNodes : Number of quadrature nodes in the
-    %                            horizontal direction
-    %   (18) nKnots            : Number of knots for the isogeometric mesh
-    %   (19) horWeights        : Horizontal Gauss Legendre integration
-    %                            nodes
-    % 
-    %
-    % The outputs are:
-    %%
-    %   (1) Al    : Final Assembled Block Matrix Using IGA Basis
-
-    %% IMPORT CLASS
-    
-    import Core.AssemblerStokesHandler
-    import Core.BoundaryConditionHandler
-    import Core.IntegrateHandler
-    import Core.EvaluationHandler
-    import Core.BasisHandler
-    import Core.SolverHandler
-    
-    %% JACOBIAN IMPOSITIONS
-    %---------------------------------------------------------------------%
-    % This values will come from the demo when the code is changed to
-    % incorporate also cases where L(x) is not constant. Note that the name
-    % of the variables were chosen to match the same name in the reference
-    % paper used to create this function.
-    %---------------------------------------------------------------------%
-    
-    D1 = 1;
-    D2 = 0;
-
-    %% MODAL BASIS INTEGRATION
-    %---------------------------------------------------------------------%
-    % Computation of the auxiliary coefficients, presented in the original
-    % work as 'rho_{ik}^{st}'. Those coeffients simplify the computation of 
-    % the parts to be assembled.
-    %---------------------------------------------------------------------%
-    
-    obj_integrate_1 = IntegrateHandler();
-    obj_integrate_2 = IntegrateHandler();
-    
-    obj_integrate_1.funcToIntegrate = ones(size(LU));
-    obj_integrate_2.funcToIntegrate = ones(size(LU));
-    
-    obj_integrate_1.funcWeight = mb_k  .*mb_yi  .*verGLWeights;
-    obj_integrate_2.funcWeight = mb_k  .*mb_i .*verGLWeights;
-    
-    lambda_1   = integrate(obj_integrate_1);
-    lambda_2   = integrate(obj_integrate_2);
-    
-    r00 = D2*lambda_1;
-    r10 = D1*lambda_2;
-
-
-    %% ISOGEOMETRIC BASIS AND DERIVATIVES
-    %---------------------------------------------------------------------%
-    % Precomputes the value of the shape function and its first derivative
-    % evaluated in the Gauss points. Note that the shape functions
-    % mentioned here are the functions named by in the reference
-    % papers.
-    %---------------------------------------------------------------------%
-    
-    %Isogeometric basis for the velocity
-    objBasisIGA = BasisHandler();
-    
-    objBasisIGA.degreePolySplineBasis = pU;
-    objBasisIGA.continuityParameter   = kU;
-    objBasisIGA.numbElements          = nknots;
-    objBasisIGA.numbQuadPointPerElem  = numbHorQuadNodes;
-    objBasisIGA.leftBoundDomainX      = domainLeftLimit;
-    objBasisIGA.rightBoundDomainX     = domainRightLimit;
-    
-    [basisIGAU,derBasisIGAU,controlPtsU] = newIsoGeoBasis(objBasisIGA);
-    
-    %Isogeometric basis for the pressure
-    objBasisIGA.degreePolySplineBasis = pP;
-    objBasisIGA.continuityParameter   = kP;
-    
-    [basisIGAP,~,~] = newIsoGeoBasis(objBasisIGA);
-    %% LOOP OF ASSEMBLING LOCAL ELEMENTS
-    %---------------------------------------------------------------------%
-    % This loop computes the local coefficients (diffusion, advection and
-    % reaction) and the local force components necessary to assemble the
-    % global matrices. 
-    %---------------------------------------------------------------------%
-    
-    % Vector Initialization
-    
-    row   = zeros(1,numbControlPtsU*numbControlPtsP);
-    col   = zeros(1,numbControlPtsU*numbControlPtsP);
-    icount = 0;
-    
-    for iel = 1:nknots
-        
-        dl = horStep/2;
-        
-        % MEMORY ALLOCATION FOR BILINEAR COEFFICIENTS
-        
-        deltaElem1 = zeros(pU+1,pP+1);
-        deltaElem2 = zeros(pU+1,pP+1);
-        
-        % INTEGRAL OVER THE SUPPORTING FIBER
-        %-----------------------------------------------------------------%
-        % We compute the coefficients referring to the integrals along the
-        % supporting fiber.
-        %-----------------------------------------------------------------%
-        
-        for igauss = 1:numbHorQuadNodes
-
-            % SHAPE FUNCTIONS
-            %-------------------------------------------------------------%
-            % Compute the shape functions and their derivatives with
-            % respect to the parametric variable, evaluated over the
-            % Gauss-Legendre integration points.
-            %-------------------------------------------------------------%
-
-            shapeU  = basisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            dshapeU = derBasisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            cpiU    = controlPtsU((kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            
-            shapeP  = basisIGAP((iel-1) * numbHorQuadNodes + igauss,(kP-1) * (iel-1) + iel + pP:-1:(kP-1) * (iel-1) + iel);
-
-            % JACOBIAN EVALUATED AT THE GAUSS POINT
-            
-            J      = dshapeU*cpiU';
-
-            % SHAPE FUNCTION DERIVATIVE WITH RESPECT TO THE PHYSICAL DOMAIN
-
-            dshapeU = dshapeU/(J*jacIGA((iel-1)*numbHorQuadNodes+igauss));
-
-            % INTEGRATION WEIGHTS IN THE PHYSICAL DOMAIN
-
-            gwt = horWeights(igauss)*(J*jacIGA((iel-1)*numbHorQuadNodes+igauss))*dl;
-
-            % LOCAL COMPONENTS OF THE STIFFNESS MATRIX
-            
-            deltaElem1 = deltaElem1 + r00((iel-1)*numbHorQuadNodes+igauss) * (shapeU' * shapeP) * gwt;
-            deltaElem2 = deltaElem2 + r10((iel-1)*numbHorQuadNodes+igauss) * (dshapeU'* shapeP) * gwt;
-        end
-
-        % LOOP OF ASSEMBLING GLOBAL ELEMENTS
-        %-----------------------------------------------------------------%
-        % The coeeficients computed in the previous loops are assigned to
-        % the correct position in the global matrix to assemble the global
-        % stiffeness and the gloabl rhs matrix.
-        %-----------------------------------------------------------------%
-
-        for a = 1:pU+1
-            
-            i = (kU-1)*(iel-1) + iel + pU - (a - 1);
-            
-                for b = 1:pP+1
-                    
-                    j = (kP-1)*(iel-1) + iel + pP - (b - 1);
-                    icount = icount + 1;
-                    
-                    row(icount)   = i;
-                    col(icount)   = j;
-                    
-                    deltaLocal1(icount) = deltaElem1(a,b);
-                    deltaLocal2(icount) = deltaElem2(a,b);                    
-                end
-        end
-    end
-
-    row = row(1:icount);
-    col = col(1:icount);
-    
-    %% ASSEMBLE OF STIFFNESS MATRIX AND RHS VECTOR
-    
-    Delta1 = sparse(row,col,deltaLocal1,numbControlPtsU,numbControlPtsP);
-    Delta2 = sparse(row,col,deltaLocal2,numbControlPtsU,numbControlPtsP);
-    
-    Al   = Delta1 + Delta2;
-    
-    %% IMPOSITION OF DIRICHLET BOUNDARY CONDITION
-    %---------------------------------------------------------------------%
-    % This step is necessary to guarantee that the resulting linear system
-    % is not singular.
-    %---------------------------------------------------------------------%
-    
-    Al(1,1) = 0;
-    Al(1,2) = 0;
-    Al(1,3) = 0;
-
-    %disp('Finished ASSEMBLING LOOP');
-end
-
-%% Method 'assemblerIGA_PY'
-            
-function Al = assemblerIGA_PY(~,~,numbControlPtsU,numbControlPtsP, ...
-                                verGLWeights,mb_i,mb_yi,mb_k, ...
-                                LU, ...
-                                horStep,pU,pP,kU,kP, ...
-                                domainLeftLimit,domainRightLimit, ...
-                                jacIGA,...
-                                numbHorQuadNodes,~,...
-                                nknots,horWeights)
-
-    %%
-    % assemblerIGA_PY   - This function computes the assembled matrices
-    %                  relative to the variational problem considering 
-    %                  IGA modal basis.
-    %
-            % The inputs are:
-    %%
-    %   (1)  imb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (2)  kmb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (3)  numbControlPts    : Size of the Functional Basis. Equal to the 
-    %                            Dimention of the Spline Basis (Number of
-    %                            Control Points)
-    %   (4)  verGLWeights      : Vector Containing the Weights of the Quadrature 
-    %                            Nodes in the Whole Mesh 
-    %   (5)  mb_i              : Modal Basis referring for coeff. (imb,kmb)
-    %                            for velocity
-    %   (6)  mb_yi             : Modal Basis in the Y Direction for coeff. (imb,kmb)
-    %                            for velocity
-    %   (7)  mb_k              : Modal Basis referring to coeff. (imb,kmb)
-    %                            for pressure
-    %   (8) LU                 : Thickness of the Channel Used in the Example
-    %   (9) Computed           : Structure containing the coefficiets mu  and the force exciting the system 
-    %   (10) horStep           : Step of the Finite Element Mesh
-    %   (11) pU                : Degree of the Polynomial B-Spline Basis
-    %                            for the velocity
-    %   (12) pP                : Degree of the Polynomial B-Spline Basis
-    %                            for the pressure
-    %   (13) kU                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the velocity
-    %   (14) kP                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the pressure
-    %   (15) domainLeftLimit,
-    %        domainRightLimit  : Extremes of the domain
-    %   (16) jacIGA            : Jacobian computed at the quadrature nodes
-    %   (17) numbHordQuadNodes : Number of quadrature nodes in the
-    %                            horizontal direction
-    %   (18) nKnots            : Number of knots for the isogeometric mesh
-    %   (19) horWeights        : Horizontal Gauss Legendre integration
-    %                            nodes
-    % 
-    %
-    % The outputs are:
-    %%
-    %   (1) Al    : Final Assembled Block Matrix Using IGA Basis
-
-    %% IMPORT CLASS
-    
-    import Core.AssemblerStokesHandler
-    import Core.BoundaryConditionHandler
-    import Core.IntegrateHandler
-    import Core.EvaluationHandler
-    import Core.BasisHandler
-    import Core.SolverHandler
-    
-    %% JACOBIAN IMPOSITIONS
-    %---------------------------------------------------------------------%
-    % This values will come from the demo when the code is changed to
-    % incorporate also cases where L(x) is not constant. Note that the name
-    % of the variables were chosen to match the same name in the reference
-    % paper used to create this function.
-    %---------------------------------------------------------------------%
-    
-    D1 = 0;
-    D2 = 1;
-
-    
-    %% MODAL BASIS INTEGRATION
-    %---------------------------------------------------------------------%
-    % Computation of the auxiliary coefficients, presented in the original
-    % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
-    % the parts to be assembled.
-    %---------------------------------------------------------------------%
-    
-    obj_integrate_1 = IntegrateHandler();
-    obj_integrate_2 = IntegrateHandler();
-    
-    obj_integrate_1.funcToIntegrate = ones(size(LU));
-    obj_integrate_2.funcToIntegrate = ones(size(LU));
-    
-    obj_integrate_1.funcWeight = mb_k  .*mb_yi  .*verGLWeights;
-    obj_integrate_2.funcWeight = mb_k  .*mb_i .*verGLWeights;
-    
-    lambda_1   = integrate(obj_integrate_1);
-    lambda_2   = integrate(obj_integrate_2);
-    
-    r00 = D2*lambda_1;
-    r10 = D1*lambda_2;
-
-
-    %% ISOGEOMETRIC BASIS AND DERIVATIVES
-    %---------------------------------------------------------------------%
-    % Precomputes the value of the shape function and its first derivative
-    % evaluated in the Gauss points. Note that the shape functions
-    % mentioned here are the functions named by in the reference
-    % papers.
-    %---------------------------------------------------------------------%
-    
-    %Isogeometric basis for the velocity
-    objBasisIGA = BasisHandler();
-    
-    objBasisIGA.degreePolySplineBasis = pU;
-    objBasisIGA.continuityParameter   = kU;
-    objBasisIGA.numbElements          = nknots;
-    objBasisIGA.numbQuadPointPerElem  = numbHorQuadNodes;
-    objBasisIGA.leftBoundDomainX      = domainLeftLimit;
-    objBasisIGA.rightBoundDomainX     = domainRightLimit;
-    
-    [basisIGAU,derBasisIGAU,controlPtsU] = newIsoGeoBasis(objBasisIGA);
-    
-    %Isogeometric basis for the pressure
-    objBasisIGA.degreePolySplineBasis = pP;
-    objBasisIGA.continuityParameter   = kP;
-    
-    [basisIGAP,~,~] = newIsoGeoBasis(objBasisIGA);
-    %% LOOP OF ASSEMBLING LOCAL ELEMENTS
-    %---------------------------------------------------------------------%
-    % This loop computes the local coefficients (diffusion, advection and
-    % reaction) and the local force components necessary to assemble the
-    % global matrices. 
-    %---------------------------------------------------------------------%
-    
-    % Vector Initialization
-    
-    row   = zeros(1,numbControlPtsU*numbControlPtsP);
-    col   = zeros(1,numbControlPtsU*numbControlPtsP);
-    icount = 0;
-    
-    for iel = 1:nknots
-        
-        dl = horStep/2;
-        
-        % MEMORY ALLOCATION FOR BILINEAR COEFFICIENTS
-        
-        deltaElem1 = zeros(pU+1,pP+1);
-        deltaElem2 = zeros(pU+1,pP+1);
-        
-        % INTEGRAL OVER THE SUPPORTING FIBER
-        %-----------------------------------------------------------------%
-        % We compute the coefficients referring to the integrals along the
-        % supporting fiber.
-        %-----------------------------------------------------------------%
-        
-        for igauss = 1:numbHorQuadNodes
-
-            % SHAPE FUNCTIONS
-            %-------------------------------------------------------------%
-            % Compute the shape functions and their derivatives with
-            % respect to the parametric variable, evaluated over the
-            % Gauss-Legendre integration points.
-            %-------------------------------------------------------------%
-
-            shapeU  = basisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            dshapeU = derBasisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            cpiU    = controlPtsU((kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            
-            shapeP  = basisIGAP((iel-1) * numbHorQuadNodes + igauss,(kP-1) * (iel-1) + iel + pP:-1:(kP-1) * (iel-1) + iel);
-
-            
-            % JACOBIAN EVALUATED AT THE GAUSS POINT
-            
-            J      = dshapeU*cpiU';
-
-            % SHAPE FUNCTION DERIVATIVE WITH RESPECT TO THE PHYSICAL DOMAIN
-
-            dshapeU = dshapeU/(J*jacIGA((iel-1)*numbHorQuadNodes+igauss));
-
-            % INTEGRATION WEIGHTS IN THE PHYSICAL DOMAIN
-
-            gwt = horWeights(igauss)*(J*jacIGA((iel-1)*numbHorQuadNodes+igauss))*dl;
-
-            % LOCAL COMPONENTS OF THE STIFFNESS MATRIX
-            
-            deltaElem1 = deltaElem1 + r00((iel-1)*numbHorQuadNodes+igauss) * (shapeU' * shapeP) * gwt;
-            deltaElem2 = deltaElem2 + r10((iel-1)*numbHorQuadNodes+igauss) * (dshapeU'* shapeP) * gwt;
-        end
-
-        % LOOP OF ASSEMBLING GLOBAL ELEMENTS
-        %-----------------------------------------------------------------%
-        % The coeeficients computed in the previous loops are assigned to
-        % the correct position in the global matrix to assemble the global
-        % stiffeness and the gloabl rhs matrix.
-        %-----------------------------------------------------------------%
-
-        for a = 1:pU+1
-            
-            i = (kU-1)*(iel-1) + iel + pU - (a - 1);
-
-                for b = 1:pP+1
-                    
-                    j = (kP-1)*(iel-1) + iel + pP - (b - 1);
-                    icount = icount + 1;
-                    
-                    row(icount)   = i;
-                    col(icount)   = j;
-                    
-                    deltaLocal1(icount) = deltaElem1(a,b);
-                    deltaLocal2(icount) = deltaElem2(a,b);                    
-                end
-        end
-    end
-
-    row = row(1:icount);
-    col = col(1:icount);
-    
-    %% ASSEMBLE OF STIFFNESS MATRIX AND RHS VECTOR
-    
-    Delta1 = sparse(row,col,deltaLocal1,numbControlPtsU,numbControlPtsP);
-    Delta2 = sparse(row,col,deltaLocal2,numbControlPtsU,numbControlPtsP);
-    
-    Al   = Delta1 + Delta2;
-    
-    %% IMPOSITION OF DIRICHLET BOUNDARY CONDITION
-    %---------------------------------------------------------------------%
-    % This step is necessary to guarantee that the resulting linear system
-    % is not singular.
-    %---------------------------------------------------------------------%
-    
-    Al(1,1)  = 0;
-    Al(1,2)  = 0;
-    Al(1,3)  = 0;
-
-    %disp('Finished ASSEMBLING LOOP');
-end
-
-%% Method 'assemblerIGA_QX'
-            
-function [Al,bl,aLift,bLift] = assemblerIGA_QX(~,~,numbControlPtsP,numbControlPtsU, ...
-                                verGLWeights,mb_i, mb_k,mb_yk, ...
-                                L, ...
-                                horStep,pP,kP,pU,kU, ...
-                                domainLeftLimit,domainRightLimit, ...
-                                ~,aLift,bLift,jacIGA,...
-                                numbHorQuadNodes,~,...
-                                nknots,horWeights)
-
-    %%
-    % assemblerIGA_QX   - This function computes the assembled matrices
-    %                  relative to the variational problem considering 
-    %                  IGA modal basis.
-    %
-            % The inputs are:
-    %%
-    %   (1)  imb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (2)  kmb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (3)  numbControlPts    : Size of the Functional Basis. Equal to the 
-    %                            Dimention of the Spline Basis (Number of
-    %                            Control Points)
-    %   (4)  verGLWeights      : Vector Containing the Weights of the Quadrature 
-    %                            Nodes in the Whole Mesh 
-    %   (5)  mb_i              : Modal Basis referring for coeff. (imb,kmb)
-    %                            for pressure
-    %   (6)  mb_k              : Modal Basis in the Y Direction for coeff. (imb,kmb)
-    %                            for velocity
-    %   (7)  mb_yk              : Modal Basis referring to coeff. (imb,kmb)
-    %                            for velocity
-    %   (8) L                 : Thickness of the Channel Used in the Example
-    %   (9) Computed           : Structure containing the coefficiets mu  and the force exciting the system 
-    %   (10) horStep           : Step of the Finite Element Mesh
-    %   (11) pU                : Degree of the Polynomial B-Spline Basis
-    %                            for the velocity
-    %   (12) pP                : Degree of the Polynomial B-Spline Basis
-    %                            for the pressure
-    %   (13) kU                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the velocity
-    %   (14) kP                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the pressure
-    %   (15) domainLeftLimit,
-    %        domainRightLimit  : Extremes of the domain
-    %   (16) aLift, bLift      : Coefficients of lifting
-    %   (17) jacIGA            : Jacobian computed at the quadrature nodes
-    %   (18) numbHordQuadNodes : Number of quadrature nodes in the
-    %                            horizontal direction
-    %   (19) nKnots            : Number of knots for the isogeometric mesh
-    %   (20) horWeights        : Horizontal Gauss Legendre integration
-    %                            nodes
-    % 
-    %
-    % The outputs are:
-    %%
-    %   (1) Al    : Final Assembled Block Matrix Using IGA Basis
-    %   (2) bl    : Final rhs vector
-    
-
-    %% IMPORT CLASS
-    
-    import Core.AssemblerStokesHandler
-    import Core.BoundaryConditionHandler
-    import Core.IntegrateHandler
-    import Core.EvaluationHandler
-    import Core.BasisHandler
-    import Core.SolverHandler
-    
-    %% JACOBIAN IMPOSITIONS
-    %---------------------------------------------------------------------%
-    % This values will come from the demo when the code is changed to
-    % incorporate also cases where L(x) is not constant. Note that the name
-    % of the variables were chosen to match the same name in the reference
-    % paper used to create this function.
-    %---------------------------------------------------------------------%
-    
-    D1 = 1;
-    D2 = 0;
-    
-    %% EXCITATION FORCE
-    %---------------------------------------------------------------------%
-    % Computation of the excitation force condiering the boundary
-    % conditions acting on the system. The weights used to perform the
-    % integration are the Gauss-Legendre nodes used in the horizontal
-    % mesh.
-    %---------------------------------------------------------------------%
-
-    objForceInt = IntegrateHandler();
-    
-    objForceInt.funcToIntegrate =   -L.*(aLift);
-                                
-    objForceInt.funcWeight = mb_i.*verGLWeights;
-    
-    forceVec  = integrate(objForceInt);
-    
-    %% MODAL BASIS INTEGRATION
-    %---------------------------------------------------------------------%
-    % Computation of the auxiliary coefficients, presented in the original
-    % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
-    % the parts to be assembled.
-    %---------------------------------------------------------------------%
-    
-    obj_integrate_1 = IntegrateHandler();
-    obj_integrate_2 = IntegrateHandler();
-    
-    obj_integrate_1.funcToIntegrate = ones(size(L));
-    obj_integrate_2.funcToIntegrate = ones(size(L));
-    
-    obj_integrate_1.funcWeight = mb_i  .*mb_yk  .*verGLWeights;
-    obj_integrate_2.funcWeight = mb_i  .*mb_k .*verGLWeights;
-    
-    lambda_1   = integrate(obj_integrate_1);
-    lambda_2   = integrate(obj_integrate_2);
-    
-    r00 = D2*lambda_1;
-    r10 = D1*lambda_2;
-
-
-    %% ISOGEOMETRIC BASIS AND DERIVATIVES
-    %---------------------------------------------------------------------%
-    % Precomputes the value of the shape function and its first derivative
-    % evaluated in the Gauss points. Note that the shape functions
-    % mentioned here are the functions named by in the reference
-    % papers.
-    %---------------------------------------------------------------------%
-    
-    %Isogeometric basis for the velocity
-    objBasisIGA = BasisHandler();
-    
-    objBasisIGA.degreePolySplineBasis = pU;
-    objBasisIGA.continuityParameter   = kU;
-    objBasisIGA.numbElements          = nknots;
-    objBasisIGA.numbQuadPointPerElem  = numbHorQuadNodes;
-    objBasisIGA.leftBoundDomainX      = domainLeftLimit;
-    objBasisIGA.rightBoundDomainX     = domainRightLimit;
-    
-    [basisIGAU,derBasisIGAU,controlPtsU] = newIsoGeoBasis(objBasisIGA);
-    
-    %Isogeometric basis for the pressure
-    objBasisIGA.degreePolySplineBasis = pP;
-    objBasisIGA.continuityParameter   = kP;
-    
-    [basisIGAP,~,~] = newIsoGeoBasis(objBasisIGA);
-    %% LOOP OF ASSEMBLING LOCAL ELEMENTS
-    %---------------------------------------------------------------------%
-    % This loop computes the local coefficients (diffusion, advection and
-    % reaction) and the local force components necessary to assemble the
-    % global matrices. 
-    %---------------------------------------------------------------------%
-    
-    % Vector Initialization
-    
-    globalForce  = zeros(numbControlPtsP,1);
-    row   = zeros(1,numbControlPtsU*numbControlPtsP);
-    col   = zeros(1,numbControlPtsU*numbControlPtsP);
-    icount = 0;
-    
-    for iel = 1:nknots
-        
-        dl = horStep/2;
-        
-        % MEMORY ALLOCATION FOR BILINEAR COEFFICIENTS
-        
-        forceElem  = zeros(pP+1,1);
-        
-        deltaElem1 = zeros(pP+1,pU+1);
-        deltaElem2 = zeros(pP+1,pU+1);
-        
-        % INTEGRAL OVER THE SUPPORTING FIBER
-        %-----------------------------------------------------------------%
-        % We compute the coefficients referring to the integrals along the
-        % supporting fiber.
-        %-----------------------------------------------------------------%
-        
-        for igauss = 1:numbHorQuadNodes
-
-            % SHAPE FUNCTIONS
-            %-------------------------------------------------------------%
-            % Compute the shape functions and their derivatives with
-            % respect to the parametric variable, evaluated over the
-            % Gauss-Legendre integration points.
-            %-------------------------------------------------------------%
-
-            shapeU  = basisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            dshapeU = derBasisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            cpiU    = controlPtsU((kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            
-            shapeP  = basisIGAP((iel-1) * numbHorQuadNodes + igauss,(kP-1) * (iel-1) + iel + pP:-1:(kP-1) * (iel-1) + iel);
-            
-            
-            % JACOBIAN EVALUATED AT THE GAUSS POINT
-            
-            J      = dshapeU*cpiU';
-
-            % SHAPE FUNCTION DERIVATIVE WITH RESPECT TO THE PHYSICAL DOMAIN
-
-            dshapeU = dshapeU/(J*jacIGA((iel-1)*numbHorQuadNodes+igauss));
-
-            % INTEGRATION WEIGHTS IN THE PHYSICAL DOMAIN
-
-            gwt = horWeights(igauss)*(J*jacIGA((iel-1)*numbHorQuadNodes+igauss))*dl;
-
-            % LOCAL RHS VECTOR
-            %-------------------------------------------------------------%
-            % The current code uses 'numbHorQuadNodes' instead of
-            % 'numbVerQuadNodes' in the next 5 lines of code. Check if
-            % the solution is consistent.
-            %-------------------------------------------------------------%
-
-            forceElem       = forceElem  + forceVec((iel-1)*numbHorQuadNodes+igauss)*gwt;    % Force
-            
-            % LOCAL COMPONENTS OF THE STIFFNESS MATRIX
-            
-            deltaElem1 = deltaElem1 + r00((iel-1)*numbHorQuadNodes+igauss) * (shapeP' * shapeU) * gwt;
-            deltaElem2 = deltaElem2 + r10((iel-1)*numbHorQuadNodes+igauss) * (shapeP'* dshapeU) * gwt;
-        end
-
-        % LOOP OF ASSEMBLING GLOBAL ELEMENTS
-        %-----------------------------------------------------------------%
-        % The coeeficients computed in the previous loops are assigned to
-        % the correct position in the global matrix to assemble the global
-        % stiffeness and the gloabl rhs matrix.
-        %-----------------------------------------------------------------%
-
-        for a = 1:pP+1
-            
-            i = (kP-1)*(iel-1) + iel + pP - (a - 1);
-            globalForce(i) = globalForce(i) + forceElem(a);
-
-            for b = 1:pU+1
-
-                j = (kU-1)*(iel-1) + iel + pU - (b - 1);
-                icount = icount + 1;
-
-                row(icount)   = i;
-                col(icount)   = j;
-
-                deltaLocal1(icount) = deltaElem1(a,b);
-                deltaLocal2(icount) = deltaElem2(a,b);                    
-            end
-
-        end
-    end
-
-    row = row(1:icount);
-    col = col(1:icount);
-    
-    %% ASSEMBLE OF STIFFNESS MATRIX AND RHS VECTOR
-    
-    Delta1 = sparse(row,col,deltaLocal1,numbControlPtsP,numbControlPtsU);
-    Delta2 = sparse(row,col,deltaLocal2,numbControlPtsP,numbControlPtsU);
-    
-    Al   = Delta1 + Delta2;
-    bl   = globalForce;
-end 
-
-%% Method 'assemblerIGA_QY'
-            
-function [Al,bl,aLift,bLift] = assemblerIGA_QY(~,~,numbControlPtsP,numbControlPtsU, ...
-                                verGLWeights,mb_i,mb_k,mb_yk, ...
-                                L, ...
-                                horStep,pP,kP,pU,kU, ...
-                                domainLeftLimit,domainRightLimit, ...
-                                ~,aLift,bLift,jacIGA,...
-                                numbHorQuadNodes,~,...
-                                nknots,horWeights)
-
-    %%
-    % assemblerIGA_QY   - This function computes the assembled matrices
-    %                  relative to the variational problem considering 
-    %                  IGA modal basis.
-    %
-        % The inputs are:
-    %%
-    %   (1)  imb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (2)  kmb               : Coefficients Used in the Assembling Operation
-    %                            Loop
-    %   (3)  numbControlPts    : Size of the Functional Basis. Equal to the 
-    %                            Dimention of the Spline Basis (Number of
-    %                            Control Points)
-    %   (4)  verGLWeights      : Vector Containing the Weights of the Quadrature 
-    %                            Nodes in the Whole Mesh 
-    %   (5)  mb_i              : Modal Basis referring for coeff. (imb,kmb)
-    %                            for pressure
-    %   (6)  mb_k              : Modal Basis in the Y Direction for coeff. (imb,kmb)
-    %                            for velocity
-    %   (7)  mb_yk             : Modal Basis referring to coeff. (imb,kmb)
-    %                            for velocity
-    %   (8) L                  : Thickness of the Channel Used in the Example
-    %   (9) Computed           : Structure containing the coefficiets mu  and the force exciting the system 
-    %   (10) horStep           : Step of the Finite Element Mesh
-    %   (11) pU                : Degree of the Polynomial B-Spline Basis
-    %                            for the velocity
-    %   (12) pP                : Degree of the Polynomial B-Spline Basis
-    %                            for the pressure
-    %   (13) kU                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the velocity
-    %   (14) kP                : Degree of Continuity of the Basis
-    %                            'C^(p-k)' for the pressure
-    %   (15) domainLeftLimit,
-    %        domainRightLimit  : Extremes of the domain
-    %   (16) aLift, bLift      : Coefficients of lifting
-    %   (17) jacIGA            : Jacobian computed at the quadrature nodes
-    %   (18) numbHordQuadNodes : Number of quadrature nodes in the
-    %                            horizontal direction
-    %   (19) nKnots            : Number of knots for the isogeometric mesh
-    %   (20) horWeights        : Horizontal Gauss Legendre integration
-    %                            nodes
-    % 
-    %
-    % The outputs are:
-    %%
-    %   (1) Al    : Final Assembled Block Matrix Using IGA Basis
-    %   (2) bl    : Final rhs vector
-
-    %% IMPORT CLASS
-    
-    import Core.AssemblerStokesHandler
-    import Core.BoundaryConditionHandler
-    import Core.IntegrateHandler
-    import Core.EvaluationHandler
-    import Core.BasisHandler
-    import Core.SolverHandler
-    
-    %% JACOBIAN IMPOSITIONS
-    %---------------------------------------------------------------------%
-    % This values will come from the demo when the code is changed to
-    % incorporate also cases where L(x) is not constant. Note that the name
-    % of the variables were chosen to match the same name in the reference
-    % paper used to create this function.
-    %---------------------------------------------------------------------%
-    
-    D1 = 0;
-    D2 = 1;
-    
-    %% EXCITATION FORCE
-    %---------------------------------------------------------------------%
-    % Computation of the excitation force condiering the boundary
-    % conditions acting on the system. The weights used to perform the
-    % integration are the Gauss-Legendre nodes used in the horizontal
-    % mesh.
-    %---------------------------------------------------------------------%
-
-    objForceInt = IntegrateHandler();
-    
-    objForceInt.funcToIntegrate =   -L.*(aLift);
-                                
-    objForceInt.funcWeight = mb_i.*verGLWeights;
-    
-    forceVec  = integrate(objForceInt);
-
-    
-    %% MODAL BASIS INTEGRATION
-    %---------------------------------------------------------------------%
-    % Computation of the auxiliary coefficients, presented in the original
-    % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
-    % the parts to be assembled.
-    %---------------------------------------------------------------------%
-    
-    obj_integrate_1 = IntegrateHandler();
-    obj_integrate_2 = IntegrateHandler();
-    
-    obj_integrate_1.funcToIntegrate = ones(size(L));
-    obj_integrate_2.funcToIntegrate = ones(size(L));
-    
-    obj_integrate_1.funcWeight = mb_i  .*mb_yk  .*verGLWeights;
-    obj_integrate_2.funcWeight = mb_i  .*mb_k .*verGLWeights;
-    
-    lambda_1   = integrate(obj_integrate_1);
-    lambda_2   = integrate(obj_integrate_2);
-    
-    r00 = D2*lambda_1;
-    r10 = D1*lambda_2;
-
-
-    %% ISOGEOMETRIC BASIS AND DERIVATIVES
-    %---------------------------------------------------------------------%
-    % Precomputes the value of the shape function and its first derivative
-    % evaluated in the Gauss points. Note that the shape functions
-    % mentioned here are the functions named by in the reference
-    % papers.
-    %---------------------------------------------------------------------%
-    
-    %Isogeometric basis for the velocity
-    objBasisIGA = BasisHandler();
-    
-    objBasisIGA.degreePolySplineBasis = pU;
-    objBasisIGA.continuityParameter   = kU;
-    objBasisIGA.numbElements          = nknots;
-    objBasisIGA.numbQuadPointPerElem  = numbHorQuadNodes;
-    objBasisIGA.leftBoundDomainX      = domainLeftLimit;
-    objBasisIGA.rightBoundDomainX     = domainRightLimit;
-    
-    [basisIGAU,derBasisIGAU,controlPtsU] = newIsoGeoBasis(objBasisIGA);
-    %Isogeometric basis for the pressure
-    objBasisIGA.degreePolySplineBasis = pP;
-    objBasisIGA.continuityParameter   = kP;
-    
-    [basisIGAP,~,~] = newIsoGeoBasis(objBasisIGA);
-
-    %% LOOP OF ASSEMBLING LOCAL ELEMENTS
-    %---------------------------------------------------------------------%
-    % This loop computes the local coefficients (diffusion, advection and
-    % reaction) and the local force components necessary to assemble the
-    % global matrices. 
-    %---------------------------------------------------------------------%
-    
-    % Vector Initialization
-    
-    globalForce  = zeros(numbControlPtsP,1);
-    row   = zeros(1,numbControlPtsU*numbControlPtsP);
-    col   = zeros(1,numbControlPtsU*numbControlPtsP);
-    icount = 0;
-    
-    for iel = 1:nknots
-        
-        dl = horStep/2;
-        
-        % MEMORY ALLOCATION FOR BILINEAR COEFFICIENTS
-        
-        forceElem  = zeros(pP+1,1);
-        
-        deltaElem1 = zeros(pP+1,pU+1);
-        deltaElem2 = zeros(pP+1,pU+1);
-        
-        % INTEGRAL OVER THE SUPPORTING FIBER
-        %-----------------------------------------------------------------%
-        % We compute the coefficients referring to the integrals along the
-        % supporting fiber.
-        %-----------------------------------------------------------------%
-        
-        for igauss = 1:numbHorQuadNodes
-
-            % SHAPE FUNCTIONS
-            %-------------------------------------------------------------%
-            % Compute the shape functions and their derivatives with
-            % respect to the parametric variable, evaluated over the
-            % Gauss-Legendre integration points.
-            %-------------------------------------------------------------%
-
-            shapeU  = basisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            dshapeU = derBasisIGAU((iel-1) * numbHorQuadNodes + igauss,(kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            cpiU    = controlPtsU((kU-1) * (iel-1) + iel + pU:-1:(kU-1) * (iel-1) + iel);
-            
-            shapeP  = basisIGAP((iel-1) * numbHorQuadNodes + igauss,(kP-1) * (iel-1) + iel + pP:-1:(kP-1) * (iel-1) + iel);
-
-            % JACOBIAN EVALUATED AT THE GAUSS POINT
-            
-            J      = dshapeU*cpiU';
-
-            % SHAPE FUNCTION DERIVATIVE WITH RESPECT TO THE PHYSICAL DOMAIN
-
-            dshapeU = dshapeU/(J*jacIGA((iel-1)*numbHorQuadNodes+igauss));
-
-            % INTEGRATION WEIGHTS IN THE PHYSICAL DOMAIN
-
-            gwt = horWeights(igauss)*(J*jacIGA((iel-1)*numbHorQuadNodes+igauss))*dl;
-
-            % LOCAL RHS VECTOR
-            %-------------------------------------------------------------%
-            % The current code uses 'numbHorQuadNodes' instead of
-            % 'numbVerQuadNodes' in the next 5 lines of code. Check if
-            % the solution is consistent.
-            %-------------------------------------------------------------%
-
-            forceElem       = forceElem  + forceVec((iel-1)*numbHorQuadNodes+igauss)*gwt;    % Force
-            
-            % LOCAL COMPONENTS OF THE STIFFNESS MATRIX
-            
-            deltaElem1 = deltaElem1 + r00((iel-1)*numbHorQuadNodes+igauss) * (shapeP' * shapeU) * gwt;
-            deltaElem2 = deltaElem2 + r10((iel-1)*numbHorQuadNodes+igauss) * (shapeP'* dshapeU) * gwt;
-        end
-
-        % LOOP OF ASSEMBLING GLOBAL ELEMENTS
-        %-----------------------------------------------------------------%
-        % The coeeficients computed in the previous loops are assigned to
-        % the correct position in the global matrix to assemble the global
-        % stiffeness and the gloabl rhs matrix.
-        %-----------------------------------------------------------------%
-
-        for a = 1:pP+1
-            
-            i = (kP-1)*(iel-1) + iel + pP - (a - 1);
-            
-            globalForce(i) = globalForce(i) + forceElem(a);
-
-            for b = 1:pU+1
-
-                j = (kU-1)*(iel-1) + iel + pU - (b - 1);
-                icount = icount + 1;
-
-                row(icount)   = i;
-                col(icount)   = j;
-
-                deltaLocal1(icount) = deltaElem1(a,b);
-                deltaLocal2(icount) = deltaElem2(a,b);                    
-            end
-            
-        end
-    end
-
-    row = row(1:icount);
-    col = col(1:icount);
-    
-    %% ASSEMBLE OF STIFFNESS MATRIX AND RHS VECTOR
-    
-    Delta1 = sparse(row,col,deltaLocal1,numbControlPtsP,numbControlPtsU);
-    Delta2 = sparse(row,col,deltaLocal2,numbControlPtsP,numbControlPtsU);
-    
-    Al   = Delta1 + Delta2;
-    bl   = globalForce;
-    
-end 
