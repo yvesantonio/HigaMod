@@ -179,27 +179,100 @@
     % Number of control points
     
     igaBasisStruct.numbControlPtsUy = numbElementsUy * continuityParameterUy + degreeSplineBasisUy + 1 - continuityParameterUy;
+    
+    %% Time simulation parameters
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INITIAL SIMULATION TIME %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialTime = 0.0;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%
+    % FINAL SIMULATION TIME %
+    %%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.finalTime = 1e-1;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % TOTAL NUMBER OF TIME STEPS %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.numbSteps = 20;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%
+    % SIMULATION TIME STEP %
+    %%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.timeStep = (finalTime - initialTime)/numbSteps;
+    
+    %%%%%%%%%%%%%%%
+    % TIME DOMAIN %
+    %%%%%%%%%%%%%%%
+    
+    timeStruct.timeDomain = initialTime:timeStep:finalTime;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INITIAL STATE OF THE PRESSURE %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialStateP = zeros(igaBasisStruct.numbControlPtsP * discStruct.numbModesP,1);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INTIAL STATE OF THE VELOCITY FIELD ALONG X %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialStateUx = zeros(igaBasisStruct.numbControlPtsUx * discStruct.numbModesUx,1);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INTIAL STATE OF THE VELOCITY FIELD ALONG Y %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialStateUy = zeros(igaBasisStruct.numbControlPtsUy * discStruct.numbModesUy,1);
 
     %% Boundary conditions
     
     boundCondStruct = [];
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR THE PRESSURE %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Note: The current version of the code works only for constant
-    % boundary conditions in inflow and outflow;
+    boundCondStruct.bc_up_tag_P    = 'dir';
+    boundCondStruct.bc_down_tag_P  = 'dir';
+    boundCondStruct.bc_inf_tag_P   = 'dir';
+    boundCondStruct.bc_out_tag_P   = 'neu';
+    boundCondStruct.bc_up_data_P   = 0;
+    boundCondStruct.bc_down_data_P = 0;
+    boundCondStruct.bc_inf_data_P  = @(rho,t) 0 + 1 * rho + 1 * -rho.^2 + 0*t;
+    boundCondStruct.bc_out_data_P  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
     
-    boundCondStruct.BC_UP_TAG     = 'dir';
-    boundCondStruct.BC_DOWN_TAG   = 'dir';
-    boundCondStruct.BC_INF_TAG   = 'dir';
-    boundCondStruct.BC_OUT_TAG  = 'neu';
-    boundCondStruct.BC_UP_DATA    = 0;
-    boundCondStruct.BC_DOWN_DATA  = 0;
-    boundCondStruct.BC_INF_DATA  = @(rho) 0 + 1 * rho + 1 * -rho.^2;
-    boundCondStruct.BC_OUT_DATA = @(rho) 0 + 0 * rho + 0 * rho.^2;
-
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Ux %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    boundCondStruct.bc_up_tag_Ux    = 'dir';
+    boundCondStruct.bc_down_tag_Ux  = 'dir';
+    boundCondStruct.bc_inf_tag_Ux   = 'dir';
+    boundCondStruct.bc_out_tag_Ux   = 'neu';
+    boundCondStruct.bc_up_data_Ux   = 0;
+    boundCondStruct.bc_down_data_Ux = 0;
+    boundCondStruct.bc_inf_data_Ux  = @(rho,t) 0 + 1 * rho + 1 * -rho.^2 + 0*t;
+    boundCondStruct.bc_out_data_Ux  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Uy %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    boundCondStruct.bc_up_tag_Uy    = 'dir';
+    boundCondStruct.bc_down_tag_Uy  = 'dir';
+    boundCondStruct.bc_inf_tag_Uy   = 'dir';
+    boundCondStruct.bc_out_tag_Uy   = 'neu';
+    boundCondStruct.bc_up_data_Uy   = 0;
+    boundCondStruct.bc_down_data_Uy = 0;
+    boundCondStruct.bc_inf_data_Uy  = @(rho,t) 0 + 1 * rho + 1 * -rho.^2 + 0*t;
+    boundCondStruct.bc_out_data_Uy  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
+    
     %% Physical domain
     %---------------------------------------------------------------------%
     % Note: Complete domain is defined using the nurbs functions, not only
@@ -551,72 +624,66 @@
     % class.
     %---------------------------------------------------------------------%
     
-    % Horizontal direction
+    quadProperties = [];
     
-    numbHorNodes = 16;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Pressure quadrature nodes along X direction %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Vertical direction
+    quadProperties.numbHorNodesP = 16;
     
-    numbVerNodes = 32;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Pressure quadrature nodes along Y direction %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    precisionLevel = 3;
+    quadProperties.numbVerNodesP = precisionLevel * discStruct.numbModesP;
 
-    %% Coefficients of the bilinear form
-    %-------------------------------------------------------------------------%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Velocity field projected X quadrature nodes along X direction %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    quadProperties.numbHorNodesP = 16;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Velocity field projected X quadrature nodes along Y direction %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    precisionLevel = 3;
+    quadProperties.numbVerNodesP = precisionLevel * discStruct.numbModesUx;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Velocity field projected Y quadrature nodes along X direction %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    quadProperties.numbHorNodesP = 16;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Velocity field projected Y quadrature nodes along Y direction %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    precisionLevel = 3;
+    quadProperties.numbVerNodesP = precisionLevel * discStruct.numbModesUy;
+    
+    %% Problem parameters
 
-    switch caso
-    case {1,2,3,4,5,6}
-        
-        nu    = @(x,y) (  1.00 + 0*x + 0*y ); % Kynetic viscosity
-        
-    case {7,8} 
-        
-        nu    = @(x,y) (  1.00 + 0*x + 0*y ); % Kynetic viscosity
-        
-    case {9,10}
-            
-        nu    = @(x,y) (  1.00 + 0*x + 0*y ); % Kynetic viscosity
-        
-    end
-
-    Coeff_forma = struct('nu',nu,'coeffrobin',chi);
-
-    %% Exact solution
-
+    probParameters = [];
+    
     switch caso
     case {1,2,3,4,5,6,7,8,9,10}
-        true_sol  = @(x,y) (0.2*x.^5-0.5*(maxHor^3)*x.^2).*sin(2*pi*((y/maxVer)+0.5));
-        true_solx = @(x,y) (x.^4-(maxHor^3)*x).*sin(2*pi*((y/maxVer)+0.5));
-        true_soly = @(x,y) (0.2*x.^5-0.5*(maxHor^3)*x.^2)*2*pi.*cos(2*pi*((y/maxVer)+0.5));
-    end
-
-    %% Force term
-    %-------------------------------------------------------------------------%
-
-    %-------------------------------------------------------------------------%
-    % NOTE:
-    % This Dirichlet profile must be compatible witht the boundary conditions
-    % of the problem.
-    %-------------------------------------------------------------------------%
-
-    switch caso
-    case {1,2,4,5,6,7,8,9,10}
         
-        force = @(x,y) 1 + 0 * x + 0 * y;
-    
-    case {3}
+        % Fluid kinetic viscosity
         
-        force = @(x,y) 1 + 0 * x + 0 * y;
+        probParameters.nu    = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
+        
+        % Forcing term acting on the fluid
+
+        probParameters.force = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
         
     end
-
-    Dati = struct('igaBoundCond',boundCondStruct,'force',force);
-
-    %-------------------------------------------------------------------------%
-    % Note;
-    % The following loop varies in order to change the coefficients of the
-    % interface and to try different configurations at the same time.
-    %-------------------------------------------------------------------------%
     
     %% Solver
+    
     % Definition of the Object of the EvaluationHandler Class
 
     import Core.SolverHandler
@@ -625,26 +692,12 @@
 
     % Properties Assignment
 
-    obj_solverIGA.domainLimit_inX = domainLimit_inX;
-    obj_solverIGA.domainLimit_inY = domainLimit_inY;
-    obj_solverIGA.dimModalBasis = numbModes;
-    obj_solverIGA.stepMeshX = stepHorMesh;
-    obj_solverIGA.label_upBoundDomain = bc_up;
-    obj_solverIGA.label_downBoundDomain = bc_down;
-    obj_solverIGA.data_upBoundDomain = dato_up;
-    obj_solverIGA.data_downBoundDomain = dato_down;
-    obj_solverIGA.dirCondFuncStruct = Dati;
-    obj_solverIGA.coefficientForm = Coeff_forma;
+    obj_solverIGA.discStruct = discStruct;
+    obj_solverIGA.boundCondStruct = boundCondStruct;
+    obj_solverIGA.probParameters = probParameters;
+    obj_solverIGA.timeStruct = timeStruct;
     obj_solverIGA.geometricInfo = geometricInfo;
-    obj_solverIGA.dataExportOption = true;
-    obj_solverIGA.simulationCase = caso;
-    obj_solverIGA.exactSolution = true_sol;
-    obj_solverIGA.exactSolution_dX = true_solx;
-    obj_solverIGA.exactSolution_dY = true_soly;
-    obj_solverIGA.degreePolySplineBasis = degreeSplineBasis;
-    obj_solverIGA.continuityParameter = continuityParameter;
-    obj_solverIGA.numbHorQuadNodes = numbHorNodes;
-    obj_solverIGA.numbVerQuadNodes = numbVerNodes;
+    obj_solverIGA.quadProperties = quadProperties;
 
     tic;
     [u2,a,b,L2_2,H1_2] = solverIGAScatter(obj_solverIGA);
