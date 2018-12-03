@@ -838,15 +838,35 @@ classdef AssemblerStokesHandler
 
                 Computed = struct('nu_c',evalNu,'force_c',evalForce,'y',verEvalNodesP);            
 
-                %% AXX ASSEMBLING LOOP
+                %% Ax ASSEMBLING LOOP
+                
+                assemblerStruct = [];
 
                 for kmb = 1:obj.discStruct.numbModesUx
                     for jmb = 1:obj.discStruct.numbModesUx
-
-                        [Amb,bmb] = assemblerIGAScatterAxx( kmb, jmb, ...
-                                                augVerWeights,modalBasis(:,kmb),modalBasisDer(:,kmb),modalBasis(:,jmb),...
-                                                modalBasisDer(:,jmb),geoData,Computed,lifting,aLift,bLift,msh,space,jacFunc,...
-                                                spaceFuncP,obj.dirCondFuncStruct.igaBoundCond);
+                        
+                        assemblerStruct.index1     = kmb;
+                        assemblerStruct.index2     = jmb;
+                        assemblerStruct.wgh1       = augVerWeightsUx;
+                        assemblerStruct.wgh2       = augVerWeightsUx;
+                        assemblerStruct.mb1        = modalBasisUx;
+                        assemblerStruct.mb2        = modalBasisUx;
+                        assemblerStruct.dmb1       = modalBasisDerUx;
+                        assemblerStruct.dmb2       = modalBasisDerUx;
+                        assemblerStruct.param      = Computed;
+                        assemblerStruct.geodata    = geoData;
+                        assemblerStruct.jacFunc    = jacFunc;
+                        assemblerStruct.msh1       = mshUx;
+                        assemblerStruct.msh2       = mshUx;
+                        assemblerStruct.space1     = spaceUx;
+                        assemblerStruct.space2     = spaceUx;
+                        assemblerStruct.spaceFunc1 = spaceFuncUx;
+                        assemblerStruct.spaceFunc1 = spaceFuncUx;
+                        assemblerStruct.aLift      = aLift;
+                        assemblerStruct.bLift      = bLift;
+                        assemblerStruct.lifting    = lifting;
+                        
+                        [Amb,bmb] = assemblerIGAScatterAx(assemblerStruct);
 
                         % Assignment of the Block Matrix Just Assembled
 
@@ -902,10 +922,9 @@ end
 
 %% ASSEMBLER STOKES HANDLER - ASSEMBLING METHODS
 
-%% Method 'assemblerIGAScatter'
+%% Method 'assemblerIGAScatterAx'
             
-function [Al,bl,aLift,bLift] = assemblerIGAScatter(imb,kmb,augVerWeights,mb_i,mb_yi,mb_k,mb_yk,geoData,...
-                                Computed,lifting,aLift,bLift,msh,space,jacFunc,spaceFunc,BoundCond)
+function [Al,bl,aLift,bLift] = assemblerIGAScatterAx(assemblerStruct)
 
     %% IMPORT CLASS
     
@@ -924,14 +943,9 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter(imb,kmb,augVerWeights,mb_i,mb
     % mesh.
     %---------------------------------------------------------------------%
     
-    funcToIntegrale = (Computed.force_c - ...
-                      (aLift).* Computed.beta2_c - ...
-                      Computed.sigma_c .* lifting) .* ...
-                      jacFunc.evalDetJac;
-                                
-    funcWeight = mb_i .* augVerWeights;
-    
-    forceVec  = sum(funcToIntegrale .* funcWeight , 1);
+    funcToIntegrale = (assemblerStruct.param.force_c) .* assemblerStruct.jacFunc.evalDetJac;
+    funcWeight      = assemblerStruct.mb2 .* assemblerStruct.wgh2;
+    forceVec        = sum(funcToIntegrale .* funcWeight , 1);
     
     %% MODAL BASIS INTEGRATION
     %---------------------------------------------------------------------%
@@ -940,14 +954,26 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter(imb,kmb,augVerWeights,mb_i,mb
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
-    alpha1      = jacFunc.Phi1_dx.^2 + jacFunc.Phi1_dy.^2;
-    alpha2      = jacFunc.Phi2_dx.^2 + jacFunc.Phi2_dy.^2;
-    varbeta1    = Computed.beta1_c .* jacFunc.Phi1_dx + ...
-                  Computed.beta2_c .* jacFunc.Phi1_dy;
-    varbeta2    = Computed.beta1_c .* jacFunc.Phi2_dx + ...
-                  Computed.beta2_c .* jacFunc.Phi2_dy;
-    delta       = jacFunc.Phi1_dx .* jacFunc.Phi2_dx + ...
-                  jacFunc.Phi1_dy .* jacFunc.Phi2_dy;
+    % Computation of map projections and modulus
+    
+    modGradPhi1         = jacFunc.Phi1_dx.^2 + jacFunc.Phi1_dy.^2;
+    modGradPhi2         = jacFunc.Phi2_dx.^2 + jacFunc.Phi2_dy.^2;
+    modGradPhi1_Proj1   = jacFunc.Phi1_dx.^2;
+    modGradPhi1_Proj2   = jacFunc.Phi1_dy.^2;
+    modGradPhi2_Proj1   = jacFunc.Phi2_dx.^2;
+    modGradPhi2_Proj2   = jacFunc.Phi2_dy.^2;
+    
+    GPhi1DotGPhi2       = jacFunc.Phi1_dx .* jacFunc.Phi2_dx + ...
+                          jacFunc.Phi1_dy .* jacFunc.Phi2_dy;
+    GPhi1DotGPhi2_Proj1 = jacFunc.Phi1_dx .* jacFunc.Phi2_dx;
+    GPhi1DotGPhi2_Proj2 = jacFunc.Phi1_dy .* jacFunc.Phi2_dy;
+    
+    GPhi1Proj1DotGPhi1Proj2 = jacFunc.Phi1_dx .* jacFunc.Phi1_dy;
+    GPhi2Proj1DotGPhi1Proj2 = jacFunc.Phi2_dx .* jacFunc.Phi1_dy;
+    GPhi1Proj1DotGPhi2Proj2 = jacFunc.Phi1_dx .* jacFunc.Phi2_dy;
+    GPhi2Proj1DotGPhi2Proj2 = jacFunc.Phi2_dx .* jacFunc.Phi2_dy;
+    
+    % Computation of coefficients of the modal expansion
     
     funcToIntegrate_1 = jacFunc.evalDetJac .* Computed.mu_c .* alpha1;
     funcToIntegrate_2 = jacFunc.evalDetJac .* Computed.mu_c .* delta;
@@ -956,6 +982,8 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter(imb,kmb,augVerWeights,mb_i,mb
     funcToIntegrate_5 = jacFunc.evalDetJac .* Computed.mu_c .* alpha2;
     funcToIntegrate_6 = jacFunc.evalDetJac .* varbeta2;
     funcToIntegrate_7 = jacFunc.evalDetJac .* Computed.sigma_c;
+    
+    % Computation of quadrature weights for the modal expansion
     
     funcWeight_1 = mb_k  .* mb_i  .* augVerWeights;
     funcWeight_2 = mb_k  .* mb_yi .* augVerWeights;
