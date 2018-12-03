@@ -80,21 +80,19 @@
     
     discStruct = [];
     
+    % Step used to generate the knot vector
+    
+    discStruct.stepHorMesh     = 0.05;
+    
+    % Number of knots/elements in the isogeometric space
+    
+    discStruct.numbElements    = 1/stepHorMesh;
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE PRESSURE %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Number of transverse modes
-    
     discStruct.numbModesP       = 5;
-    
-    % Step used to generate the knot vector
-    
-    discStruct.stepHorMeshP     = 0.05;
-    
-    % Number of knots/elements in the isogeometric space
-    
-    discStruct.numbElementsP    = 1/stepHorMesh;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE X COMPONENT OF THE VELOCITY %
@@ -104,14 +102,6 @@
     
     discStruct.numbModesUx       = 5;
     
-    % Step used to generate the knot vector
-    
-    discStruct.stepHorMeshUx     = 0.05;
-    
-    % Number of knots/elements in the isogeometric space
-    
-    discStruct.numbElementsUx    = 1/stepHorMesh;
-    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE Y COMPONENT OF THE VELOCITY %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -119,14 +109,6 @@
     % Number of transverse modes
     
     discStruct.numbModesUy       = 5;
-    
-    % Step used to generate the knot vector
-    
-    discStruct.stepHorMeshUy     = 0.05;
-    
-    % Number of knots/elements in the isogeometric space
-    
-    discStruct.numbElementsUy    = 1/stepHorMesh;
     
     %% Isogeometric basis properties
     
@@ -146,7 +128,7 @@
     
     % Number of control points
     
-    igaBasisStruct.numbControlPtsP = numbElementsP * continuityParameterP + degreeSplineBasisP + 1 - continuityParameterP;
+    igaBasisStruct.numbControlPtsP = numbElements * continuityParameterP + degreeSplineBasisP + 1 - continuityParameterP;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % IGA BASIS FOR THE X COMPONENT OF THE VELOCITY %
@@ -678,7 +660,8 @@
         
         % Forcing term acting on the fluid
 
-        probParameters.force = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
+        probParameters.force_x = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
+        probParameters.force_y = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
         
         % Robin coefficient for the modal basis
         
