@@ -680,6 +680,10 @@
 
         probParameters.force = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
         
+        % Robin coefficient for the modal basis
+        
+        probParameters.coeffrobin = 1;
+        
     end
     
     %% Solver
@@ -688,7 +692,7 @@
 
     import Core.SolverHandler
 
-    obj_solverIGA = StokesSolverHandler();
+    obj_solverIGA = SolverHandler();
 
     % Properties Assignment
 
@@ -700,7 +704,7 @@
     obj_solverIGA.quadProperties = quadProperties;
 
     tic;
-    [u2,a,b,L2_2,H1_2] = solverIGAScatter(obj_solverIGA);
+    [u2,a,b,L2_2,H1_2] = solverIGAScatterStokes(obj_solverIGA);
     toc;
     
     disp('Maximum L2 Norm Error with Matlab');

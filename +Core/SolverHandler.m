@@ -168,6 +168,18 @@ classdef SolverHandler
                             % refenrece solution
                             
             bcStruct
+            
+            discStruct      % Structure containing the discretization parameters
+            
+            boundCondStruct % Structure containing the isogeometric basis
+                            % paramters
+                            
+            probParameters  % Structure containing the problem parameters
+            
+            timeStruct      % Structure containing the time domain and time
+                            % simulation parameters
+                            
+            quadProperties  % Structure containing the quadrature parameters
     end
     
     methods (Access = public)
@@ -5707,6 +5719,182 @@ classdef SolverHandler
                 close(outputVideo)
                 
                 disp('FINISHED THE CREATION OF SOLUTION VIDEO');
+
+            end % End function
+            
+            %% Method 'solverIGAScatterStokes'
+            
+            function [u,liftCoeffA,liftCoeffB,errorNormL2,errorNormH1] = solverIGAScatterStokes(obj)
+
+                %%
+                % solverIGA     - This function solves an elliptic problem definied
+                %                 with a dominant dynamic in the X direction. We 
+                %                 we assume that there exists Dirichlet boundary 
+                %                 conditions at the INFLOW and Neumann boundary
+                %                 conditions at the OUTFLOW. The solver receives in
+                %                 the input all of the system data and returns the
+                %                 numerical solution.
+                %                 The solution of the problem is approximated using
+                %                 an algorithm of type Domain Decomposition
+                %                 (Robin-Robin). In each domain the problem is
+                %                 solved using a Hi-Mod method with the
+                %                 implementation of the specific assigned basis.
+                %
+                % The inputs are:
+                %%
+                %   (1)  domainLimit_inX        : Vector Containing the Extremes of the Domains
+                %                                 in the X Direction
+                %   (2)  domainLimit_inY        : Vector Containing the Extremes of the Domains
+                %                                 in the Y Direction
+                %   (3)  dimModalBasis          : Dimension of the Modal Basis in Each Domain
+                %   (4)  stepMeshX              : Vector Containing the Step of the Finite
+                %                                 Element Mesh
+                %   (5)  label_upBoundDomain    : Contains the Label Identifying the Nature of
+                %                                 the Boundary Conditions on the Upper Limit of
+                %                                 he Domain
+                %   (6)  label_downBoundDomain  : Contains the Label Identifying the Nature of
+                %                                 the Boundary Conditions on the Lower Limit of
+                %                                 the Domain
+                %   (7)  data_upBoundDomain     : Contains the Values of the Boundary Conditions
+                %                                 on the Upper Limit of the Domain
+                %   (8)  data_downBoundDomain   : Contains the Values of the Boundary Conditions
+                %                                 on the Lower Limit of the Domain
+                %   (9)  coefficientForm        : Data Strusture Containing All the @-Functions
+                %                                 and the Constants Relative to the Bilinear Form
+                %   (10) dirCondFuncStruct      : Data Structure Containing All the @-Functions
+                %                                 for the Dirichlet Conditions at the Inflow and
+                %                                 for the Exciting Force
+                %   (11) geometricInfo          : Data Structure Containing All the
+                %                                 Geometric Information regarding the
+                %                                 Domain. The current version of the code
+                %                                 works only for the specific condition of:
+                %                                 (L = 1, a = 0, psi_x = 0)
+                %   (12) robinCondStruct        : Data Structure Containing the Two Values of the
+                %                                 Coefficients (R, L) for the Robin Condition Used
+                %                                 in the Domain Decomposition
+                %   (13) dataExportOption       : Labels the Kind of Plot Function that Will Be
+                %                                 Used Once the Solution is Compluted
+                %   (14) couplingCond_DD        : Contains the Label Adressing the Coupling Condition
+                %                                 of the Problem
+                %   (15) simulationCase         : Specify What Problem Case is Being Solved
+                %   (16) exactSolution          : Exact Solution for the Differential Problem
+                %   (17) exactSolution_dX       : Exact Solution for the Differential Problem
+                %   (18) exactSolution_dY       : Exact Solution for the Differential Problem
+                %   (19) physicMesh_inX         : Vector Containing the Physical Mesh in the X
+                %                                 Direction
+                %   (20) physicMesh_inY         : Vector Containing the Physical Mesh in the Y
+                %                                 Direction
+                %   (21) jacAtQuadNodes         : Data Sturcture Used to Save the Value of the
+                %                                 Jacobians Computed in the Quadratures Nodes 
+                %   (22) jacAtQuadNodes2        : Data Sturcture Used to Save the Value of the
+                %                                 Jacobians Computed in the Quadratures Nodes 
+                %   (23) degreePolySplineBasis  : Degree of the Polynomial B-Spline Basis
+                %   (24) continuityParameter    : Degree of Continuity of the Basis 'C^(p-k)'
+                %   (25) domainProfile          : Symbolic Function Defining the Profile of the
+                %                                 Simulation Domain
+                %   (26) domainProfileDer       : Symbolic Function Defining the Derivative of
+                %                                 the Profile of the Simulation Domain
+                % 
+                % The outputs are:
+                %%
+                %   (1) u                : Solution of the Elliptic Problem
+                %   (2) liftCoeffA       : Primo Coefficiente di Rilevamento
+                %   (3) liftCoeffB       : Secondo Coefficiente di Rilevamento
+                %   (4) errorNormL2      : Solution Error on the L2 Norm
+                %   (5) errorNormH1      : Solution Error on the H1 Norm
+                
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+
+                %---------------------------------------------------------------------%
+                %                        PROBLEM INITIALIZATION                       %
+                %---------------------------------------------------------------------%
+                % Note:
+                % In the case of Physical Boundary, the Labels of the Boundary 
+                % Conditions are known. At the inflow we have Dirichlet Boundary 
+                % Conditions and at the outflow, Neumann (Homogeneous) Boundary 
+                % Conditions.
+                %---------------------------------------------------------------------%
+
+                %---------------------------------------------------------------------%
+                %               ASSEMBLING OF THE COMPLETE LINEAR SYSTEM              %
+                %---------------------------------------------------------------------%
+
+                %---------------------------------------------------------------------%
+                % Note:
+                % The assembling of the block system is performed by the external
+                % function 'buildSystem'. The assembling can be set differentling
+                % depending on the discretization strategy used to solve the problem.
+                % In the present function we use an Isogeometric (IGA) Approach to
+                % solve the problem.
+                %---------------------------------------------------------------------%
+
+                % Definition of the Object from the AssemblerADRHandler class
+
+                build_IGA = AssemblerStokesHandler();
+
+                % Properties Assignment
+
+                build_IGA.discStruct        = obj.discStruct;   
+                build_IGA.boundCondStruct   = obj.boundCondStruct;
+                build_IGA.probParameters    = obj.probParameters;
+                build_IGA.timeStruct        = obj.timeStruct;
+                build_IGA.geometricInfo     = obj.geometricInfo;
+                build_IGA.quadProperties    = obj.quadProperties;
+                
+                % Call of the 'buildSystemIGA' Method
+
+                [stiffStruct,massStruct,forceStruct] = buildSystemIGAScatter(build_IGA); 
+
+                disp('Finished BUILD SYSTEM IGA');                
+                
+                %-----------------------------------------------------------------%
+                %                  	      PROBLEM SOLUTION                        %
+                %-----------------------------------------------------------------%
+
+                u = A\b;
+                
+                %------------------%
+                % REBUILD SOLUTION %
+                %------------------%
+                
+                buildBC = BoundaryConditionHandler();
+                
+                buildBC.bcStruct = boundStruct;
+                buildBC.uRid = u;
+                
+                [uAug] = buildBoundCond(buildBC);
+                u = uAug;
+                
+                disp('Finished SOLVE SYSTEM');
+
+                %-----------------------------------------------------------------%
+                %                  	       SOLUTION PLOT                          %
+                %-----------------------------------------------------------------%
+
+                [errL2,errH1] = plot_solution_IGA_scatter( ...
+                obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
+                obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
+
+                errorNormH1 = errL2;
+                errorNormL2 = errH1;
+                
+                disp('Finished PLOT OPERATION / ERROR with EXACT SOLUTION')
+            
+%                 [errL2,errH1] = computeErrorIGA_scatter( ...
+%                 obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
+%                 obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
+%              
+%                 disp('Finished ERROR with FREEFEM++ SOLUTION')
+% 
+%                 errorNormH1 = errH1;
+%                 errorNormL2 = errL2;
+
+                disp('Finished Method SOLVER IGA')
 
             end % End function
 

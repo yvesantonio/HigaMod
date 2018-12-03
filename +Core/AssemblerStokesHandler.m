@@ -64,12 +64,6 @@ classdef AssemblerStokesHandler
                       
         jacAtQuadNodes;             % Data Sturcture Used to Save the Value of the
                                     % Jacobians Computed in the Quadratures Nodes 
-                      
-        degreePolySplineBasisU;      % Degree of the Polynomial B-Spline Basis
-        degreePolySplineBasisP;
-        
-        continuityParameterU;        % Degree of Continuity of the Basis 'C^(p-k)'
-        continuityParameterP;
         
         domainProfile;              % Symbolic Function Defining the Profile of the
                                     % Simulation Domain
@@ -108,6 +102,21 @@ classdef AssemblerStokesHandler
         
         label_downBoundDomainUy     % Tag of the boundary condition on the bottom lateral boundary
                                     % for the pressure
+                                    
+        discStruct      % Structure containing the discretization parameters
+        
+        boundCondStruct % Structure containing the boundary condition 
+                        % information
+
+        igaBasisStruct  % Structure containing the isogeometric basis
+                        % paramters
+
+        probParameters  % Structure containing the problem parameters
+
+        timeStruct      % Structure containing the time domain and time
+                        % simulation parameters
+
+        quadProperties  % Structure containing the quadrature parameters
     end
     
     methods (Access = public)
@@ -130,7 +139,7 @@ classdef AssemblerStokesHandler
         
             %% Method 'buildIGAScatter'
             
-            function [AA,bb,modalBasis,liftCoeffA,liftCoeffB,space,refDomain1D,bcStruct] = buildSystemIGAScatter(obj)
+            function [stiffStruct,massStruct,forceStruct] = buildSystemIGAScatter(obj)
                                                          
             %%
             % buildSystemIGA - This function computes the assembled matrices
@@ -218,13 +227,41 @@ classdef AssemblerStokesHandler
             % rule.
             %-------------------------------------------------------------%
 
-            % Horizontal direction
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE QUADRATURE NODES %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            numbHorNodes = obj.numbHorQuadNodes;
+            % Horizontal Direction
+            
+            numbHorNodesP = obj.quadProperties.numbHorNodesP;
             
             % Vertical Direction
             
-            numbVerNodes = obj.numbVerQuadNodes;
+            numbVerNodesP = obj.quadProperties.numbVerNodesP;
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X QUADRATURE NODES %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            % Horizontal Direction
+            
+            numbHorNodesUx = obj.quadProperties.numbHorNodesUx;
+            
+            % Vertical Direction
+            
+            numbVerNodesUx = obj.quadProperties.numbVerNodesUx;
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y QUADRATURE NODES %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            % Horizontal Direction
+            
+            numbHorNodesUy = obj.quadProperties.numbHorNodesUx;
+            
+            % Vertical Direction
+            
+            numbVerNodesUy = obj.quadProperties.numbVerNodesUx;
             
             %% NUMBER OF KNOTS - IDOGEOMETRIC ANALYSIS
             %-------------------------------------------------------------%
@@ -232,7 +269,23 @@ classdef AssemblerStokesHandler
             % isogeometric analysis.
             %-------------------------------------------------------------%
             
-            numbKnots  = round((obj.rightBDomain_inX-obj.leftBDomain_inX)/obj.stepMeshX);
+            %%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE NUMBER KNOTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            numbKnotsP  = obj.discStruct.numbElementsP;
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X NUMBER KNOTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            numbKnotsUx  = obj.discStruct.numbElementsUx;
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y NUMBER KNOTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            numbKnotsUy  = obj.discStruct.numbElementsUy;
             
             %% NUMBER OF CONTROL POINTS - ISOGEOMETRIC ANALYSIS
             %-------------------------------------------------------------%
@@ -243,8 +296,32 @@ classdef AssemblerStokesHandler
             % reference supporting fiber.
             %-------------------------------------------------------------%
             
-            numbControlPts = numbKnots*(obj.degreePolySplineBasis - obj.continuityParameter) + ...
-                             1 + obj.continuityParameter;
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE NUMBER OF CONTROL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            degreePolySplineBasisP  = obj.igaBasisStruct.degreeSplineBasisP;
+            continuityParameterP    = obj.igaBasisStruct.continuityParameterP; 
+            numbControlPtsP         = numbKnotsP*(degreePolySplineBasisP - continuityParameterP) + ...
+                                      1 + continuityParameterP;
+                          
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X NUMBER OF CONTROL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            degreePolySplineBasisUx = obj.igaBasisStruct.degreeSplineBasisUx;
+            continuityParameterUx   = obj.igaBasisStruct.continuityParameterUx; 
+            numbControlPtsUx        = numbKnotsUx * (degreePolySplineBasisUx - continuityParameterUx) + ...
+                                      1 + continuityParameterUx;
+                          
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y NUMBER OF CONTROL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            degreePolySplineBasisUy = obj.igaBasisStruct.degreeSplineBasisUy;
+            continuityParameterUy   = obj.igaBasisStruct.continuityParameterUy; 
+            numbControlPtsUy        = numbKnotsUy * (degreePolySplineBasisUy - continuityParameterUy) + ...
+                                      1 + continuityParameterUy;
 
             %% GAUSS-LEGENDRE INTEGRATION NODES
             %-------------------------------------------------------------%
@@ -252,25 +329,31 @@ classdef AssemblerStokesHandler
             % in the horizontal and vertical direction and retruns the
             % respective Gauss-Legendre nodes and weigths for the
             % integration interval [0,1].   
-            %
-            % Mesh FEM in X: Equispaced Nodes                            
-            %  (1) horGLNodes  : Vector of the Standard Nodes on the X 
-            %                    Direction
-            %  (2) horGLWeights : Vector of the Standard Weights on the X 
-            %                     Direction
-            %
-            % Mesh FEM in Y: Equispaced Nodes                              
-            %  (1) verGLNodes  : Vector of the Standard Nodes on the Y 
-            %                    Direction  
-            %  (2) verGLWeights : Vector of the Standard Weights on the Y 
-            %                     Direction
             %-------------------------------------------------------------%
             
-            % Vertical direction
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE MODAL GL INTEGRATION NODES %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            obj_gaussLegendre_2 = IntegrateHandler();
-            obj_gaussLegendre_2.numbQuadNodes = numbVerNodes;
-            [~, verGLNodes, verWeights] = gaussLegendre(obj_gaussLegendre_2);        
+            obj_gaussLegendreP = IntegrateHandler();
+            obj_gaussLegendreP.numbQuadNodes = numbVerNodesP;
+            [~, verGLNodesP, verWeightsP] = gaussLegendre(obj_gaussLegendreP);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X MODAL GL INTEGRATION NODES %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            obj_gaussLegendreUx = IntegrateHandler();
+            obj_gaussLegendreUx.numbQuadNodes = numbVerNodesUx;
+            [~, verGLNodesUx, verWeightsUx] = gaussLegendre(obj_gaussLegendreUx);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y MODAL GL INTEGRATION NODES %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            obj_gaussLegendreUy = IntegrateHandler();
+            obj_gaussLegendreUy.numbQuadNodes = numbVerNodesUy;
+            [~, verGLNodesUy, verWeightsUy] = gaussLegendre(obj_gaussLegendreUy);
             
             %% EXTRACT GEOMETRIC INFORMATION
             
@@ -280,92 +363,276 @@ classdef AssemblerStokesHandler
             Hes       = @(x,y) obj.geometricInfo.Hes(x,y);
             
             %% COMPUTE REFERENCE KNOT AND CONTROL POINTS
+            %-------------------------------------------------------------%
             % Note: Create the knots and control points of the reference
             % supporting fiber where the coupled 1D problems will be
             % solved.
+            %-------------------------------------------------------------%
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE REFERENCE KNOTS AND CONTROL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             refDomain1D = geo_load(nrbline ([0 0], [1 0]));
             
-            nsub = numbKnots;
-            degree = obj.degreePolySplineBasis;
-            regularity = obj.continuityParameter;
+            nsubP = numbKnotsP;
+            degreeP = degreePolySplineBasisP;
+            regularityP = continuityParameterP;
             
-            [knots, zeta] = kntrefine (refDomain1D.nurbs.knots, nsub-1, degree, regularity);
+            [knotsP, zetaP] = kntrefine (refDomain1D.nurbs.knots, nsubP-1, degreeP, regularityP);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X REFERENCE KNOTS AND CONTROL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            refDomain1D = geo_load(nrbline ([0 0], [1 0]));
+            
+            nsubUx = numbKnotsUx;
+            degreeUx = degreePolySplineBasisUx;
+            regularityUx = continuityParameterUx;
+            
+            [knotsUx, zetaUx] = kntrefine (refDomain1D.nurbs.knots, nsubUx-1, degreeUx, regularityUx);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y REFERENCE KNOTS AND CONTROL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            refDomain1D = geo_load(nrbline ([0 0], [1 0]));
+            
+            nsubUy = numbKnotsUy;
+            degreeUy = degreePolySplineBasisUy;
+            regularityUy = continuityParameterUy;
+            
+            [knotsUy, zetaUy] = kntrefine (refDomain1D.nurbs.knots, nsubUy-1, degreeUy, regularityUy);
             
             %% GENERATE ISOGEOMETRIC MESH FUNCTION
+            %-------------------------------------------------------------%
             % Note: Use the number of quadrature nodes to generate the
             % quadrature rule using the gauss nodes. Then, use this
             % information with the computed knots and control points to
             % generate the isogeometric mesh of the centreline.
+            %-------------------------------------------------------------%
             
-            rule     = msh_gauss_nodes (numbHorNodes);
-            [qn, qw] = msh_set_quad_nodes (zeta, rule);
-            msh      = msh_cartesian (zeta, qn, qw, refDomain1D);
+            %%%%%%%%%%%%%%%%%
+            % PRESSURE MESH %
+            %%%%%%%%%%%%%%%%%
+            
+            ruleP       = msh_gauss_nodes (numbHorNodesP);
+            [qnP, qwP]  = msh_set_quad_nodes (zetaP, ruleP);
+            mshP        = msh_cartesian (zetaP, qnP, qwP, refDomain1D);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X MESH %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            ruleUx       = msh_gauss_nodes (numbHorNodesUx);
+            [qnUx, qwUx] = msh_set_quad_nodes (zetaUx, ruleUx);
+            mshUx        = msh_cartesian (zetaUx, qnUx, qwUx, refDomain1D);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y  MESH %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            ruleUy       = msh_gauss_nodes (numbHorNodesUy);
+            [qnUy, qwUy] = msh_set_quad_nodes (zetaUy, ruleUy);
+            mshUy        = msh_cartesian (zetaUy, qnUy, qwUy, refDomain1D);
             
             %% CONSTRUCT THE ISOGEOMETRIC FUNCTIONAL SPACE
+            %-------------------------------------------------------------%
             % Note: Construct the functional space used to discretize the
             % problem along the centreline and perform the isogeometric
             % analysis. 
             % Here, we also evaluate the functional spaces in the specific
             % element. This will be used in the assembling loop to compute
             % the operators using the basis functions.
+            %-------------------------------------------------------------%
             
-            space    = sp_bspline (knots, degree, msh);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE ISOGEOMETRIC FUNCTIONAL SPACE %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            numbKnots = msh.nel_dir;
+            spaceP    = sp_bspline (knotsP, degreeP, mshP);
             
-            for iel = 1:numbKnots
+            numbKnotsP = mshP.nel_dir;
+            
+            for iel = 1:numbKnotsP
                 
-                msh_col = msh_evaluate_col (msh, iel);
+                msh_colP = msh_evaluate_col (mshP, iel);
                 
                 %---------------------------------------------------------%
                 % Evaluated space to compute the operators
                 %---------------------------------------------------------%
                 
-                gradFunc = sp_evaluate_col (space, msh_col, 'value', false, 'gradient', true);
-                shapFunc = sp_evaluate_col (space, msh_col);
+                gradFuncP = sp_evaluate_col (spaceP, msh_colP, 'value', false, 'gradient', true);
+                shapFuncP = sp_evaluate_col (spaceP, msh_colP);
                 
                 %---------------------------------------------------------%
                 % Store the spaces in the cell matrix
                 %---------------------------------------------------------%
                 
-                spaceFunc{iel,1} = shapFunc;
-                spaceFunc{iel,2} = gradFunc;
-                spaceFunc{iel,3} = msh_col;
+                spaceFuncP{iel,1} = shapFuncP;
+                spaceFuncP{iel,2} = gradFuncP;
+                spaceFuncP{iel,3} = msh_colP;
+
+            end
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X ISOGEOMETRIC FUNCTIONAL SPACE %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            spaceUx    = sp_bspline (knotsUx, degreeUx, mshUx);
+            
+            numbKnotsUx = mshUx.nel_dir;
+            
+            for iel = 1:numbKnotsUx
+                
+                msh_colUx = msh_evaluate_col (mshUx, iel);
+                
+                %---------------------------------------------------------%
+                % Evaluated space to compute the operators
+                %---------------------------------------------------------%
+                
+                gradFuncUx = sp_evaluate_col (spaceUx, msh_colUx, 'value', false, 'gradient', true);
+                shapFuncUx = sp_evaluate_col (spaceUx, msh_colUx);
+                
+                %---------------------------------------------------------%
+                % Store the spaces in the cell matrix
+                %---------------------------------------------------------%
+                
+                spaceFuncUx{iel,1} = shapFuncUx;
+                spaceFuncUx{iel,2} = gradFuncUx;
+                spaceFuncUx{iel,3} = msh_colUx;
+
+            end
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y ISOGEOMETRIC FUNCTIONAL SPACE %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            spaceUy    = sp_bspline (knotsUy, degreeUy, mshUy);
+            
+            numbKnotsUy = mshUy.nel_dir;
+            
+            for iel = 1:numbKnotsUy
+                
+                msh_colUy = msh_evaluate_col (mshUy, iel);
+                
+                %---------------------------------------------------------%
+                % Evaluated space to compute the operators
+                %---------------------------------------------------------%
+                
+                gradFuncUy = sp_evaluate_col (spaceUy, msh_colUy, 'value', false, 'gradient', true);
+                shapFuncUy = sp_evaluate_col (spaceUy, msh_colUy);
+                
+                %---------------------------------------------------------%
+                % Store the spaces in the cell matrix
+                %---------------------------------------------------------%
+                
+                spaceFuncUy{iel,1} = shapFuncUy;
+                spaceFuncUy{iel,2} = gradFuncUy;
+                spaceFuncUy{iel,3} = msh_colUy;
 
             end
             
             %% AUGMENTED HORIZONTAL POINTS 
+            %-------------------------------------------------------------%
             % Note: The FOR loop runs over the knots in the centerline ans
             % compute the required quadrature nodes. The quadrature nodes
             % will be necessary to evaluate the bilinear coefficients and
             % the forcing component.
-
-            horEvalNodes = zeros(numbKnots * numbHorNodes,1);
+            %-------------------------------------------------------------%
             
-            for iel = 1:numbKnots
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE AUGMENTED HORIZONTAL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            horEvalNodesP = zeros(numbKnotsP * numbHorNodesP,1);
+            
+            for iel = 1:numbKnotsP
                 
-                msh_col = msh_evaluate_col (msh, iel);
+                msh_colP = msh_evaluate_col (mshP, iel);
                 
-                localNodes = reshape (msh_col.geo_map(1,:,:), msh_col.nqn, msh_col.nel);  
-                horEvalNodes((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes) = localNodes;  
+                localNodesP = reshape (msh_colP.geo_map(1,:,:), msh_colP.nqn, msh_colP.nel);  
+                horEvalNodesP((iel - 1)*numbHorNodesP + 1 : iel*numbHorNodesP) = localNodesP;  
+                
+            end
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X AUGMENTED HORIZONTAL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            horEvalNodesUx = zeros(numbKnotsUx * numbHorNodesUx,1);
+            
+            for iel = 1:numbKnotsUx
+                
+                msh_colUx = msh_evaluate_col (mshUx, iel);
+                
+                localNodesUx = reshape (msh_colUx.geo_map(1,:,:), msh_colUx.nqn, msh_colUx.nel);  
+                horEvalNodesUx((iel - 1)*numbHorNodesUx + 1 : iel*numbHorNodesUx) = localNodesUx;  
+                
+            end
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y AUGMENTED HORIZONTAL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            horEvalNodesUy = zeros(numbKnotsUy * numbHorNodesUy,1);
+            
+            for iel = 1:numbKnotsUy
+                
+                msh_colUy = msh_evaluate_col (mshUy, iel);
+                
+                localNodesUy = reshape (msh_colUy.geo_map(1,:,:), msh_colUy.nqn, msh_colUy.nel);  
+                horEvalNodesUy((iel - 1)*numbHorNodesUy + 1 : iel*numbHorNodesUy) = localNodesUy;  
                 
             end
             
             %% AUGMENTED VERTICAL POINTS
+            %-------------------------------------------------------------%
             % Note: Since we are using the full map from the physical
             % domain to the reference domain, then the whole modal analysis
             % has to be performed in the vertical direction in the interval
             % [0,1];
+            %-------------------------------------------------------------%
             
-            objVertQuadRule = IntegrateHandler();
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE AUGMENTED VERTICAL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            objVertQuadRuleP = IntegrateHandler();
 
-            objVertQuadRule.leftBoundInterval = 0;
-            objVertQuadRule.rightBoundInterval = 1;
-            objVertQuadRule.inputNodes = verGLNodes;
-            objVertQuadRule.inputWeights = verWeights;
+            objVertQuadRuleP.leftBoundInterval = 0;
+            objVertQuadRuleP.rightBoundInterval = 1;
+            objVertQuadRuleP.inputNodes = verGLNodesP;
+            objVertQuadRuleP.inputWeights = verWeightsP;
 
-            [augVerNodes, augVerWeights] = quadratureRule(objVertQuadRule);
+            [augVerNodesP, augVerWeightsP] = quadratureRule(objVertQuadRuleP);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X AUGMENTED VERTICAL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            objVertQuadRuleUx = IntegrateHandler();
+
+            objVertQuadRuleUx.leftBoundInterval = 0;
+            objVertQuadRuleUx.rightBoundInterval = 1;
+            objVertQuadRuleUx.inputNodes = verGLNodesUx;
+            objVertQuadRuleUx.inputWeights = verWeightsUx;
+
+            [augVerNodesUx, augVerWeightsUx] = quadratureRule(objVertQuadRuleUx);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y AUGMENTED VERTICAL POINTS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            objVertQuadRuleUy = IntegrateHandler();
+
+            objVertQuadRuleUy.leftBoundInterval = 0;
+            objVertQuadRuleUy.rightBoundInterval = 1;
+            objVertQuadRuleUy.inputNodes = verGLNodesUy;
+            objVertQuadRuleUy.inputWeights = verWeightsUy;
+
+            [augVerNodesUy, augVerWeightsUy] = quadratureRule(objVertQuadRuleUy);
             
             %% COMPUTATION OF THE MODAL BASIS IN THE Y DIRECTION
             %-------------------------------------------------------------%
@@ -376,32 +643,11 @@ classdef AssemblerStokesHandler
             % transverse fiber.
             %-------------------------------------------------------------%
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % MODAL BASIS FOR THE PRESSURE %
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE MODAL BASIS %
+            %%%%%%%%%%%%%%%%%%%%%%%%
             
-            obj_newModalBasis = BasisHandler();
-            
-            % Set variables to use a Legendre Modal Base
-            
-            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
-            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
-            
-            % Set variables to use a Educated Modal Basis
-            
-            obj_newModalBasis.dimModalBasis = obj.dimModalBasisP;
-            obj_newModalBasis.evalNodesY = verGLNodes;
-            obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomainP;
-            obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomainP;
-            obj_newModalBasis.coeffForm = obj.coefficientForm;
-
-            [modalBasisP, modalBasisDerP] = newModalBasis(obj_newModalBasis);
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % MODAL BASIS FOR THE VELOCITY IN X %
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            obj_newModalBasis = BasisHandler();
+            obj_newModalBasisP = BasisHandler();
             
             % Set variables to use a Legendre Modal Base
             
@@ -410,19 +656,19 @@ classdef AssemblerStokesHandler
             
             % Set variables to use a Educated Modal Basis
             
-            obj_newModalBasis.dimModalBasis = obj.dimModalBasisUx;
-            obj_newModalBasis.evalNodesY = verGLNodes;
-            obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomainUx;
-            obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomainUx;
-            obj_newModalBasis.coeffForm = obj.coefficientForm;
+            obj_newModalBasisP.dimModalBasis = obj.discStruct.numbModesP;
+            obj_newModalBasisP.evalNodesY = verGLNodesP;
+            obj_newModalBasisP.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_P;
+            obj_newModalBasisP.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_P;
+            obj_newModalBasisP.coeffForm = obj.probParameters;
 
-            [modalBasisUx, modalBasisDerUx] = newModalBasis(obj_newModalBasis);
+            [modalBasisP, modalBasisDerP] = newModalBasisStokes(obj_newModalBasisP);
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % MODAL BASIS FOR THE VELOCITY IN Y %
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X MODAL BASIS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            obj_newModalBasis = BasisHandler();
+            obj_newModalBasisUx = BasisHandler();
             
             % Set variables to use a Legendre Modal Base
             
@@ -431,13 +677,34 @@ classdef AssemblerStokesHandler
             
             % Set variables to use a Educated Modal Basis
             
-            obj_newModalBasis.dimModalBasis = obj.dimModalBasisUy;
-            obj_newModalBasis.evalNodesY = verGLNodes;
-            obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomainUy;
-            obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomainUy;
-            obj_newModalBasis.coeffForm = obj.coefficientForm;
+            obj_newModalBasisUx.dimModalBasis = obj.discStruct.numbModesUx;
+            obj_newModalBasisUx.evalNodesY = verGLNodesUx;
+            obj_newModalBasisUx.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_Ux;
+            obj_newModalBasisUx.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Ux;
+            obj_newModalBasisUx.coeffForm = obj.probParameters;
 
-            [modalBasisUy, modalBasisDerUy] = newModalBasis(obj_newModalBasis);
+            [modalBasisUx, modalBasisDerUx] = newModalBasisStokes(obj_newModalBasisUx);
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y MODAL BASIS %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            obj_newModalBasisUy = BasisHandler();
+            
+            % Set variables to use a Legendre Modal Base
+            
+            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
+            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            
+            % Set variables to use a Educated Modal Basis
+            
+            obj_newModalBasisUy.dimModalBasis = obj.discStruct.numbModesUy;
+            obj_newModalBasisUy.evalNodesY = verGLNodesUy;
+            obj_newModalBasisUy.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_Uy;
+            obj_newModalBasisUy.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Uy;
+            obj_newModalBasisUy.coeffForm = obj.probParameters;
+
+            [modalBasisUy, modalBasisDerUy] = newModalBasisStokes(obj_newModalBasisUy);
             
             %% MEMORY ALLOCATION FOR SYSTEM MATRICES
             
@@ -476,72 +743,53 @@ classdef AssemblerStokesHandler
             % the channel.
             %-------------------------------------------------------------%
             
-            verEvalNodes = augVerNodes;
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % PRESSURE PHYSICAL DOMAIN %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            X = mapOut(horEvalNodes,verEvalNodes,map,1);
-            Y = mapOut(horEvalNodes,verEvalNodes,map,2);
+            verEvalNodesP = augVerNodesP;
+            XP = mapOut(horEvalNodesP,verEvalNodesP,map,1);
+            YP = mapOut(horEvalNodesP,verEvalNodesP,map,2);
             
-            geoData.X = X;
-            geoData.Y = Y;
-            geoData.horNodes = horEvalNodes;
-            geoData.verNodes = verEvalNodes;
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG X PHYSICAL DOMAIN %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            %% EVALUATION OF THE BILINEAR COEFFICIENTS OF THE DOMAIN
-            %-------------------------------------------------------------%
-            % We need to evaluate all the coefficients of the bilinear form
-            % in the quadrature nodes along the vertical direction to
-            % perform the first integral (along the transverse fiber) to
-            % obtain a the coefficients of the 1D coupled problem. The
-            % result will be coefficients as a function of 'x'.
-            %-------------------------------------------------------------%
+            verEvalNodesUx = augVerNodesUx;
+            XUx = mapOut(horEvalNodesUx,verEvalNodesUx,map,1);
+            YUx = mapOut(horEvalNodesUx,verEvalNodesUx,map,2);
             
-
-            % DIFFUSION
-
-            evalMu    = obj.coefficientForm.mu(X,Y);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % VELOCITY FIELD ALONG Y PHYSICAL DOMAIN %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            % ADVECTION
+            verEvalNodesUy = augVerNodesUy;
+            XUy = mapOut(horEvalNodesUy,verEvalNodesUy,map,1);
+            YUy = mapOut(horEvalNodesUy,verEvalNodesUy,map,2);
             
-            evalBeta1 = obj.coefficientForm.beta1(X,Y);
-            evalBeta2 = obj.coefficientForm.beta2(X,Y);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % CREATE GEOMETRIC STRUCTURE %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            % REACTION
+            geoData.XP = XP;
+            geoData.YP = YP;
+            geoData.XUx = XUx;
+            geoData.YUx = YUx;
+            geoData.XUy = XUy;
+            geoData.YUy = YUy;
+            geoData.horNodesP = horEvalNodesP;
+            geoData.verNodesP = verEvalNodesP;
+            geoData.horNodesUx = horEvalNodesUx;
+            geoData.verNodesUx = verEvalNodesUx;
+            geoData.horNodesUy = horEvalNodesUy;
+            geoData.verNodesUy = verEvalNodesUy;
             
-            evalSigma = obj.coefficientForm.sigma(X,Y);
+            %%%%%%%%%%%%%%%%%%%%%%%
+            % JACOBIAN PROPERTIES %
+            %%%%%%%%%%%%%%%%%%%%%%%
             
-            %% EVALUATION OF THE EXCITING FORCE 
-            %-------------------------------------------------------------%
-            % Finally, we use the horizontal and vertical meshes to
-            % evaluate the exciting force acting on the system in the whole
-            % domain.
-            %-------------------------------------------------------------%
-
-            evalForce = obj.dirCondFuncStruct.force(X,Y);
-            
-            %-------------------------------------------------------------%
-            % Note: All of the coefficients of the bilinear form and the
-            % exciting term evaluated in the domain, as well as the mesh of
-            % vertical coordinates are stored in a data structure called
-            % "Computed" to be treated in the assembler function.
-            %-------------------------------------------------------------%
-
-            Computed = struct('mu_c',evalMu,'beta1_c',evalBeta1,'beta2_c',evalBeta2, ...
-                              'sigma_c',evalSigma,'force_c',evalForce,'y',verEvalNodes);
-                          
-            % Debug
-            %-------------------------------------------------------------%
-            %[~,~] = contourf(horEvalNodes,verEvalNodes,evalForce',20);    
-            %colormap(jet); title('Force in Assembler!')
-            %-------------------------------------------------------------%
-            
-            %% EVALUATION OF THE GEOMETRY PROPERTIES
-            % Note: Since there is a transformation from the physical domain to the
-            % physical domain, we must compute the map contribution used in the
-            % computation of the coefficients and the Jacobian contribution to be
-            % inserted in the integral (quadrature formula).
-            
-            evalJac     = jacOut(horEvalNodes,verEvalNodes,Jac);
-            evalDetJac  = detJac(horEvalNodes,verEvalNodes,Jac);
+            evalJac     = jacOut(horEvalNodesP,verEvalNodesP,Jac);
+            evalDetJac  = detJac(horEvalNodesP,verEvalNodesP,Jac);
             
             Phi1_dx = invJac(1,1,evalJac);
             Phi1_dy = invJac(1,2,evalJac);
@@ -554,88 +802,99 @@ classdef AssemblerStokesHandler
             jacFunc.Phi1_dy     = Phi1_dy;
             jacFunc.Phi2_dx     = Phi2_dx;
             jacFunc.Phi2_dy     = Phi2_dy;
-                                                    
-            %% LIFTING
-            %-------------------------------------------------------------%
-            % Compute the lifting contribution in the force vector due to
-            % the non homogeneous Dirichlet boundary conditions in the
-            % lower and upper boundary.
-            %-------------------------------------------------------------%
             
-            obj_liftBoundCond = BoundaryConditionHandler();
-    
-            obj_liftBoundCond.labelUpBoundCond = obj.label_upBoundDomain;
-            obj_liftBoundCond.labelDownBoundCond = obj.label_downBoundDomain;
-            obj_liftBoundCond.dataUpBoundCond = obj.localdata_upBDomain;
-            obj_liftBoundCond.dataDownBoundCond = obj.localdata_downBDomain;
-            obj_liftBoundCond.coeffForm = obj.coefficientForm;
-
-            [aLift,bLift] = liftBoundCond(obj_liftBoundCond);
-            liftFunc = @(x,y) aLift * y + bLift;
-            lifting = liftFunc(0,Computed.y);
+            %% ASSEMBLE TIME DEPENDENT STRUCTURES
             
-            %% ASSEMBLING LOOP
-            %-------------------------------------------------------------%
-            % The assembling loop creates each one of the submatrices
-            % correponding to the microstructure of the linear system. The
-            % loop is repeated m^2 times to complete the macrostructure of
-            % the system.
-            %-------------------------------------------------------------%
+            for time = obj.timeStruct.timeDomain
+                
+                %% EVALUATION OF THE BILINEAR COEFFICIENTS OF THE DOMAIN
+                %-------------------------------------------------------------%
+                % We need to evaluate all the coefficients of the bilinear form
+                % in the quadrature nodes along the vertical direction to
+                % perform the first integral (along the transverse fiber) to
+                % obtain a the coefficients of the 1D coupled problem. The
+                % result will be coefficients as a function of 'x'.
+                %-------------------------------------------------------------%
 
-            for imb = 1:obj.dimModalBasis
-                for kmb = 1:obj.dimModalBasis
+                % KINETIC VISCOSITY OF THE FLUID
 
-                    [Amb,bmb,liftCoeffA,liftCoeffB] = assemblerIGAScatter( imb, kmb, ...
-                                            augVerWeights,modalBasis(:,imb),modalBasisDer(:,imb),modalBasis(:,kmb),...
-                                            modalBasisDer(:,kmb),geoData,Computed,lifting,aLift,bLift,msh,space,jacFunc,...
-                                            spaceFunc,obj.dirCondFuncStruct.igaBoundCond);
+                evalNu    = obj.probParameters.nu(XP,YP,time);
 
-                    % Assignment of the Block Matrix Just Assembled
+                %% EVALUATION OF THE EXCITING FORCE 
+                %-------------------------------------------------------------%
+                % Finally, we use the horizontal and vertical meshes to
+                % evaluate the exciting force acting on the system in the whole
+                % domain.
+                %-------------------------------------------------------------%
 
-                    A(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Amb;
-                    
-                    disp(['FINISHED ASSEMBLING LOOP (',num2str(imb),' , ',num2str(kmb),')']);
+                evalForce = obj.probParameters.force(XP,YP,time);
 
+                %-------------------------------------------------------------%
+                % Note: All of the coefficients of the bilinear form and the
+                % exciting term evaluated in the domain, as well as the mesh of
+                % vertical coordinates are stored in a data structure called
+                % "Computed" to be treated in the assembler function.
+                %-------------------------------------------------------------%
+
+                Computed = struct('nu_c',evalNu,'force_c',evalForce,'y',verEvalNodesP);            
+
+                %% AXX ASSEMBLING LOOP
+
+                for kmb = 1:obj.discStruct.numbModesUx
+                    for jmb = 1:obj.discStruct.numbModesUx
+
+                        [Amb,bmb] = assemblerIGAScatterAxx( kmb, jmb, ...
+                                                augVerWeights,modalBasis(:,kmb),modalBasisDer(:,kmb),modalBasis(:,jmb),...
+                                                modalBasisDer(:,jmb),geoData,Computed,lifting,aLift,bLift,msh,space,jacFunc,...
+                                                spaceFuncP,obj.dirCondFuncStruct.igaBoundCond);
+
+                        % Assignment of the Block Matrix Just Assembled
+
+                        A(1+(kmb-1)*numbControlPts : kmb*numbControlPts , 1+(jmb-1)*numbControlPts : jmb*numbControlPts) = Amb;
+
+                        disp(['FINISHED ASSEMBLING LOOP (',num2str(kmb),' , ',num2str(jmb),')']);
+
+                    end
+
+                    % Assignment of the Block Vector Just Assembled
+                    b( 1+(kmb-1)*numbControlPts : kmb*numbControlPts ) = bmb;
                 end
 
-                % Assignment of the Block Vector Just Assembled
-                b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb;
+                %% IMPOSE BOUNDARY CONDITIONS
+
+                %-------------------------------------------------------------%
+                % Compute the lifting contribution in the force vector due to
+                % the non homogeneous Dirichlet boundary conditions in the
+                % lower and upper boundary.
+                %-------------------------------------------------------------%
+
+                BC_l = obj.igaBoundCond.BC_INF_TAG;
+                BC_r = obj.igaBoundCond.BC_OUT_TAG;
+                infBoundCond = obj.igaBoundCond.BC_INF_DATA;
+                outBoundCond = obj.igaBoundCond.BC_OUT_DATA;
+
+                obj_bcCoeff = BoundaryConditionHandler();
+
+                obj_bcCoeff.infBoundCond  = infBoundCond;
+                obj_bcCoeff.outBoundCond  = outBoundCond;
+                obj_bcCoeff.augVerNodes   = augVerNodes;
+                obj_bcCoeff.augVerWeights = augVerWeights;
+                obj_bcCoeff.modalBasis = modalBasis;
+                obj_bcCoeff.dimModalBasis = obj.dimModalBasis;
+                obj_bcCoeff.coefficientForm = obj.coefficientForm;
+
+                [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
+
+                bcStruct.bcInfTag = BC_l;
+                bcStruct.bcOutTag = BC_r;
+                bcStruct.infStruct = infStruct;
+                bcStruct.outStruct = outStruct;
+                bcStruct.numbControlPts = numbControlPts;
+                bcStruct.dimModalBasis = obj.dimModalBasis;
+
+                [AA,bb] = impose_boundary(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,b,numbControlPts);
             end
-            
-            %% IMPOSE BOUNDARY CONDITIONS
-            
-            %-------------------------------------------------------------%
-            % Compute the lifting contribution in the force vector due to
-            % the non homogeneous Dirichlet boundary conditions in the
-            % lower and upper boundary.
-            %-------------------------------------------------------------%
-            
-            BC_l = obj.igaBoundCond.BC_INF_TAG;
-            BC_r = obj.igaBoundCond.BC_OUT_TAG;
-            infBoundCond = obj.igaBoundCond.BC_INF_DATA;
-            outBoundCond = obj.igaBoundCond.BC_OUT_DATA;
-            
-            obj_bcCoeff = BoundaryConditionHandler();
-    
-            obj_bcCoeff.infBoundCond  = infBoundCond;
-            obj_bcCoeff.outBoundCond  = outBoundCond;
-            obj_bcCoeff.augVerNodes   = augVerNodes;
-            obj_bcCoeff.augVerWeights = augVerWeights;
-            obj_bcCoeff.modalBasis = modalBasis;
-            obj_bcCoeff.dimModalBasis = obj.dimModalBasis;
-            obj_bcCoeff.coefficientForm = obj.coefficientForm;
-
-            [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
-            
-            bcStruct.bcInfTag = BC_l;
-            bcStruct.bcOutTag = BC_r;
-            bcStruct.infStruct = infStruct;
-            bcStruct.outStruct = outStruct;
-            bcStruct.numbControlPts = numbControlPts;
-            bcStruct.dimModalBasis = obj.dimModalBasis;
-            
-            [AA,bb] = impose_boundary(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,b,numbControlPts);
-
+                
             end
             
     end

@@ -947,5 +947,176 @@ classdef BasisHandler
                 end
                 
             end
+            
+            %% Method 'newModalBasis'
+            
+            function [coeffModalBase,coeffModalBaseDer] = newModalBasisStokes(obj)
+
+                %%
+                % newModalBasis   - This function evaluates the modal basis and their
+                %                   derivatives at the nodes 'yq', solving the problem
+                %                   of SL.
+                %
+                % The inputs are:
+                %%
+                %   (1)  dimModalBasis         : Dimension of the Modal Basis
+                %   (2)  evalNodesY            : Nodes to Evaluate the Modal Basis and their
+                %                                Derivatives
+                %   (3)  labelUpBoundCond      : Contains the Label Identifying the Nature of
+                %                                the Boundary Conditions on the Upper Limit of
+                %                                the Domain
+                %   (4)  labelDownBoundCond    : Contains the Label Identifying the Nature of
+                %                                the Boundary Conditions on the Lower Limit of
+                %                                the Domain
+                %   (5)  coeffForm             : Data Strusture Containing All the @-Functions
+                %                                and the Constants Relative to the Bilinear Form
+                %
+                % The outputs are:
+                %%
+                %   (1) coeffModalBase         : Coefficients of the Modal Basis at the Nodes
+                %   (2) coeffModalBaseDer      : Coefficients of the Derivative of the Modal
+                %                                Basis at the Nodes
+
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+            
+                %% Evaluation of the Problem Coefficients
+                
+                sigma = obj.coeffForm.coeffrobin;
+
+                %% Initialization of the Vector Containing the Cefficients in the New
+                % Basis
+
+                coeffModalBase   = zeros( length(obj.evalNodesY), obj.dimModalBasis);
+                coeffModalBaseDer = zeros( length(obj.evalNodesY), obj.dimModalBasis);
+
+                % Initialization of the Vector Containing the Eigenvalues of the New
+                % Basis
+
+                lambda = zeros(obj.dimModalBasis,1);
+
+                %% Computation of the Eigenvalues of the New Basis
+
+                %---------------------------------------------------------------------%
+                % Note:
+                % The eigenvalues of the new basis are computed considering the
+                % different possible cases fot the boundary conditions in the Upper 
+                % and Lower limit of the domain.
+                %---------------------------------------------------------------------%    
+
+                switch [obj.labelUpBoundCond,obj.labelDownBoundCond]
+
+                    case 'dirdir'   % Dirichlet Dirichlet
+
+                        for i = 1:obj.dimModalBasis
+                            lambda(i) = i * pi;
+                        end
+
+                        B = @(lambda) 0;
+
+                    case 'dirrob'   % Dirichlet Robin
+
+                        stlv  = @(lmb)  tan(lmb) + muval*lmb/sigma;
+                        B     = @(lmb) -tan(lmb);
+                        
+                        obj_computeEigenvalues_1 = IntegrateHandler();
+                        
+                        obj_computeEigenvalues_1.funcStourmLiou = stlv;
+                        obj_computeEigenvalues_1.numbEigenvalues = obj.dimModalBasis;
+                        obj_computeEigenvalues_1.labelUpBoundCond = obj.labelUpBoundCond;
+                        obj_computeEigenvalues_1.labelDownBoundCond = obj.labelDownBoundCond;
+                        obj_computeEigenvalues_1.coeffForm = obj.coeffForm;
+
+                        lambda = computeEigenvalues(obj_computeEigenvalues_1);
+
+                    case 'robrob'   % Robin Robin
+
+                        stlv  = @(lmb) 2*muval*lmb + tan(lmb).*(sigma - muval.^2*lmb.^2/sigma);
+                        B     = @(lmb) muval*lmb/sigma;
+
+                        obj_computeEigenvalues_2 = IntegrateHandler();
+                        
+                        obj_computeEigenvalues_2.funcStourmLiou = stlv;
+                        obj_computeEigenvalues_2.numbEigenvalues = obj.dimModalBasis;
+                        obj_computeEigenvalues_2.labelUpBoundCond = obj.labelUpBoundCond;
+                        obj_computeEigenvalues_2.labelDownBoundCond = obj.labelDownBoundCond;
+                        obj_computeEigenvalues_2.coeffForm = obj.coeffForm;
+
+                        lambda = computeEigenvalues(obj_computeEigenvalues_2);
+                        
+                    case 'robdir'   % Robin Dirichlet
+
+                        stlv  = @(lmb) muval*lmb/sigma + tan(lmb);
+                        B     = @(lmb) 0;
+
+                        obj_computeEigenvalues_3 = IntegrateHandler();
+                        
+                        obj_computeEigenvalues_3.funcStourmLiou = stlv;
+                        obj_computeEigenvalues_3.numbEigenvalues = obj.dimModalBasis;
+                        obj_computeEigenvalues_3.labelUpBoundCond = obj.labelUpBoundCond;
+                        obj_computeEigenvalues_3.labelDownBoundCond = obj.labelDownBoundCond;
+                        obj_computeEigenvalues_3.coeffForm = obj.coeffForm;
+
+                        lambda = computeEigenvalues(obj_computeEigenvalues_3);
+
+                    case 'neuneu'
+
+                        for i = 1:obj.dimModalBasis
+                            lambda(i) = (i-1) * pi;
+                        end
+
+                        B = @(lmb) 1;
+
+                    otherwise
+                        disp('In newModalBasis: Boundary Conditions Not Recognized or Not Yet Available')
+                        
+                end
+                
+                % Evaluation of the Coefficient in the New Basis
+
+                %---------------------------------------------------------------------%
+                % Note:
+                % The coeffients at the new basis are also computed considering the
+                % different possible cases fot the boundary conditions in the Upper 
+                % and Lower limit of the domain.
+                %---------------------------------------------------------------------%
+
+                switch [obj.labelUpBoundCond,obj.labelDownBoundCond]
+
+                    case {'dirdir','dirrob','robrob','robdir'}
+
+                        for n = 1 : obj.dimModalBasis
+                            b         = B( lambda(n) );
+                            L2norm    = sqrt( ( 1 + b^2 )/2 + ( b^2 - 1 )*sin( 2*lambda(n) )/( 4*lambda(n) ) + b*( sin( lambda(n) ) )^2/lambda(n) );
+
+                            % Normalization for the Coefficient A
+
+                            for i = 1 : length(obj.evalNodesY)
+                                coeffModalBase( i, n) = sin( lambda(n) * obj.evalNodesY(i) )/L2norm + b * cos( lambda(n)*obj.evalNodesY(i) )/L2norm;
+                                coeffModalBaseDer( i, n) = lambda(n)*cos( lambda(n)*obj.evalNodesY(i) )/L2norm - b * lambda(n) * sin( lambda(n)*obj.evalNodesY(i) )/L2norm;
+                            end
+
+                        end
+
+                    case 'neuneu'
+
+                        coeffModalBase  ( :, 1) = ones ( length(obj.evalNodesY), 1 );
+                        coeffModalBaseDer( :, 1) = zeros( length(obj.evalNodesY), 1 );
+
+                        for n = 2 : obj.dimModalBasis
+                            for i = 1 : length(obj.evalNodesY)
+                                coeffModalBase  ( i, n) =             sqrt(2)*cos( lambda(n)*obj.evalNodesY(i) );
+                                coeffModalBaseDer( i, n) = - lambda(n)*sqrt(2)*sin( lambda(n)*obj.evalNodesY(i) );
+                            end
+                        end
+                end
+                
+            end            
     end
 end
