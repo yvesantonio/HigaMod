@@ -139,7 +139,7 @@ classdef AssemblerStokesHandler
         
             %% Method 'buildIGAScatter'
             
-            function [stiffStruct,massStruct,forceStruct] = buildSystemIGAScatter(obj)
+            function [stiffTimeStruct,massTimeStruct,forceTimeStruct] = buildSystemIGAScatter(obj)
                                                          
             %%
             % buildSystemIGA - This function computes the assembled matrices
@@ -810,6 +810,7 @@ classdef AssemblerStokesHandler
             Py  = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisP) );
             Qx  = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisUx) );
             Qy  = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisUy) );            
+            P   = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisP) );
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % BLOCK COMPONENTS OF THE SOURCE TERM %
@@ -829,7 +830,7 @@ classdef AssemblerStokesHandler
             
             %% ASSEMBLE TIME DEPENDENT STRUCTURES
             
-            for time = obj.timeStruct.timeDomain
+            for ii = length(obj.timeStruct.timeDomain)
                 
                 %% EVALUATION OF THE BILINEAR COEFFICIENTS OF THE DOMAIN
                 %-------------------------------------------------------------%
@@ -842,7 +843,7 @@ classdef AssemblerStokesHandler
 
                 % KINETIC VISCOSITY OF THE FLUID
 
-                evalNu    = obj.probParameters.nu(XP,YP,time);
+                evalNu    = obj.probParameters.nu(XP,YP,obj.timeStruct.timeDomain(ii));
 
                 %% EVALUATION OF THE EXCITING FORCE 
                 %-------------------------------------------------------------%
@@ -851,8 +852,8 @@ classdef AssemblerStokesHandler
                 % domain.
                 %-------------------------------------------------------------%
 
-                evalForceX = obj.probParameters.force_x(XP,YP,time);
-                evalForceY = obj.probParameters.force_y(XP,YP,time);
+                evalForceX = obj.probParameters.force_x(XP,YP,obj.timeStruct.timeDomain(ii));
+                evalForceY = obj.probParameters.force_y(XP,YP,obj.timeStruct.timeDomain(ii));
 
                 %-------------------------------------------------------------%
                 % Note: All of the coefficients of the bilinear form and the
@@ -863,7 +864,7 @@ classdef AssemblerStokesHandler
 
                 Computed = struct('nu',evalNu,'forceX',evalForceX,'forceY',evalForceY,'y',verEvalNodesP);            
 
-                %% Axx ASSEMBLING LOOP
+                %% Axx - ASSEMBLING LOOP
                 
                 assemblerStruct = [];
 
@@ -906,7 +907,7 @@ classdef AssemblerStokesHandler
                     Fx( 1 + (kmb-1) * numbControlPtsUx : kmb * numbControlPtsUx ) = Fx_mb;
                 end
                 
-                %% Ayy ASSEMBLING LOOP
+                %% Ayy - ASSEMBLING LOOP
                 
                 assemblerStruct = [];
 
@@ -949,7 +950,7 @@ classdef AssemblerStokesHandler
                     Fy( 1 + (kmb-1) * numbControlPtsUy : kmb * numbControlPtsUy ) = Fy_mb;
                 end
                 
-                %% Bxy ASSEMBLING LOOP
+                %% Bxy - ASSEMBLING LOOP
                 
                 assemblerStruct = [];
 
@@ -988,7 +989,7 @@ classdef AssemblerStokesHandler
                     end
                 end
                 
-                %% Byx ASSEMBLING LOOP
+                %% Byx - ASSEMBLING LOOP
                 
                 assemblerStruct = [];
 
@@ -1027,7 +1028,7 @@ classdef AssemblerStokesHandler
                     end
                 end
                 
-                %% Px ASSEMBLING LOOP
+                %% Px  - ASSEMBLING LOOP
                 
                 assemblerStruct = [];
 
@@ -1066,7 +1067,7 @@ classdef AssemblerStokesHandler
                     end
                 end
                 
-                %% Py ASSEMBLING LOOP
+                %% Py  - ASSEMBLING LOOP
                 
                 assemblerStruct = [];
 
@@ -1105,47 +1106,115 @@ classdef AssemblerStokesHandler
                     end
                 end
                 
-                %% Qx ASSEMBLING LOOP
+                %% Qx  - ASSEMBLING LOOP
                 
                 Qx(:) = Px(:)';
                 
-                %% Qy ASSEMBLING LOOP
+                %% Qy  - ASSEMBLING LOOP
                 
                 Qy(:) = Py(:)';
 
-                %% IMPOSE BOUNDARY CONDITIONS
-
-                %-------------------------------------------------------------%
-                % Compute the lifting contribution in the force vector due to
-                % the non homogeneous Dirichlet boundary conditions in the
-                % lower and upper boundary.
-                %-------------------------------------------------------------%
-
-                BC_l = obj.igaBoundCond.BC_INF_TAG;
-                BC_r = obj.igaBoundCond.BC_OUT_TAG;
-                infBoundCond = obj.igaBoundCond.BC_INF_DATA;
-                outBoundCond = obj.igaBoundCond.BC_OUT_DATA;
-
+                %% Axx - IMPOSE BOUNDARY CONDITIONS
+                %---------------------------------------------------------%
+                % Compute the projection of the inflow and outflow
+                % boundary conditions using the expression for the modal
+                % expansion and impose them in the stiffness matrix.
+                %---------------------------------------------------------%
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % CREATION OF THE BOUNDARY STRUCTURE %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                boundaryStruct.bc_inf_tag       = obj.boundCondStruct.bc_inf_tag_Ux;
+                boundaryStruct.bc_out_tag       = obj.boundCondStruct.bc_out_tag_Ux;
+                boundaryStruct.bc_inf_data      = obj.boundCondStruct.bc_inf_data_Ux;
+                boundaryStruct.bc_out_data      = obj.boundCondStruct.bc_out_data_Ux;
+                boundaryStruct.augVerNodes      = augVerNodesUx;
+                boundaryStruct.augVerWeights    = augVerWeightsUx;
+                boundaryStruct.modalBasis       = modalBasisUx;
+                boundaryStruct.numbModes        = obj.discStruct.numbModesUx;
+                boundaryStruct.numbCtrlPts      = numbControlPtsUx;
+                boundaryStruct.stiffMatrix      = Axx;
+                boundaryStruct.forceTerm        = Fx;
+                boundaryStruct.time             = obj.timeStruct.timeDomain(ii);
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % COMPUTE THE PROJECTION OF THE BOUNDARY CONDTIONS %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
                 obj_bcCoeff = BoundaryConditionHandler();
 
-                obj_bcCoeff.infBoundCond  = infBoundCond;
-                obj_bcCoeff.outBoundCond  = outBoundCond;
-                obj_bcCoeff.augVerNodes   = augVerNodes;
-                obj_bcCoeff.augVerWeights = augVerWeights;
-                obj_bcCoeff.modalBasis = modalBasis;
-                obj_bcCoeff.dimModalBasis = obj.dimModalBasis;
-                obj_bcCoeff.coefficientForm = obj.coefficientForm;
+                obj_bcCoeff.boundaryStruct    = boundaryStruct;
 
-                [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
+                [infStruct,outStruct] = computeFourierCoeffStokes(obj_bcCoeff);
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % IMPOSE BOUNDARY CONDITIONS %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                boundaryStruct.infStruct = infStruct;
+                boundaryStruct.outStruct = outStruct;
+                
+                obj_bcCoeff = BoundaryConditionHandler();
 
-                bcStruct.bcInfTag = BC_l;
-                bcStruct.bcOutTag = BC_r;
-                bcStruct.infStruct = infStruct;
-                bcStruct.outStruct = outStruct;
-                bcStruct.numbControlPts = numbControlPts;
-                bcStruct.dimModalBasis = obj.dimModalBasis;
+                obj_bcCoeff.boundaryStruct = boundaryStruct;
 
-                [AA,bb] = impose_boundary(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,b,numbControlPts);
+                [Ax,fx] = computeFourierCoeffStokes(obj_bcCoeff);
+                
+                %% Ayy - IMPOSE BOUNDARY CONDITIONS
+                %---------------------------------------------------------%
+                % Compute the projection of the inflow and outflow
+                % boundary conditions using the expression for the modal
+                % expansion and impose them in the stiffness matrix.
+                %---------------------------------------------------------%
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % CREATION OF THE BOUNDARY STRUCTURE %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                boundaryStruct.bc_inf_tag       = obj.boundCondStruct.bc_inf_tag_Uy;
+                boundaryStruct.bc_out_tag       = obj.boundCondStruct.bc_out_tag_Uy;
+                boundaryStruct.bc_inf_data      = obj.boundCondStruct.bc_inf_data_Uy;
+                boundaryStruct.bc_out_data      = obj.boundCondStruct.bc_out_data_Uy;
+                boundaryStruct.augVerNodes      = augVerNodesUy;
+                boundaryStruct.augVerWeights    = augVerWeightsUy;
+                boundaryStruct.modalBasis       = modalBasisUy;
+                boundaryStruct.numbModes        = obj.discStruct.numbModesUy;
+                boundaryStruct.numbCtrlPts      = numbControlPtsUy;
+                boundaryStruct.stiffMatrix      = Ayy;
+                boundaryStruct.forceTerm        = Fy;
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % COMPUTE THE PROJECTION OF THE BOUNDARY CONDTIONS %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                obj_bcCoeff = BoundaryConditionHandler();
+
+                obj_bcCoeff.boundaryStruct    = boundaryStruct;
+
+                [infStruct,outStruct] = computeFourierCoeffStokes(obj_bcCoeff);
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % IMPOSE BOUNDARY CONDITIONS %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                boundaryStruct.infStruct = infStruct;
+                boundaryStruct.outStruct = outStruct;
+                
+                obj_bcCoeff = BoundaryConditionHandler();
+
+                obj_bcCoeff.boundaryStruct = boundaryStruct;
+
+                [Ay,fy] = computeFourierCoeffStokes(obj_bcCoeff);
+                
+                %% GLOBAL SYSTEM ASSEMBLING
+                
+                stiffTimeStruct{ii} = [Ax,Bxy,Qx;Byx,Ay,Qy;Px,Py,P];
+                forceTimeStruct{ii} = [fx,fy,Fp];
+                massTimeStruct{ii}  = [Mx,zeros(size(Bxy)),zeros(size(Qx));...
+                                       zeros(size(Byx)),My,zeros(size(Qy));...
+                                       zeros(size(Px)),zeros(size(Py)),zeros(size(P))];
+                
             end
                 
             end

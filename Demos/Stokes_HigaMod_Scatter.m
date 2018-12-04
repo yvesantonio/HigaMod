@@ -86,7 +86,7 @@
     
     % Number of knots/elements in the isogeometric space
     
-    discStruct.numbElements    = 1/stepHorMesh;
+    discStruct.numbElements    = 1/discStruct.stepHorMesh;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE PRESSURE %
@@ -100,7 +100,7 @@
     
     % Number of transverse modes
     
-    discStruct.numbModesUx       = 5;
+    discStruct.numbModesUx       = 7;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE Y COMPONENT OF THE VELOCITY %
@@ -108,7 +108,7 @@
     
     % Number of transverse modes
     
-    discStruct.numbModesUy       = 5;
+    discStruct.numbModesUy       = 7;
     
     %% Isogeometric basis properties
     
@@ -128,7 +128,9 @@
     
     % Number of control points
     
-    igaBasisStruct.numbControlPtsP = numbElements * continuityParameterP + degreeSplineBasisP + 1 - continuityParameterP;
+    igaBasisStruct.numbControlPtsP = discStruct.numbElements * igaBasisStruct.continuityParameterP + ...
+                                     igaBasisStruct.degreeSplineBasisP + 1 - ...
+                                     igaBasisStruct.continuityParameterP;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % IGA BASIS FOR THE X COMPONENT OF THE VELOCITY %
@@ -144,7 +146,9 @@
     
     % Number of control points
     
-    igaBasisStruct.numbControlPtsUx = numbElementsUx * continuityParameterUx + degreeSplineBasisUx + 1 - continuityParameterUx;
+    igaBasisStruct.numbControlPtsUx = discStruct.numbElements * igaBasisStruct.continuityParameterUx + ...
+                                      igaBasisStruct.degreeSplineBasisUx + 1 - ...
+                                      igaBasisStruct.continuityParameterUx;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % IGA BASIS FOR THE Y COMPONENT OF THE VELOCITY %
@@ -160,7 +164,9 @@
     
     % Number of control points
     
-    igaBasisStruct.numbControlPtsUy = numbElementsUy * continuityParameterUy + degreeSplineBasisUy + 1 - continuityParameterUy;
+    igaBasisStruct.numbControlPtsUy = discStruct.numbElements * igaBasisStruct.continuityParameterUy + ...
+                                      igaBasisStruct.degreeSplineBasisUy + 1 - ...
+                                      igaBasisStruct.continuityParameterUy;
     
     %% Time simulation parameters
     
@@ -186,13 +192,13 @@
     % SIMULATION TIME STEP %
     %%%%%%%%%%%%%%%%%%%%%%%%
     
-    timeStruct.timeStep = (finalTime - initialTime)/numbSteps;
+    timeStruct.timeStep = (timeStruct.finalTime - timeStruct.initialTime)/timeStruct.numbSteps;
     
     %%%%%%%%%%%%%%%
     % TIME DOMAIN %
     %%%%%%%%%%%%%%%
     
-    timeStruct.timeDomain = initialTime:timeStep:finalTime;
+    timeStruct.timeDomain = timeStruct.initialTime:timeStruct.timeStep:timeStruct.finalTime;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INITIAL STATE OF THE PRESSURE %

@@ -1041,5 +1041,170 @@ classdef BoundaryConditionHandler
                 disp('Finished BOUNDARY IMPOSITION');
                 
             end
+            
+            %% Method 'computeFourierCoeffStokes'
+            
+            function [infStruct,outStruct] = computeFourierCoeffStokes(obj)
+                
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+                
+                %% IMPORT FEATURES
+
+                infBC    = obj.boundaryStruct.bc_inf_data;
+                outBC    = obj.boundaryStruct.bc_out_data;
+                nodes    = obj.boundaryStruct.augVerNodes;
+                wghts    = obj.boundaryStruct.augVerWeights;
+                modBasis = obj.boundaryStruct.modalBasis;
+                
+                %% COMPUTE PROJECTION
+                
+                valueInfBC = infBC(nodes,obj.boundaryStruct.time);
+                valueOutBC = outBC(nodes,obj.boundaryStruct.time);
+                
+                infStruct = zeros(obj.boundaryStruct.numbModes,1);
+                outStruct = zeros(obj.boundaryStruct.numbModes,1);
+                
+                for ii = 1:obj.dimModalBasis
+                    
+                    infStruct(ii) = (valueInfBC .* modBasis(:,ii))' * wghts;
+                    outStruct(ii) = (valueOutBC .* modBasis(:,ii))' * wghts;                                                                                                                          
+                    
+                end
+                
+                aux1 = infStruct;
+                aux2 = outStruct;
+                infStruct = fliplr(aux1);
+                outStruct = fliplr(aux2);
+                
+            end
+            
+            %% Method 'imposeBoundaryStokes'
+            
+            function [A,b] = imposeBoundaryStokes(obj)
+                
+                bc_inf_tag  = obj.boundaryStruct.bc_inf_tag;
+                bc_out_tag  = obj.boundaryStruct.bc_out_tag;
+                numbModes   = obj.boundaryStruct.numbModes;
+                numbCtrlPts = obj.boundaryStruct.numbCtrlPts;
+                projInfBC   = obj.boundaryStruct.projInfBC;
+                projOutBC   = obj.boundaryStruct.projOutBC;
+                A           = obj.boundaryStruct.stiffMatrix;
+                b           = obj.boundaryStruct.forceTerm;
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % DEFINITION OF THE WEAK BC IMPOSITION %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                delta = 1e10;
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % IMPOSITION OF THE BC IN THE GLOBAL STIFFNESS MATRIX %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                % (1) DIRICHLET - DIRICHLET
+                
+                if (strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'dir'))
+
+                    for imb = 1 : numbModes
+                        
+                        for jmb = 1 : numbModes
+
+                            A((imb - 1) * numbCtrlPts + 1,:) = zeros(size(A((imb - 1) * numbCtrlPts + 1,:)));
+                            A(imb * numbCtrlPts,:) = zeros(size(A(imb * numbCtrlPts,:)));
+                            A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
+                            A(imb * numbCtrlPts , jmb * numbCtrlPts) = delta;
+
+                        end
+                        
+                        b((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        b(imb * numbCtrlPts) = delta * projOutBC(imb);
+
+                    end
+                    
+                % (2) DIRICHLET - NEUMANN
+
+                elseif ( strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'neu') )
+                    
+                    for imb = 1 : numbModes
+                        
+                        for jmb = 1 : numbModes
+                            
+                            A((imb - 1) * numbCtrlPts + 1,:) = zeros(size(A((imb - 1) * numbCtrlPts + 1,:)));
+                            A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
+
+                        end
+
+                        b((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        b(imb * numbCtrlPts) = b(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+
+                % (3) NEUMANN - DIRICHLET
+                
+                elseif ( strcmp(bc_inf_tag,'neu') && strcmp(bc_out_tag,'dir') )
+
+                    for imb = 1 : numbModes
+                        
+                        for jmb = 1 : numbModes
+
+                            A(imb * numbCtrlPts,:) = zeros(size(A(imb * numbCtrlPts,:)));
+                            A(imb * numbCtrlPts , jmb * numbCtrlPts) = delta;
+
+                        end
+                        
+                        b((imb - 1) * numbCtrlPts + 1) = b((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        b(imb * numbCtrlPts) = delta * projOutBC(imb);
+
+                    end
+                    
+                % (4) ROBIN - ROBIAN & ROBIN - NEUMANN
+                    
+                elseif ( strcmp(bc_inf_tag,'rob') && (strcmp(bc_out_tag,'rob') || (strcmp(bc_out_tag,'neu') ) ) ) %robrob e robneu condividono lo stesso codice.
+
+                    for imb = 1 : numbModes
+                        
+                        b((imb - 1) * numbCtrlPts + 1) = b((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        b(imb * numbCtrlPts) = b(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+                    
+                % (5) NEUMANN - NEUMANN
+                    
+                elseif ( strcmp(bc_inf_tag,'neu') && (strcmp(bc_out_tag,'neu') ) )
+
+                    for imb = 1 : numbModes
+                        
+                        b((imb - 1) * numbCtrlPts + 1) = b((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        b(imb * numbCtrlPts) = b(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+                    
+                % DIRICHLET - ROBIN
+                    
+                elseif ( strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'rob') )
+
+                    for imb = 1 : numbModes
+                        
+                        for jmb = 1 : numbModes
+                            
+                            A((imb - 1) * numbCtrlPts + 1,:) = zeros(size(A((imb - 1) * numbCtrlPts + 1,:)));
+                            A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
+
+                        end
+
+                        b((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        b(imb * numbCtrlPts) = b(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+                end
+                
+            end
     end
 end

@@ -1,3 +1,4 @@
+
 classdef BasisHandler
     
     %% BASIS HANDLER CLASS
@@ -948,7 +949,7 @@ classdef BasisHandler
                 
             end
             
-            %% Method 'newModalBasis'
+            %% Method 'newModalBasisStokes'
             
             function [coeffModalBase,coeffModalBaseDer] = newModalBasisStokes(obj)
 
