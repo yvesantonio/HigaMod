@@ -235,7 +235,7 @@
     
     boundCondStruct.bc_up_tag_Ux    = 'dir';
     boundCondStruct.bc_down_tag_Ux  = 'dir';
-    boundCondStruct.bc_inf_tag_Ux   = 'dir';
+    boundCondStruct.bc_inf_tag_Ux   = 'neu';
     boundCondStruct.bc_out_tag_Ux   = 'neu';
     boundCondStruct.bc_up_data_Ux   = 0;
     boundCondStruct.bc_down_data_Ux = 0;
@@ -252,7 +252,7 @@
     boundCondStruct.bc_out_tag_Uy   = 'neu';
     boundCondStruct.bc_up_data_Uy   = 0;
     boundCondStruct.bc_down_data_Uy = 0;
-    boundCondStruct.bc_inf_data_Uy  = @(rho,t) 0 + 1 * rho + 1 * -rho.^2 + 0*t;
+    boundCondStruct.bc_inf_data_Uy  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
     boundCondStruct.bc_out_data_Uy  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
     
     %% Physical domain
