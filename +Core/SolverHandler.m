@@ -180,6 +180,9 @@ classdef SolverHandler
                             % simulation parameters
                             
             quadProperties  % Structure containing the quadrature parameters
+            
+            igaBasisStruct  % Structure containing the isogeometric basis 
+                            % information
     end
     
     methods (Access = public)
@@ -1118,7 +1121,7 @@ classdef SolverHandler
                 solutionMatrix = zeros(numbStates,numbIterations);
                 
                 solutionMatrix(:,1) = obj.initialState;
-                
+                yygygyggyyggygygygy
                 for iteration = 1 : numbIterations - 1
                     
                     % Definition of the Object from the AssemblerADRHandler class
@@ -5804,6 +5807,8 @@ classdef SolverHandler
                 %   (5) errorNormH1      : Solution Error on the H1 Norm
                 
                 import Core.AssemblerADRHandler
+                import Core.AssemblerStokesHandler
+                import Core.AssemblerNSHandler
                 import Core.BoundaryConditionHandler
                 import Core.IntegrateHandler
                 import Core.EvaluationHandler
@@ -5833,6 +5838,8 @@ classdef SolverHandler
                 % solve the problem.
                 %---------------------------------------------------------------------%
 
+                tic;
+                
                 % Definition of the Object from the AssemblerADRHandler class
 
                 build_IGA = AssemblerStokesHandler();
@@ -5841,6 +5848,7 @@ classdef SolverHandler
 
                 build_IGA.discStruct        = obj.discStruct;   
                 build_IGA.boundCondStruct   = obj.boundCondStruct;
+                build_IGA.igaBasisStruct    = obj.igaBasisStruct;
                 build_IGA.probParameters    = obj.probParameters;
                 build_IGA.timeStruct        = obj.timeStruct;
                 build_IGA.geometricInfo     = obj.geometricInfo;
@@ -5848,51 +5856,100 @@ classdef SolverHandler
                 
                 % Call of the 'buildSystemIGA' Method
 
-                [stiffStruct,massStruct,forceStruct] = buildSystemIGAScatter(build_IGA); 
-
-                disp('Finished BUILD SYSTEM IGA');                
+                [AA,MM,FF,plotStruct] = buildSystemIGAScatter(build_IGA); 
                 
-                %-----------------------------------------------------------------%
-                %                  	      PROBLEM SOLUTION                        %
-                %-----------------------------------------------------------------%
-
-                u = A\b;
+                tBuild = toc;
                 
-                %------------------%
-                % REBUILD SOLUTION %
-                %------------------%
+                disp('  '); 
+                disp('---------------------------------------------------------------------------------------------')
+                disp(['FINISHED ASSEMBLING OF TIME STRUCTURES - SIM. TIME Ts = ',num2str(tBuild),' [s]']);
+                disp('---------------------------------------------------------------------------------------------')
+                disp('  ');              
                 
-                buildBC = BoundaryConditionHandler();
+                %---------------------------------------------------------%
+                %    EVOLUTION OF THE SOLUTION WITH THE THETA METHOD    
+                %---------------------------------------------------------%
                 
-                buildBC.bcStruct = boundStruct;
-                buildBC.uRid = u;
+                theta = 1;
+                dt = obj.timeStruct.timeStep;
                 
-                [uAug] = buildBoundCond(buildBC);
-                u = uAug;
+                solStruct = cell(1,length(obj.timeStruct.timeDomain));
+                solStruct{1} = [obj.timeStruct.initialStateP;
+                                obj.timeStruct.initialStateUx;
+                                obj.timeStruct.initialStateUy];
+                            
+                tic;
                 
-                disp('Finished SOLVE SYSTEM');
+                for tt = 1:length(obj.timeStruct.timeDomain)-1
+                    
+                    AUX1 = dt^1 * MM{tt+1} + theta * AA{tt+1};
+                    AUX2 = (theta-1) * AA{tt} + dt^-1 * MM{tt};
+                    AUX3 = (theta * FF{tt+1} + (1-theta) * FF{tt});
+                    
+                    solStruct{tt+1} = AUX1\AUX2 * solStruct{tt} + AUX1\AUX3;
+                    
+                end
+                
+                tEvol = toc;
+                
+                disp('  '); 
+                disp('---------------------------------------------------------------------------------------------')
+                disp(['FINISHED THE TIME EVOLUTION OF THE SOLUTION - SIM. TIME Ts = ',num2str(tEvol),' [s]']);
+                disp('---------------------------------------------------------------------------------------------')
+                disp('  '); 
 
                 %-----------------------------------------------------------------%
                 %                  	       SOLUTION PLOT                          %
                 %-----------------------------------------------------------------%
 
-                [errL2,errH1] = plot_solution_IGA_scatter( ...
-                obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
-                obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
-
-                errorNormH1 = errL2;
-                errorNormL2 = errH1;
+                numbIterations = length(obj.timeDomain) - 1;
                 
-                disp('Finished PLOT OPERATION / ERROR with EXACT SOLUTION')
-            
-%                 [errL2,errH1] = computeErrorIGA_scatter( ...
-%                 obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
-%                 obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
-%              
-%                 disp('Finished ERROR with FREEFEM++ SOLUTION')
-% 
-%                 errorNormH1 = errH1;
-%                 errorNormL2 = errL2;
+                % Create the Freefem++ simulation folder
+    
+                for ii = 1:1000
+        
+                checkFolder = exist(['MatlabPlots',num2str(ii)]);
+        
+                    if (checkFolder == 7)
+                        disp(['The folder MatlabPlots',num2str(ii),' already exists!'])
+                    else
+                        fileNameF = ['MatlabPlots',num2str(ii)];
+                        mkdir(fileNameF)
+                        break
+                    end
+                end
+                
+                % Print the solution
+                
+                plotStruct.timeStruct = obj.timeStruct;
+                plotStruct.solStruct  = solStruct;
+                
+                plotSolutionStokes(plotStruct);
+
+                disp('Finished Plot Operation');
+
+                % Create simulation video
+
+                imageNames = cell(1,numbIterations);
+
+                for ii = 1:numbIterations
+                    fileName = ['Plot_At_t=',num2str(ii),'.png'];
+                    imageNames{ii} = fileName;
+                end
+
+                workingDir = [pwd,'/',fileNameF];
+
+                outputVideo = VideoWriter(fullfile(workingDir,'StokesMatlabEvolution.avi'));
+                outputVideo.FrameRate = 10;
+                open(outputVideo)
+
+                for ii = 1:length(imageNames)
+                img = imread(fullfile(workingDir,imageNames{ii}));
+                writeVideo(outputVideo,img)
+                end
+
+                close(outputVideo)
+
 
                 disp('Finished Method SOLVER IGA')
 

@@ -139,7 +139,7 @@ classdef AssemblerStokesHandler
         
             %% Method 'buildIGAScatter'
             
-            function [stiffTimeStruct,massTimeStruct,forceTimeStruct] = buildSystemIGAScatter(obj)
+            function [stiffTimeStruct,massTimeStruct,forceTimeStruct,plotStruct] = buildSystemIGAScatter(obj)
                                                          
             %%
             % buildSystemIGA - This function computes the assembled matrices
@@ -212,11 +212,19 @@ classdef AssemblerStokesHandler
             %% IMPORT CLASSES
             
             import Core.AssemblerADRHandler
+            import Core.AssemblerStokesHandler
+            import Core.AssemblerNSHandler
             import Core.BoundaryConditionHandler
             import Core.IntegrateHandler
             import Core.EvaluationHandler
             import Core.BasisHandler
             import Core.SolverHandler
+            
+            disp('  '); 
+            disp('---------------------------------------------------------------------------------------------')
+            disp('Started BUILDING TIME STRUCTURES');
+            disp('---------------------------------------------------------------------------------------------')
+            disp('  '); 
             
             %% NUMBER OF NODES IN THE QUADRATURE FORMULA
             %-------------------------------------------------------------%
@@ -273,19 +281,19 @@ classdef AssemblerStokesHandler
             % PRESSURE NUMBER KNOTS %
             %%%%%%%%%%%%%%%%%%%%%%%%%
             
-            numbKnotsP  = obj.discStruct.numbElementsP;
+            numbKnotsP  = obj.discStruct.numbElements;
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % VELOCITY FIELD ALONG X NUMBER KNOTS %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            numbKnotsUx  = obj.discStruct.numbElementsUx;
+            numbKnotsUx  = obj.discStruct.numbElements;
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % VELOCITY FIELD ALONG Y NUMBER KNOTS %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            numbKnotsUy  = obj.discStruct.numbElementsUy;
+            numbKnotsUy  = obj.discStruct.numbElements;
             
             %% NUMBER OF CONTROL POINTS - ISOGEOMETRIC ANALYSIS
             %-------------------------------------------------------------%
@@ -651,7 +659,7 @@ classdef AssemblerStokesHandler
             
             % Set variables to use a Legendre Modal Base
             
-            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
+            % obj_newModalBasis.dimLegendreBase = obj.discStruct.numbModesP;
             % obj_newModalBasis.evalLegendreNodes = verGLNodes;
             
             % Set variables to use a Educated Modal Basis
@@ -672,7 +680,7 @@ classdef AssemblerStokesHandler
             
             % Set variables to use a Legendre Modal Base
             
-            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
+            % obj_newModalBasis.dimLegendreBase = obj.discStruct.numbModesP;
             % obj_newModalBasis.evalLegendreNodes = verGLNodes;
             
             % Set variables to use a Educated Modal Basis
@@ -693,7 +701,7 @@ classdef AssemblerStokesHandler
             
             % Set variables to use a Legendre Modal Base
             
-            % obj_newModalBasis.dimLegendreBase = obj.dimModalBasisP;
+            % obj_newModalBasis.dimLegendreBase = obj.discStruct.numbModesP;
             % obj_newModalBasis.evalLegendreNodes = verGLNodes;
             
             % Set variables to use a Educated Modal Basis
@@ -795,30 +803,30 @@ classdef AssemblerStokesHandler
             % BLOCK COMPONENTS OF THE MASS MATRIX %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-            Mxx = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisUx) );
-            Myy = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisUy) );
+            Mxx = sparse( numbControlPtsUx * (obj.discStruct.numbModesUx), numbControlPtsUx * (obj.discStruct.numbModesUx) );
+            Myy = sparse( numbControlPtsUy * (obj.discStruct.numbModesUy), numbControlPtsUy * (obj.discStruct.numbModesUy) );
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % BLOCK COMPONENTS OF THE STIFFNESS MATRIX %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-            Axx = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisUx) );
-            Bxy = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisUy) );
-            Byx = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisUx) );
-            Ayy = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisUy) );
-            Px  = sparse( numbControlPts*(obj.dimModalBasisUx), numbControlPts*(obj.dimModalBasisP) );
-            Py  = sparse( numbControlPts*(obj.dimModalBasisUy), numbControlPts*(obj.dimModalBasisP) );
-            Qx  = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisUx) );
-            Qy  = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisUy) );            
-            P   = sparse( numbControlPts*(obj.dimModalBasisP), numbControlPts*(obj.dimModalBasisP) );
+            Axx = sparse( numbControlPtsUx * (obj.discStruct.numbModesUx), numbControlPtsUx * (obj.discStruct.numbModesUx) );
+            Bxy = sparse( numbControlPtsUx * (obj.discStruct.numbModesUx), numbControlPtsUy * (obj.discStruct.numbModesUy) );
+            Byx = sparse( numbControlPtsUy * (obj.discStruct.numbModesUy), numbControlPtsUx * (obj.discStruct.numbModesUx) );
+            Ayy = sparse( numbControlPtsUy * (obj.discStruct.numbModesUy), numbControlPtsUy * (obj.discStruct.numbModesUy) );
+            Px  = sparse( numbControlPtsUx * (obj.discStruct.numbModesUx), numbControlPtsP  * (obj.discStruct.numbModesP)  );
+            Py  = sparse( numbControlPtsUy * (obj.discStruct.numbModesUy), numbControlPtsP  * (obj.discStruct.numbModesP)  );
+            Qx  = sparse( numbControlPtsP  * (obj.discStruct.numbModesP) , numbControlPtsUx * (obj.discStruct.numbModesUx) );
+            Qy  = sparse( numbControlPtsP  * (obj.discStruct.numbModesP) , numbControlPtsUy * (obj.discStruct.numbModesUy) );            
+            P   = sparse( numbControlPtsP  * (obj.discStruct.numbModesP) , numbControlPtsP  * (obj.discStruct.numbModesP)  );
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % BLOCK COMPONENTS OF THE SOURCE TERM %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            Fx = zeros ( numbControlPts*(obj.dimModalBasisUx), 1);
-            Fy = zeros ( numbControlPts*(obj.dimModalBasisUx), 1);
-            Fp = zeros ( numbControlPts*(obj.dimModalBasisUx), 1);
+            Fx = zeros ( numbControlPtsUx * (obj.discStruct.numbModesUx), 1);
+            Fy = zeros ( numbControlPtsUy * (obj.discStruct.numbModesUy), 1);
+            Fp = zeros ( numbControlPtsP  * (obj.discStruct.numbModesP ), 1);
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % STRCUT CONTAINING TIME DEPENDENT INFORMATION %
@@ -830,8 +838,8 @@ classdef AssemblerStokesHandler
             
             %% ASSEMBLE TIME DEPENDENT STRUCTURES
             
-            for ii = length(obj.timeStruct.timeDomain)
-                
+            for ii = 1:length(obj.timeStruct.timeDomain)
+
                 %% EVALUATION OF THE BILINEAR COEFFICIENTS OF THE DOMAIN
                 %-------------------------------------------------------------%
                 % We need to evaluate all the coefficients of the bilinear form
@@ -865,20 +873,22 @@ classdef AssemblerStokesHandler
                 Computed = struct('nu',evalNu,'forceX',evalForceX,'forceY',evalForceY,'y',verEvalNodesP);            
 
                 %% Axx - ASSEMBLING LOOP
-                
+
                 assemblerStruct = [];
+                
+                tic;
 
                 for kmb = 1:obj.discStruct.numbModesUx
                     for jmb = 1:obj.discStruct.numbModesUx
-                        
+
                         assemblerStruct.index1     = kmb;
                         assemblerStruct.index2     = jmb;
                         assemblerStruct.wgh1       = augVerWeightsUx;
                         assemblerStruct.wgh2       = augVerWeightsUx;
-                        assemblerStruct.mb1        = modalBasisUx;
-                        assemblerStruct.mb2        = modalBasisUx;
-                        assemblerStruct.dmb1       = modalBasisDerUx;
-                        assemblerStruct.dmb2       = modalBasisDerUx;
+                        assemblerStruct.mb1        = modalBasisUx(:,kmb);
+                        assemblerStruct.mb2        = modalBasisUx(:,jmb);
+                        assemblerStruct.dmb1       = modalBasisDerUx(:,kmb);
+                        assemblerStruct.dmb2       = modalBasisDerUx(:,jmb);
                         assemblerStruct.param      = Computed;
                         assemblerStruct.geodata    = geoData;
                         assemblerStruct.jacFunc    = jacFunc;
@@ -887,11 +897,8 @@ classdef AssemblerStokesHandler
                         assemblerStruct.space1     = spaceUx;
                         assemblerStruct.space2     = spaceUx;
                         assemblerStruct.spaceFunc1 = spaceFuncUx;
-                        assemblerStruct.spaceFunc1 = spaceFuncUx;
-                        assemblerStruct.aLift      = aLift;
-                        assemblerStruct.bLift      = bLift;
-                        assemblerStruct.lifting    = lifting;
-                        
+                        assemblerStruct.spaceFunc2 = spaceFuncUx;
+
                         [Mx_mb,Ax_mb,Fx_mb] = assemblerIGAScatterAx(assemblerStruct);
 
                         % Assignment of the Block Matrix Just Assembled
@@ -899,29 +906,33 @@ classdef AssemblerStokesHandler
                         Axx(1 + (kmb-1) * numbControlPtsUx : kmb * numbControlPtsUx , 1 + (jmb-1) * numbControlPtsUx : jmb * numbControlPtsUx) = Ax_mb;
                         Mxx(1 + (kmb-1) * numbControlPtsUx : kmb * numbControlPtsUx , 1 + (jmb-1) * numbControlPtsUx : jmb * numbControlPtsUx) = Mx_mb;
 
-                        disp(['Ax - FINISHED ASSEMBLING LOOP (',num2str(kmb),' , ',num2str(jmb),')']);
-
                     end
 
                     % Assignment of the Block Vector Just Assembled
                     Fx( 1 + (kmb-1) * numbControlPtsUx : kmb * numbControlPtsUx ) = Fx_mb;
                 end
                 
+                tAxx = toc;
+
+                disp(['Axx - FINISHED ASSEMBLING LOOP AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tAxx),' [s]']);
+
                 %% Ayy - ASSEMBLING LOOP
-                
+
                 assemblerStruct = [];
+                
+                tic;
 
                 for kmb = 1:obj.discStruct.numbModesUy
                     for jmb = 1:obj.discStruct.numbModesUy
-                        
+
                         assemblerStruct.index1     = kmb;
                         assemblerStruct.index2     = jmb;
                         assemblerStruct.wgh1       = augVerWeightsUy;
                         assemblerStruct.wgh2       = augVerWeightsUy;
-                        assemblerStruct.mb1        = modalBasisUy;
-                        assemblerStruct.mb2        = modalBasisUy;
-                        assemblerStruct.dmb1       = modalBasisDerUy;
-                        assemblerStruct.dmb2       = modalBasisDerUy;
+                        assemblerStruct.mb1        = modalBasisUy(:,kmb);
+                        assemblerStruct.mb2        = modalBasisUy(:,jmb);
+                        assemblerStruct.dmb1       = modalBasisDerUy(:,kmb);
+                        assemblerStruct.dmb2       = modalBasisDerUy(:,jmb);
                         assemblerStruct.param      = Computed;
                         assemblerStruct.geodata    = geoData;
                         assemblerStruct.jacFunc    = jacFunc;
@@ -930,11 +941,8 @@ classdef AssemblerStokesHandler
                         assemblerStruct.space1     = spaceUy;
                         assemblerStruct.space2     = spaceUy;
                         assemblerStruct.spaceFunc1 = spaceFuncUy;
-                        assemblerStruct.spaceFunc1 = spaceFuncUy;
-                        assemblerStruct.aLift      = aLift;
-                        assemblerStruct.bLift      = bLift;
-                        assemblerStruct.lifting    = lifting;
-                        
+                        assemblerStruct.spaceFunc2 = spaceFuncUy;
+
                         [My_mb,Ay_mb,Fy_mb] = assemblerIGAScatterAy(assemblerStruct);
 
                         % Assignment of the Block Matrix Just Assembled
@@ -942,29 +950,33 @@ classdef AssemblerStokesHandler
                         Ayy(1 + (kmb-1) * numbControlPtsUy : kmb * numbControlPtsUy , 1 + (jmb-1) * numbControlPtsUy : jmb * numbControlPtsUy) = Ay_mb;
                         Myy(1 + (kmb-1) * numbControlPtsUy : kmb * numbControlPtsUy , 1 + (jmb-1) * numbControlPtsUy : jmb * numbControlPtsUy) = My_mb;
 
-                        disp(['Ay - FINISHED ASSEMBLING LOOP (',num2str(kmb),' , ',num2str(jmb),')']);
-
                     end
 
                     % Assignment of the Block Vector Just Assembled
                     Fy( 1 + (kmb-1) * numbControlPtsUy : kmb * numbControlPtsUy ) = Fy_mb;
                 end
                 
+                tAyy = toc;
+
+                disp(['Ayy - FINISHED ASSEMBLING LOOP AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tAyy),' [s]']);
+
                 %% Bxy - ASSEMBLING LOOP
-                
+
                 assemblerStruct = [];
+                
+                tic;
 
                 for kmb = 1:obj.discStruct.numbModesUx
                     for jmb = 1:obj.discStruct.numbModesUy
-                        
+
                         assemblerStruct.index1     = kmb;
                         assemblerStruct.index2     = jmb;
                         assemblerStruct.wgh1       = augVerWeightsUx;
                         assemblerStruct.wgh2       = augVerWeightsUy;
-                        assemblerStruct.mb1        = modalBasisUx;
-                        assemblerStruct.mb2        = modalBasisUy;
-                        assemblerStruct.dmb1       = modalBasisDerUx;
-                        assemblerStruct.dmb2       = modalBasisDerUy;
+                        assemblerStruct.mb1        = modalBasisUx(:,kmb);
+                        assemblerStruct.mb2        = modalBasisUy(:,jmb);
+                        assemblerStruct.dmb1       = modalBasisDerUx(:,kmb);
+                        assemblerStruct.dmb2       = modalBasisDerUy(:,jmb);
                         assemblerStruct.param      = Computed;
                         assemblerStruct.geodata    = geoData;
                         assemblerStruct.jacFunc    = jacFunc;
@@ -973,37 +985,38 @@ classdef AssemblerStokesHandler
                         assemblerStruct.space1     = spaceUx;
                         assemblerStruct.space2     = spaceUy;
                         assemblerStruct.spaceFunc1 = spaceFuncUx;
-                        assemblerStruct.spaceFunc1 = spaceFuncUy;
-                        assemblerStruct.aLift      = aLift;
-                        assemblerStruct.bLift      = bLift;
-                        assemblerStruct.lifting    = lifting;
-                        
+                        assemblerStruct.spaceFunc2 = spaceFuncUy;
+
                         [Bxy_mb] = assemblerIGAScatterBxy(assemblerStruct);
 
                         % Assignment of the Block Matrix Just Assembled
 
                         Bxy(1 + (kmb-1) * numbControlPtsUx : kmb * numbControlPtsUx , 1 + (jmb-1) * numbControlPtsUy : jmb * numbControlPtsUy) = Bxy_mb;
 
-                        disp(['Bxy - FINISHED ASSEMBLING LOOP (',num2str(kmb),' , ',num2str(jmb),')']);
-
                     end
                 end
                 
+                tBxy = toc;
+
+                disp(['Bxy - FINISHED ASSEMBLING LOOP AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tBxy),' [s]']);
+
                 %% Byx - ASSEMBLING LOOP
-                
+
                 assemblerStruct = [];
+                
+                tic;
 
                 for kmb = 1:obj.discStruct.numbModesUy
                     for jmb = 1:obj.discStruct.numbModesUx
-                        
+
                         assemblerStruct.index1     = kmb;
                         assemblerStruct.index2     = jmb;
                         assemblerStruct.wgh1       = augVerWeightsUy;
                         assemblerStruct.wgh2       = augVerWeightsUx;
-                        assemblerStruct.mb1        = modalBasisUy;
-                        assemblerStruct.mb2        = modalBasisUx;
-                        assemblerStruct.dmb1       = modalBasisDerUy;
-                        assemblerStruct.dmb2       = modalBasisDerUx;
+                        assemblerStruct.mb1        = modalBasisUy(:,kmb);
+                        assemblerStruct.mb2        = modalBasisUx(:,jmb);
+                        assemblerStruct.dmb1       = modalBasisDerUy(:,kmb);
+                        assemblerStruct.dmb2       = modalBasisDerUx(:,jmb);
                         assemblerStruct.param      = Computed;
                         assemblerStruct.geodata    = geoData;
                         assemblerStruct.jacFunc    = jacFunc;
@@ -1012,37 +1025,38 @@ classdef AssemblerStokesHandler
                         assemblerStruct.space1     = spaceUy;
                         assemblerStruct.space2     = spaceUx;
                         assemblerStruct.spaceFunc1 = spaceFuncUy;
-                        assemblerStruct.spaceFunc1 = spaceFuncUx;
-                        assemblerStruct.aLift      = aLift;
-                        assemblerStruct.bLift      = bLift;
-                        assemblerStruct.lifting    = lifting;
-                        
+                        assemblerStruct.spaceFunc2 = spaceFuncUx;
+
                         [Byx_mb] = assemblerIGAScatterByx(assemblerStruct);
 
                         % Assignment of the Block Matrix Just Assembled
 
                         Byx(1 + (kmb-1) * numbControlPtsUy : kmb * numbControlPtsUy , 1 + (jmb-1) * numbControlPtsUx : jmb * numbControlPtsUx) = Byx_mb;
 
-                        disp(['Byx - FINISHED ASSEMBLING LOOP (',num2str(kmb),' , ',num2str(jmb),')']);
-
                     end
                 end
                 
+                tByx = toc;
+
+                disp(['Byx - FINISHED ASSEMBLING LOOP AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tByx),' [s]']);
+
                 %% Px  - ASSEMBLING LOOP
-                
+
                 assemblerStruct = [];
+                
+                tic;
 
                 for kmb = 1:obj.discStruct.numbModesP
                     for jmb = 1:obj.discStruct.numbModesUx
-                        
+
                         assemblerStruct.index1     = kmb;
                         assemblerStruct.index2     = jmb;
                         assemblerStruct.wgh1       = augVerWeightsP;
                         assemblerStruct.wgh2       = augVerWeightsUx;
-                        assemblerStruct.mb1        = modalBasisP;
-                        assemblerStruct.mb2        = modalBasisUx;
-                        assemblerStruct.dmb1       = modalBasisDerP;
-                        assemblerStruct.dmb2       = modalBasisDerUx;
+                        assemblerStruct.mb1        = modalBasisP(:,kmb);
+                        assemblerStruct.mb2        = modalBasisUx(:,jmb);
+                        assemblerStruct.dmb1       = modalBasisDerP(:,kmb);
+                        assemblerStruct.dmb2       = modalBasisDerUx(:,jmb);
                         assemblerStruct.param      = Computed;
                         assemblerStruct.geodata    = geoData;
                         assemblerStruct.jacFunc    = jacFunc;
@@ -1051,37 +1065,38 @@ classdef AssemblerStokesHandler
                         assemblerStruct.space1     = spaceP;
                         assemblerStruct.space2     = spaceUx;
                         assemblerStruct.spaceFunc1 = spaceFuncP;
-                        assemblerStruct.spaceFunc1 = spaceFuncUx;
-                        assemblerStruct.aLift      = aLift;
-                        assemblerStruct.bLift      = bLift;
-                        assemblerStruct.lifting    = lifting;
-                        
+                        assemblerStruct.spaceFunc2 = spaceFuncUx;
+
                         [Px_mb] = assemblerIGAScatterPx(assemblerStruct);
 
                         % Assignment of the Block Matrix Just Assembled
 
-                        Px(1 + (kmb-1) * numbControlPtsP : kmb * numbControlPtsP , 1 + (jmb-1) * numbControlPtsUx : jmb * numbControlPtsUx) = Px_mb;
-
-                        disp(['Px - FINISHED ASSEMBLING LOOP (',num2str(kmb),' , ',num2str(jmb),')']);
+                        Px(1 + (jmb-1) * numbControlPtsUx : jmb * numbControlPtsUx , 1 + (kmb-1) * numbControlPtsP : kmb * numbControlPtsP) = Px_mb';
 
                     end
                 end
                 
+                tPx = toc;
+
+                disp(['Px  - FINISHED ASSEMBLING LOOP AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tPx),' [s]']);
+
                 %% Py  - ASSEMBLING LOOP
-                
+
                 assemblerStruct = [];
+                
+                tic;
 
                 for kmb = 1:obj.discStruct.numbModesP
                     for jmb = 1:obj.discStruct.numbModesUy
-                        
+
                         assemblerStruct.index1     = kmb;
                         assemblerStruct.index2     = jmb;
                         assemblerStruct.wgh1       = augVerWeightsP;
                         assemblerStruct.wgh2       = augVerWeightsUy;
-                        assemblerStruct.mb1        = modalBasisP;
-                        assemblerStruct.mb2        = modalBasisUy;
-                        assemblerStruct.dmb1       = modalBasisDerP;
-                        assemblerStruct.dmb2       = modalBasisDerUy;
+                        assemblerStruct.mb1        = modalBasisP(:,kmb);
+                        assemblerStruct.mb2        = modalBasisUy(:,jmb);
+                        assemblerStruct.dmb1       = modalBasisDerP(:,kmb);
+                        assemblerStruct.dmb2       = modalBasisDerUy(:,jmb);
                         assemblerStruct.param      = Computed;
                         assemblerStruct.geodata    = geoData;
                         assemblerStruct.jacFunc    = jacFunc;
@@ -1090,28 +1105,27 @@ classdef AssemblerStokesHandler
                         assemblerStruct.space1     = spaceP;
                         assemblerStruct.space2     = spaceUy;
                         assemblerStruct.spaceFunc1 = spaceFuncP;
-                        assemblerStruct.spaceFunc1 = spaceFuncUy;
-                        assemblerStruct.aLift      = aLift;
-                        assemblerStruct.bLift      = bLift;
-                        assemblerStruct.lifting    = lifting;
-                        
+                        assemblerStruct.spaceFunc2 = spaceFuncUy;
+
                         [Py_mb] = assemblerIGAScatterPy(assemblerStruct);
 
                         % Assignment of the Block Matrix Just Assembled
 
-                        Py(1 + (kmb-1) * numbControlPtsP : kmb * numbControlPtsP , 1 + (jmb-1) * numbControlPtsUy : jmb * numbControlPtsUy) = Py_mb;
-
-                        disp(['Py - FINISHED ASSEMBLING LOOP (',num2str(kmb),' , ',num2str(jmb),')']);
+                        Py(1 + (jmb-1) * numbControlPtsUy : jmb * numbControlPtsUy , 1 + (kmb-1) * numbControlPtsP : kmb * numbControlPtsP) = Py_mb';
 
                     end
                 end
                 
+                tPy = toc;
+
+                disp(['Py  - FINISHED ASSEMBLING LOOP AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tPy),' [s]']);
+
                 %% Qx  - ASSEMBLING LOOP
-                
+
                 Qx(:) = Px(:)';
-                
+
                 %% Qy  - ASSEMBLING LOOP
-                
+
                 Qy(:) = Py(:)';
 
                 %% Axx - IMPOSE BOUNDARY CONDITIONS
@@ -1120,11 +1134,13 @@ classdef AssemblerStokesHandler
                 % boundary conditions using the expression for the modal
                 % expansion and impose them in the stiffness matrix.
                 %---------------------------------------------------------%
+
+                tic;
                 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % CREATION OF THE BOUNDARY STRUCTURE %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+
                 boundaryStruct.bc_inf_tag       = obj.boundCondStruct.bc_inf_tag_Ux;
                 boundaryStruct.bc_out_tag       = obj.boundCondStruct.bc_out_tag_Ux;
                 boundaryStruct.bc_inf_data      = obj.boundCondStruct.bc_inf_data_Ux;
@@ -1137,41 +1153,42 @@ classdef AssemblerStokesHandler
                 boundaryStruct.stiffMatrix      = Axx;
                 boundaryStruct.forceTerm        = Fx;
                 boundaryStruct.time             = obj.timeStruct.timeDomain(ii);
-                
+
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % COMPUTE THE PROJECTION OF THE BOUNDARY CONDTIONS %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+
                 obj_bcCoeff = BoundaryConditionHandler();
 
                 obj_bcCoeff.boundaryStruct    = boundaryStruct;
 
                 [infStruct,outStruct] = computeFourierCoeffStokes(obj_bcCoeff);
-                
+
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % IMPOSE BOUNDARY CONDITIONS %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
-                boundaryStruct.infStruct = infStruct;
-                boundaryStruct.outStruct = outStruct;
-                
+
+                boundaryStruct.projInfBC = infStruct;
+                boundaryStruct.projOutBC = outStruct;
+
                 obj_bcCoeff = BoundaryConditionHandler();
 
                 obj_bcCoeff.boundaryStruct = boundaryStruct;
 
-                [Ax,fx] = computeFourierCoeffStokes(obj_bcCoeff);
-                
+                [Axx,Fx] = imposeBoundaryStokes(obj_bcCoeff);
+
                 %% Ayy - IMPOSE BOUNDARY CONDITIONS
                 %---------------------------------------------------------%
                 % Compute the projection of the inflow and outflow
                 % boundary conditions using the expression for the modal
                 % expansion and impose them in the stiffness matrix.
                 %---------------------------------------------------------%
-                
+
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % CREATION OF THE BOUNDARY STRUCTURE %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+
+                boundaryStruct.boundCondStruc   = obj.boundCondStruct;
                 boundaryStruct.bc_inf_tag       = obj.boundCondStruct.bc_inf_tag_Uy;
                 boundaryStruct.bc_out_tag       = obj.boundCondStruct.bc_out_tag_Uy;
                 boundaryStruct.bc_inf_data      = obj.boundCondStruct.bc_inf_data_Uy;
@@ -1183,38 +1200,79 @@ classdef AssemblerStokesHandler
                 boundaryStruct.numbCtrlPts      = numbControlPtsUy;
                 boundaryStruct.stiffMatrix      = Ayy;
                 boundaryStruct.forceTerm        = Fy;
-                
+
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % COMPUTE THE PROJECTION OF THE BOUNDARY CONDTIONS %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+
                 obj_bcCoeff = BoundaryConditionHandler();
 
                 obj_bcCoeff.boundaryStruct    = boundaryStruct;
 
                 [infStruct,outStruct] = computeFourierCoeffStokes(obj_bcCoeff);
-                
+
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % IMPOSE BOUNDARY CONDITIONS %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
-                boundaryStruct.infStruct = infStruct;
-                boundaryStruct.outStruct = outStruct;
-                
+
+                boundaryStruct.projInfBC = infStruct;
+                boundaryStruct.projOutBC = outStruct;
+
                 obj_bcCoeff = BoundaryConditionHandler();
 
                 obj_bcCoeff.boundaryStruct = boundaryStruct;
 
-                [Ay,fy] = computeFourierCoeffStokes(obj_bcCoeff);
+                [Ayy,Fy] = imposeBoundaryStokes(obj_bcCoeff);
                 
+                tImp = toc;
+                
+                disp(['FINISHED IMPOSING BC AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tImp),' [s]']);
+
                 %% GLOBAL SYSTEM ASSEMBLING
+
+                tic;
                 
-                stiffTimeStruct{ii} = [Ax,Bxy,Qx;Byx,Ay,Qy;Px,Py,P];
-                forceTimeStruct{ii} = [fx,fy,Fp];
-                massTimeStruct{ii}  = [Mx,zeros(size(Bxy)),zeros(size(Qx));...
-                                       zeros(size(Byx)),My,zeros(size(Qy));...
-                                       zeros(size(Px)),zeros(size(Py)),zeros(size(P))];
+                stiffTimeStruct{ii} = [Axx,Bxy,Px;Byx,Ayy,Py;Qx,Qy,P];
+                forceTimeStruct{ii} = [Fx;Fy;Fp];
+                massTimeStruct{ii}  = [Mxx,zeros(size(Bxy)),zeros(size(Px));...
+                                       zeros(size(Byx)),Myy,zeros(size(Py));...
+                                       zeros(size(Qx)),zeros(size(Qy)),zeros(size(P))];
                 
+                tGMat = toc;
+                
+                disp(['FINISHED ASSEMBLING GLOBAL MATRIX AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tGMat),' [s]']);
+                
+                tTotal = tAxx + tAyy + tBxy + tByx + tPx + tPy + tImp + tGMat;
+                
+                disp('  '); 
+                disp('---------------------------------------------------------------------------------------------')
+                disp(['FINISHED ASSEMBLING AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tTotal),' [s]']);
+                disp('---------------------------------------------------------------------------------------------')
+                disp('  '); 
+                
+                %% CREATE PLOT STRUCTURE
+                
+                plotStruct.numbControlPtsP  = numbControlPtsP;
+                plotStruct.numbControlPtsUx = numbControlPtsUx;
+                plotStruct.numbControlPtsUy = numbControlPtsUy;
+                plotStruct.numbKnotsP       = numbKnotsP;
+                plotStruct.numbKnotsUx      = numbKnotsUx;
+                plotStruct.numbKnotsUy      = numbKnotsUy;
+                plotStruct.geometricInfo    = obj.geometricInfo;
+                plotStruct.discStruct       = obj.discStruct;
+                plotStruct.boundaryStruct   = boundaryStruct;
+                plotStruct.mshP             = mshP;
+                plotStruct.mshUx            = mshUx;
+                plotStruct.mshUy            = mshUy;
+                plotStruct.spaceP           = spaceP;
+                plotStruct.spaceUx          = spaceUx;
+                plotStruct.spaceUy          = spaceUy;
+                plotStruct.spaceFuncP       = spaceFuncP;
+                plotStruct.spaceFuncUx      = spaceFuncUx;
+                plotStruct.spaceFuncUy      = spaceFuncUy;
+                plotStruct.jacFunc          = jacFunc;
+                plotStruct.probParameters   = obj.probParameters;
+
             end
                 
             end
@@ -1258,15 +1316,15 @@ function [Mx,Ax,Fx] = assemblerIGAScatterAx(assemblerStruct)
     
     % Computation of coefficients of the modal expansion
     
-    funcToIntegrate_01 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1;
-    funcToIntegrate_02 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1_Proj1;
-    funcToIntegrate_03 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
-    funcToIntegrate_04 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj1;
-    funcToIntegrate_05 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
-    funcToIntegrate_06 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj1;
-    funcToIntegrate_07 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2;
-    funcToIntegrate_08 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2_Proj1;
-    funcToIntegrate_09 = jacFunc.evalDetJac .* ones(size(assemblerStruct.param.nu));
+    funcToIntegrate_01 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1;
+    funcToIntegrate_02 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1_Proj1;
+    funcToIntegrate_03 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
+    funcToIntegrate_04 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj1;
+    funcToIntegrate_05 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
+    funcToIntegrate_06 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj1;
+    funcToIntegrate_07 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2;
+    funcToIntegrate_08 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2_Proj1;
+    funcToIntegrate_09 = assemblerStruct.jacFunc.evalDetJac .* ones(size(assemblerStruct.param.nu));
     
     % Computation of quadrature weights for the modal expansion
     
@@ -1324,9 +1382,9 @@ function [Mx,Ax,Fx] = assemblerIGAScatterAx(assemblerStruct)
         Local_Mass  = Local_Mass + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, m00Local);
         
         Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
-        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
+        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
         
         rhs         = rhs + op_f_v (assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, fLocal);
 
@@ -1372,15 +1430,15 @@ function [My,Ay,Fy] = assemblerIGAScatterAy(assemblerStruct)
     
     % Computation of coefficients of the modal expansion
     
-    funcToIntegrate_01 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1;
-    funcToIntegrate_02 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1_Proj2;
-    funcToIntegrate_03 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
-    funcToIntegrate_04 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj2;
-    funcToIntegrate_05 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
-    funcToIntegrate_06 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj2;
-    funcToIntegrate_07 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2;
-    funcToIntegrate_08 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2_Proj2;
-    funcToIntegrate_09 = jacFunc.evalDetJac .* ones(size(assemblerStruct.param.nu));
+    funcToIntegrate_01 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1;
+    funcToIntegrate_02 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi1_Proj2;
+    funcToIntegrate_03 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
+    funcToIntegrate_04 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj2;
+    funcToIntegrate_05 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2;
+    funcToIntegrate_06 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1DotGPhi2_Proj2;
+    funcToIntegrate_07 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2;
+    funcToIntegrate_08 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.modGradPhi2_Proj2;
+    funcToIntegrate_09 = assemblerStruct.jacFunc.evalDetJac .* ones(size(assemblerStruct.param.nu));
     
     % Computation of quadrature weights for the modal expansion
     
@@ -1438,9 +1496,9 @@ function [My,Ay,Fy] = assemblerIGAScatterAy(assemblerStruct)
         Local_Mass  = Local_Mass + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, m00Local);
         
         Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
-        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
+        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
         
         rhs         = rhs + op_f_v (assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, fLocal);
 
@@ -1474,10 +1532,10 @@ function [Bxy] = assemblerIGAScatterBxy(assemblerStruct)
     
     % Computation of coefficients of the modal expansion
     
-    funcToIntegrate_01 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi1Proj2;
-    funcToIntegrate_02 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi1Proj2;
-    funcToIntegrate_03 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi2Proj2;
-    funcToIntegrate_04 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi2Proj2;
+    funcToIntegrate_01 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi1Proj2;
+    funcToIntegrate_02 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi1Proj2;
+    funcToIntegrate_03 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi2Proj2;
+    funcToIntegrate_04 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi2Proj2;
     
     % Computation of quadrature weights for the modal expansion
     
@@ -1518,9 +1576,9 @@ function [Bxy] = assemblerIGAScatterBxy(assemblerStruct)
         r11Local = r11((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         
         Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
-        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
+        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
         
     end
 
@@ -1550,10 +1608,10 @@ function [Byx] = assemblerIGAScatterByx(assemblerStruct)
     
     % Computation of coefficients of the modal expansion
     
-    funcToIntegrate_01 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi1Proj2;
-    funcToIntegrate_02 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi2Proj2;
-    funcToIntegrate_03 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi1Proj2;
-    funcToIntegrate_04 = jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi2Proj2;
+    funcToIntegrate_01 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi1Proj2;
+    funcToIntegrate_02 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi1Proj1DotGPhi2Proj2;
+    funcToIntegrate_03 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi1Proj2;
+    funcToIntegrate_04 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.GPhi2Proj1DotGPhi2Proj2;
     
     % Computation of quadrature weights for the modal expansion
     
@@ -1594,9 +1652,9 @@ function [Byx] = assemblerIGAScatterByx(assemblerStruct)
         r11Local = r11((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         
         Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
-        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
+        Local_10    = Local_10   + op_gradu_v(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r10Local);
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_11    = Local_11   + op_gradu_gradv(assemblerStruct.spaceFunc1{iel,2}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r11Local);
         
     end
 
@@ -1626,8 +1684,8 @@ function [Px] = assemblerIGAScatterPx(assemblerStruct)
     
     % Computation of coefficients of the modal expansion
     
-    funcToIntegrate_01 = jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi1_dx;
-    funcToIntegrate_02 = jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi2_dx;
+    funcToIntegrate_01 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi1_dx;
+    funcToIntegrate_02 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi2_dx;
     
     % Computation of quadrature weights for the modal expansion
     
@@ -1657,8 +1715,8 @@ function [Px] = assemblerIGAScatterPx(assemblerStruct)
         r00Local = r00((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         r01Local = r01((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         
-        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local)';
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local)';
         
     end
 
@@ -1688,8 +1746,8 @@ function [Py] = assemblerIGAScatterPy(assemblerStruct)
     
     % Computation of coefficients of the modal expansion
     
-    funcToIntegrate_01 = jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi1_dy;
-    funcToIntegrate_02 = jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi2_dy;
+    funcToIntegrate_01 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi1_dy;
+    funcToIntegrate_02 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.jacFunc.Phi2_dy;
     
     % Computation of quadrature weights for the modal expansion
     
@@ -1719,8 +1777,8 @@ function [Py] = assemblerIGAScatterPy(assemblerStruct)
         r00Local = r00((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         r01Local = r01((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         
-        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local)';
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local)';
         
     end
 

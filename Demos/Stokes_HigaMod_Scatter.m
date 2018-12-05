@@ -1,4 +1,4 @@
-%-+--------------------------------------------------------------------
+cd %-+--------------------------------------------------------------------
 % HiModlab is a general purpose Hierarchical model reduction library.
 % Copyright (C) 2006-2017  by the HiMod authors (see authors.txt).
 %
@@ -120,17 +120,17 @@
     
     % Polynomial Degree of the B-Spline Base
     
-    igaBasisStruct.degreeSplineBasisP    = 2;
+    igaBasisStruct.degreeSplineBasisP    = 1;
     
     % Continuity of the Base 'C^(p-k)'
     
-    igaBasisStruct.continuityParameterP  = 1;
+    igaBasisStruct.continuityParameterP  = 0;
     
     % Number of control points
     
-    igaBasisStruct.numbControlPtsP = discStruct.numbElements * igaBasisStruct.continuityParameterP + ...
-                                     igaBasisStruct.degreeSplineBasisP + 1 - ...
-                                     igaBasisStruct.continuityParameterP;
+    igaBasisStruct.numbControlPtsP = discStruct.numbElements * ...
+                                     (igaBasisStruct.degreeSplineBasisP - igaBasisStruct.continuityParameterP) + ...
+                                     1 + igaBasisStruct.continuityParameterP;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % IGA BASIS FOR THE X COMPONENT OF THE VELOCITY %
@@ -146,9 +146,9 @@
     
     % Number of control points
     
-    igaBasisStruct.numbControlPtsUx = discStruct.numbElements * igaBasisStruct.continuityParameterUx + ...
-                                      igaBasisStruct.degreeSplineBasisUx + 1 - ...
-                                      igaBasisStruct.continuityParameterUx;
+    igaBasisStruct.numbControlPtsUx = discStruct.numbElements * ...
+                                      (igaBasisStruct.degreeSplineBasisUx - igaBasisStruct.continuityParameterUx) + ...
+                                      1 + igaBasisStruct.continuityParameterUx;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % IGA BASIS FOR THE Y COMPONENT OF THE VELOCITY %
@@ -164,9 +164,9 @@
     
     % Number of control points
     
-    igaBasisStruct.numbControlPtsUy = discStruct.numbElements * igaBasisStruct.continuityParameterUy + ...
-                                      igaBasisStruct.degreeSplineBasisUy + 1 - ...
-                                      igaBasisStruct.continuityParameterUy;
+    igaBasisStruct.numbControlPtsUy = discStruct.numbElements * ...
+                                      (igaBasisStruct.degreeSplineBasisUy - igaBasisStruct.continuityParameterUy) + ...
+                                      1 + igaBasisStruct.continuityParameterUy;
     
     %% Time simulation parameters
     
@@ -226,9 +226,9 @@
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR THE PRESSURE %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    boundCondStruct.bc_up_tag_P    = 'dir';
-    boundCondStruct.bc_down_tag_P  = 'dir';
-    boundCondStruct.bc_inf_tag_P   = 'dir';
+    boundCondStruct.bc_up_tag_P    = 'neu';
+    boundCondStruct.bc_down_tag_P  = 'neu';
+    boundCondStruct.bc_inf_tag_P   = 'neu';
     boundCondStruct.bc_out_tag_P   = 'neu';
     boundCondStruct.bc_up_data_P   = 0;
     boundCondStruct.bc_down_data_P = 0;
@@ -624,34 +624,31 @@
     % Pressure quadrature nodes along Y direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    precisionLevel = 3;
-    quadProperties.numbVerNodesP = precisionLevel * discStruct.numbModesP;
+    quadProperties.numbVerNodesP = 64;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected X quadrature nodes along X direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    quadProperties.numbHorNodesP = 16;
+    quadProperties.numbHorNodesUx = 16;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected X quadrature nodes along Y direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    precisionLevel = 3;
-    quadProperties.numbVerNodesP = precisionLevel * discStruct.numbModesUx;
+    quadProperties.numbVerNodesUx = 64;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected Y quadrature nodes along X direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    quadProperties.numbHorNodesP = 16;
+    quadProperties.numbHorNodesUy = 16;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected Y quadrature nodes along Y direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    precisionLevel = 3;
-    quadProperties.numbVerNodesP = precisionLevel * discStruct.numbModesUy;
+    quadProperties.numbVerNodesUy = 64;
     
     %% Problem parameters
 
@@ -687,6 +684,7 @@
 
     obj_solverIGA.discStruct = discStruct;
     obj_solverIGA.boundCondStruct = boundCondStruct;
+    obj_solverIGA.igaBasisStruct = igaBasisStruct;
     obj_solverIGA.probParameters = probParameters;
     obj_solverIGA.timeStruct = timeStruct;
     obj_solverIGA.geometricInfo = geometricInfo;
