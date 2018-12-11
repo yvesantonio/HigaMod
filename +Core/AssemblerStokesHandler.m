@@ -642,7 +642,7 @@ classdef AssemblerStokesHandler
 
             [augVerNodesUy, augVerWeightsUy] = quadratureRule(objVertQuadRuleUy);
             
-            %% COMPUTATION OF THE MODAL BASIS IN THE Y DIRECTION
+            %% COMPUTATION OF THE MODAL BASIS IN THE TRANSVERSE DIRECTION
             %-------------------------------------------------------------%
             % The next method takes the coefficients of the bilinear form,
             % the dimension of the modal basis (assigned in the demo) and
@@ -655,64 +655,64 @@ classdef AssemblerStokesHandler
             % PRESSURE MODAL BASIS %
             %%%%%%%%%%%%%%%%%%%%%%%%
             
-            obj_newModalBasisP = BasisHandler();
+            objNewModalBasisP = BasisHandler();
             
             % Set variables to use a Legendre Modal Base
             
-            % obj_newModalBasis.dimLegendreBase = obj.discStruct.numbModesP;
-            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            objNewModalBasisP.dimLegendreBase = obj.discStruct.numbModesP;
+            objNewModalBasisP.evalLegendreNodes = verGLNodesP;
             
             % Set variables to use a Educated Modal Basis
             
-            obj_newModalBasisP.dimModalBasis = obj.discStruct.numbModesP;
-            obj_newModalBasisP.evalNodesY = verGLNodesP;
-            obj_newModalBasisP.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_P;
-            obj_newModalBasisP.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_P;
-            obj_newModalBasisP.coeffForm = obj.probParameters;
+            objNewModalBasisP.dimModalBasis = obj.discStruct.numbModesP;
+            objNewModalBasisP.evalNodesY = verGLNodesP;
+            objNewModalBasisP.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_P;
+            objNewModalBasisP.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_P;
+            objNewModalBasisP.coeffForm = obj.probParameters;
 
-            [modalBasisP, modalBasisDerP] = newModalBasisStokes(obj_newModalBasisP);
+            [modalBasisP, modalBasisDerP] = newModalBasisLegendreStokes(objNewModalBasisP);
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % VELOCITY FIELD ALONG X MODAL BASIS %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            obj_newModalBasisUx = BasisHandler();
+            objNewModalBasisUx = BasisHandler();
             
             % Set variables to use a Legendre Modal Base
             
-            % obj_newModalBasis.dimLegendreBase = obj.discStruct.numbModesP;
-            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            objNewModalBasisUx.dimLegendreBase = obj.discStruct.numbModesUx;
+            objNewModalBasisUx.evalLegendreNodes = verGLNodesUx;
             
             % Set variables to use a Educated Modal Basis
             
-            obj_newModalBasisUx.dimModalBasis = obj.discStruct.numbModesUx;
-            obj_newModalBasisUx.evalNodesY = verGLNodesUx;
-            obj_newModalBasisUx.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_Ux;
-            obj_newModalBasisUx.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Ux;
-            obj_newModalBasisUx.coeffForm = obj.probParameters;
+            objNewModalBasisUx.dimModalBasis = obj.discStruct.numbModesUx;
+            objNewModalBasisUx.evalNodesY = verGLNodesUx;
+            objNewModalBasisUx.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_Ux;
+            objNewModalBasisUx.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Ux;
+            objNewModalBasisUx.coeffForm = obj.probParameters;
 
-            [modalBasisUx, modalBasisDerUx] = newModalBasisStokes(obj_newModalBasisUx);
+            [modalBasisUx, modalBasisDerUx] = newModalBasisLegendreStokes(objNewModalBasisUx);
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % VELOCITY FIELD ALONG Y MODAL BASIS %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            obj_newModalBasisUy = BasisHandler();
+            objNewModalBasisUy = BasisHandler();
             
             % Set variables to use a Legendre Modal Base
             
-            % obj_newModalBasis.dimLegendreBase = obj.discStruct.numbModesP;
-            % obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            objNewModalBasisUy.dimLegendreBase = obj.discStruct.numbModesUy;
+            objNewModalBasisUy.evalLegendreNodes = verGLNodesUy;
             
             % Set variables to use a Educated Modal Basis
             
-            obj_newModalBasisUy.dimModalBasis = obj.discStruct.numbModesUy;
-            obj_newModalBasisUy.evalNodesY = verGLNodesUy;
-            obj_newModalBasisUy.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_Uy;
-            obj_newModalBasisUy.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Uy;
-            obj_newModalBasisUy.coeffForm = obj.probParameters;
+            objNewModalBasisUy.dimModalBasis = obj.discStruct.numbModesUy;
+            objNewModalBasisUy.evalNodesY = verGLNodesUy;
+            objNewModalBasisUy.labelUpBoundCond = obj.boundCondStruct.bc_up_tag_Uy;
+            objNewModalBasisUy.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Uy;
+            objNewModalBasisUy.coeffForm = obj.probParameters;
 
-            [modalBasisUy, modalBasisDerUy] = newModalBasisStokes(obj_newModalBasisUy);
+            [modalBasisUy, modalBasisDerUy] = newModalBasisLegendreStokes(objNewModalBasisUy);
             
             %% EVALUATION OF THE GEOMETRIC PROPERTIES OF THE DOMAIN
             %-------------------------------------------------------------%
@@ -1141,6 +1141,7 @@ classdef AssemblerStokesHandler
                 % CREATION OF THE BOUNDARY STRUCTURE %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+                boundaryStruct.boundCondStruc   = obj.boundCondStruct;
                 boundaryStruct.bc_inf_tag       = obj.boundCondStruct.bc_inf_tag_Ux;
                 boundaryStruct.bc_out_tag       = obj.boundCondStruct.bc_out_tag_Ux;
                 boundaryStruct.bc_inf_data      = obj.boundCondStruct.bc_inf_data_Ux;
@@ -1153,6 +1154,8 @@ classdef AssemblerStokesHandler
                 boundaryStruct.stiffMatrix      = Axx;
                 boundaryStruct.forceTerm        = Fx;
                 boundaryStruct.time             = obj.timeStruct.timeDomain(ii);
+                boundaryStruct.couplingMat      = Bxy;
+                boundaryStruct.pressureMat      = Px;
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % COMPUTE THE PROJECTION OF THE BOUNDARY CONDTIONS %
@@ -1162,20 +1165,20 @@ classdef AssemblerStokesHandler
 
                 obj_bcCoeff.boundaryStruct    = boundaryStruct;
 
-                [infStruct,outStruct] = computeFourierCoeffStokes(obj_bcCoeff);
+                [infStructUx,outStructUx] = computeFourierCoeffStokes(obj_bcCoeff);
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % IMPOSE BOUNDARY CONDITIONS %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-                boundaryStruct.projInfBC = infStruct;
-                boundaryStruct.projOutBC = outStruct;
+                boundaryStruct.projInfBC = infStructUx;
+                boundaryStruct.projOutBC = outStructUx;
 
                 obj_bcCoeff = BoundaryConditionHandler();
 
                 obj_bcCoeff.boundaryStruct = boundaryStruct;
 
-                [Axx,Fx] = imposeBoundaryStokes(obj_bcCoeff);
+                [Axx,Bxy,Px,Fx] = imposeBoundaryStokes(obj_bcCoeff);
 
                 %% Ayy - IMPOSE BOUNDARY CONDITIONS
                 %---------------------------------------------------------%
@@ -1200,6 +1203,9 @@ classdef AssemblerStokesHandler
                 boundaryStruct.numbCtrlPts      = numbControlPtsUy;
                 boundaryStruct.stiffMatrix      = Ayy;
                 boundaryStruct.forceTerm        = Fy;
+                boundaryStruct.time             = obj.timeStruct.timeDomain(ii);
+                boundaryStruct.couplingMat      = Byx;
+                boundaryStruct.pressureMat      = Py;
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % COMPUTE THE PROJECTION OF THE BOUNDARY CONDTIONS %
@@ -1209,25 +1215,25 @@ classdef AssemblerStokesHandler
 
                 obj_bcCoeff.boundaryStruct    = boundaryStruct;
 
-                [infStruct,outStruct] = computeFourierCoeffStokes(obj_bcCoeff);
+                [infStructUy,outStructUy] = computeFourierCoeffStokes(obj_bcCoeff);
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % IMPOSE BOUNDARY CONDITIONS %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-                boundaryStruct.projInfBC = infStruct;
-                boundaryStruct.projOutBC = outStruct;
+                boundaryStruct.projInfBC = infStructUy;
+                boundaryStruct.projOutBC = outStructUy;
 
                 obj_bcCoeff = BoundaryConditionHandler();
 
                 obj_bcCoeff.boundaryStruct = boundaryStruct;
 
-                [Ayy,Fy] = imposeBoundaryStokes(obj_bcCoeff);
+                [Ayy,Byx,Py,Fy] = imposeBoundaryStokes(obj_bcCoeff);
                 
                 tImp = toc;
                 
                 disp(['FINISHED IMPOSING BC AT t = ',num2str(obj.timeStruct.timeDomain(ii)),' [s] - SIM. TIME Ts = ',num2str(tImp),' [s]']);
-
+                
                 %% GLOBAL SYSTEM ASSEMBLING
 
                 tic;
@@ -1271,7 +1277,9 @@ classdef AssemblerStokesHandler
                 plotStruct.spaceFuncUx      = spaceFuncUx;
                 plotStruct.spaceFuncUy      = spaceFuncUy;
                 plotStruct.jacFunc          = jacFunc;
+                plotStruct.refDomain1D      = refDomain1D;
                 plotStruct.probParameters   = obj.probParameters;
+                plotStruct.map              = map;
 
             end
                 

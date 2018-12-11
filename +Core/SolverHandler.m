@@ -1121,7 +1121,7 @@ classdef SolverHandler
                 solutionMatrix = zeros(numbStates,numbIterations);
                 
                 solutionMatrix(:,1) = obj.initialState;
-                yygygyggyyggygygygy
+
                 for iteration = 1 : numbIterations - 1
                     
                     % Definition of the Object from the AssemblerADRHandler class
@@ -5727,7 +5727,7 @@ classdef SolverHandler
             
             %% Method 'solverIGAScatterStokes'
             
-            function [u,liftCoeffA,liftCoeffB,errorNormL2,errorNormH1] = solverIGAScatterStokes(obj)
+            function [] = solverIGAScatterStokes(obj)
 
                 %%
                 % solverIGA     - This function solves an elliptic problem definied
@@ -5806,6 +5806,8 @@ classdef SolverHandler
                 %   (4) errorNormL2      : Solution Error on the L2 Norm
                 %   (5) errorNormH1      : Solution Error on the H1 Norm
                 
+                %% INCLUDE CLASSES
+                
                 import Core.AssemblerADRHandler
                 import Core.AssemblerStokesHandler
                 import Core.AssemblerNSHandler
@@ -5815,29 +5817,8 @@ classdef SolverHandler
                 import Core.BasisHandler
                 import Core.SolverHandler
 
-                %---------------------------------------------------------------------%
-                %                        PROBLEM INITIALIZATION                       %
-                %---------------------------------------------------------------------%
-                % Note:
-                % In the case of Physical Boundary, the Labels of the Boundary 
-                % Conditions are known. At the inflow we have Dirichlet Boundary 
-                % Conditions and at the outflow, Neumann (Homogeneous) Boundary 
-                % Conditions.
-                %---------------------------------------------------------------------%
-
-                %---------------------------------------------------------------------%
-                %               ASSEMBLING OF THE COMPLETE LINEAR SYSTEM              %
-                %---------------------------------------------------------------------%
-
-                %---------------------------------------------------------------------%
-                % Note:
-                % The assembling of the block system is performed by the external
-                % function 'buildSystem'. The assembling can be set differentling
-                % depending on the discretization strategy used to solve the problem.
-                % In the present function we use an Isogeometric (IGA) Approach to
-                % solve the problem.
-                %---------------------------------------------------------------------%
-
+                %% BUILD SYSTEM
+                
                 tic;
                 
                 % Definition of the Object from the AssemblerADRHandler class
@@ -5864,7 +5845,9 @@ classdef SolverHandler
                 disp('---------------------------------------------------------------------------------------------')
                 disp(['FINISHED ASSEMBLING OF TIME STRUCTURES - SIM. TIME Ts = ',num2str(tBuild),' [s]']);
                 disp('---------------------------------------------------------------------------------------------')
-                disp('  ');              
+                disp('  ');            
+                
+                %% TIME EVOLUTION
                 
                 %---------------------------------------------------------%
                 %    EVOLUTION OF THE SOLUTION WITH THE THETA METHOD    
@@ -5880,11 +5863,19 @@ classdef SolverHandler
                             
                 tic;
                 
+                A = AA{end};
+                M = MM{end};
+                F = FF{end};
+                
                 for tt = 1:length(obj.timeStruct.timeDomain)-1
                     
-                    AUX1 = dt^1 * MM{tt+1} + theta * AA{tt+1};
-                    AUX2 = (theta-1) * AA{tt} + dt^-1 * MM{tt};
-                    AUX3 = (theta * FF{tt+1} + (1-theta) * FF{tt});
+                    AUX1 = dt^1 * M + theta * A;
+                    AUX2 = (theta-1) * A + dt^-1 * M;
+                    AUX3 = (theta * F + (1-theta) * F);
+                    
+%                     AUX1 = dt^1 * MM{tt+1} + theta * AA{tt+1};
+%                     AUX2 = (theta-1) * AA{tt} + dt^-1 * MM{tt};
+%                     AUX3 = (theta * FF{tt+1} + (1-theta) * FF{tt});
                     
                     solStruct{tt+1} = AUX1\AUX2 * solStruct{tt} + AUX1\AUX3;
                     
@@ -5898,11 +5889,13 @@ classdef SolverHandler
                 disp('---------------------------------------------------------------------------------------------')
                 disp('  '); 
 
+                %% GENERATE SOLUTION PLOTS
+                
                 %-----------------------------------------------------------------%
                 %                  	       SOLUTION PLOT                          %
                 %-----------------------------------------------------------------%
 
-                numbIterations = length(obj.timeDomain) - 1;
+                numbIterations = length(obj.timeStruct.timeDomain) - 1;
                 
                 % Create the Freefem++ simulation folder
     
@@ -5927,19 +5920,107 @@ classdef SolverHandler
                 plotSolutionStokes(plotStruct);
 
                 disp('Finished Plot Operation');
-
-                % Create simulation video
-
+                
+                disp('  '); 
+                disp('---------------------------------------------------------------------------------------------')
+                disp('FINISHED PLOTTING OPERATION');
+                disp('---------------------------------------------------------------------------------------------')
+                disp('  '); 
+                
+                %% CREATE QUIVER VIDEO
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % CREATE QUIVER SIMULATION VIDEO %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
                 imageNames = cell(1,numbIterations);
 
                 for ii = 1:numbIterations
-                    fileName = ['Plot_At_t=',num2str(ii),'.png'];
+                    fileName = ['Quiver_At_t=',num2str(ii),'.png'];
                     imageNames{ii} = fileName;
                 end
 
                 workingDir = [pwd,'/',fileNameF];
 
-                outputVideo = VideoWriter(fullfile(workingDir,'StokesMatlabEvolution.avi'));
+                outputVideo = VideoWriter(fullfile(workingDir,'StokesQuiver.avi'));
+                outputVideo.FrameRate = 10;
+                open(outputVideo)
+
+                for ii = 1:length(imageNames)
+                img = imread(fullfile(workingDir,imageNames{ii}));
+                writeVideo(outputVideo,img)
+                end
+
+                close(outputVideo)
+                
+                %% CREATE PRESSURE CONTOUR PLOT VIDEO
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % CREATE PRESSURE SIMULATION VIDEO %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                imageNames = cell(1,numbIterations);
+
+                for ii = 1:numbIterations
+                    fileName = ['P_At_t=',num2str(ii),'.png'];
+                    imageNames{ii} = fileName;
+                end
+
+                workingDir = [pwd,'/',fileNameF];
+
+                outputVideo = VideoWriter(fullfile(workingDir,'StokesP.avi'));
+                outputVideo.FrameRate = 10;
+                open(outputVideo)
+
+                for ii = 1:length(imageNames)
+                img = imread(fullfile(workingDir,imageNames{ii}));
+                writeVideo(outputVideo,img)
+                end
+
+                close(outputVideo)
+                
+                %% CREATE Ux CONTOUR PLOT VIDEO
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % CREATE Ux SIMULATION VIDEO %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                imageNames = cell(1,numbIterations);
+
+                for ii = 1:numbIterations
+                    fileName = ['Ux_At_t=',num2str(ii),'.png'];
+                    imageNames{ii} = fileName;
+                end
+
+                workingDir = [pwd,'/',fileNameF];
+
+                outputVideo = VideoWriter(fullfile(workingDir,'StokesUx.avi'));
+                outputVideo.FrameRate = 10;
+                open(outputVideo)
+
+                for ii = 1:length(imageNames)
+                img = imread(fullfile(workingDir,imageNames{ii}));
+                writeVideo(outputVideo,img)
+                end
+
+                close(outputVideo)
+                
+                %% CREATE Ux CONTOUR PLOT VIDEO
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % CREATE Uy SIMULATION VIDEO %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                imageNames = cell(1,numbIterations);
+
+                for ii = 1:numbIterations
+                    fileName = ['Uy_At_t=',num2str(ii),'.png'];
+                    imageNames{ii} = fileName;
+                end
+
+                workingDir = [pwd,'/',fileNameF];
+
+                outputVideo = VideoWriter(fullfile(workingDir,'StokesUy.avi'));
                 outputVideo.FrameRate = 10;
                 open(outputVideo)
 
@@ -5950,8 +6031,11 @@ classdef SolverHandler
 
                 close(outputVideo)
 
-
-                disp('Finished Method SOLVER IGA')
+                disp('  '); 
+                disp('---------------------------------------------------------------------------------------------')
+                disp('FINISHED CREATING SIMULATION VIDEO');
+                disp('---------------------------------------------------------------------------------------------')
+                disp('  '); 
 
             end % End function
 

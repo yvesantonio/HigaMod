@@ -1,4 +1,4 @@
-cd %-+--------------------------------------------------------------------
+%-+--------------------------------------------------------------------
 % HiModlab is a general purpose Hierarchical model reduction library.
 % Copyright (C) 2006-2017  by the HiMod authors (see authors.txt).
 %
@@ -33,8 +33,8 @@ cd %-+--------------------------------------------------------------------
 % The following script allows the solution of an Advection - Diffusion -
 % Reaction differential problem in 2D using the HIGAMod solution.
 
-%     clear all
-%     close all
+    clear all
+    close all
 
     disp('******************************************')
     disp('*           HIGAMod Simulation           *');
@@ -92,7 +92,7 @@ cd %-+--------------------------------------------------------------------
     % DISCRETIZATION PARAMETERS FOR THE PRESSURE %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    discStruct.numbModesP       = 5;
+    discStruct.numbModesP       = 2;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE X COMPONENT OF THE VELOCITY %
@@ -100,7 +100,7 @@ cd %-+--------------------------------------------------------------------
     
     % Number of transverse modes
     
-    discStruct.numbModesUx       = 7;
+    discStruct.numbModesUx       = 4;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE Y COMPONENT OF THE VELOCITY %
@@ -108,7 +108,7 @@ cd %-+--------------------------------------------------------------------
     
     % Number of transverse modes
     
-    discStruct.numbModesUy       = 7;
+    discStruct.numbModesUy       = 4;
     
     %% Isogeometric basis properties
     
@@ -226,8 +226,8 @@ cd %-+--------------------------------------------------------------------
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR THE PRESSURE %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    boundCondStruct.bc_up_tag_P    = 'neu';
-    boundCondStruct.bc_down_tag_P  = 'neu';
+    boundCondStruct.bc_up_tag_P    = 'dir';
+    boundCondStruct.bc_down_tag_P  = 'dir';
     boundCondStruct.bc_inf_tag_P   = 'neu';
     boundCondStruct.bc_out_tag_P   = 'neu';
     boundCondStruct.bc_up_data_P   = 0;
@@ -239,14 +239,22 @@ cd %-+--------------------------------------------------------------------
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Ux %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+    % INFLOW PRESSURE
+    
+    Pinf = 10;
+    
+    % OUTFLOW PRESSURE
+    
+    Pout = 1;
+    
     boundCondStruct.bc_up_tag_Ux    = 'dir';
     boundCondStruct.bc_down_tag_Ux  = 'dir';
     boundCondStruct.bc_inf_tag_Ux   = 'neu';
     boundCondStruct.bc_out_tag_Ux   = 'neu';
     boundCondStruct.bc_up_data_Ux   = 0;
     boundCondStruct.bc_down_data_Ux = 0;
-    boundCondStruct.bc_inf_data_Ux  = @(rho,t) 0 + 1 * rho + 1 * -rho.^2 + 0*t;
-    boundCondStruct.bc_out_data_Ux  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
+    boundCondStruct.bc_inf_data_Ux  = @(rho,t) (Pinf - 0.25) + 1 * rho - 1 * rho.^2 + 0*t;
+    boundCondStruct.bc_out_data_Ux  = @(rho,t) (Pout - 0.25) + 1 * rho - 1 * rho.^2 + 0*t;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Uy %
@@ -255,7 +263,7 @@ cd %-+--------------------------------------------------------------------
     boundCondStruct.bc_up_tag_Uy    = 'dir';
     boundCondStruct.bc_down_tag_Uy  = 'dir';
     boundCondStruct.bc_inf_tag_Uy   = 'dir';
-    boundCondStruct.bc_out_tag_Uy   = 'neu';
+    boundCondStruct.bc_out_tag_Uy   = 'dir';
     boundCondStruct.bc_up_data_Uy   = 0;
     boundCondStruct.bc_down_data_Uy = 0;
     boundCondStruct.bc_inf_data_Uy  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
@@ -663,8 +671,8 @@ cd %-+--------------------------------------------------------------------
         
         % Forcing term acting on the fluid
 
-        probParameters.force_x = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
-        probParameters.force_y = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
+        probParameters.force_x = @(x,y,t) (  0.00 + 0*x + 0*y + 0*t );
+        probParameters.force_y = @(x,y,t) (  0.00 + 0*x + 0*y + 0*t );
         
         % Robin coefficient for the modal basis
         
@@ -691,11 +699,5 @@ cd %-+--------------------------------------------------------------------
     obj_solverIGA.quadProperties = quadProperties;
 
     tic;
-    [u2,a,b,L2_2,H1_2] = solverIGAScatterStokes(obj_solverIGA);
+    solverIGAScatterStokes(obj_solverIGA);
     toc;
-    
-    disp('Maximum L2 Norm Error with Matlab');
-    disp(max(max(L2_2)));
-    
-    disp('Maximum H1 Norm Error with Matlab');
-    disp(max(max(H1_2)));

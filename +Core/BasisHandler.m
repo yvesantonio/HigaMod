@@ -1119,5 +1119,88 @@ classdef BasisHandler
                 end
                 
             end            
+            
+            %% Method 'newModalBasisLegendreStokes'
+            
+            function [coeffModalBaseLegendre,coeffModalBaseLegendreDer] = newModalBasisLegendreStokes(obj)
+
+                %%
+                % newModalBasisLegendre    - This function evaluates the modal basis 
+                %                            and their derivatives at the nodes. In 
+                %                            this case the we consider the functions 
+                %                            of the modal basis Standard Legendre.
+                %
+                % The inputs are:
+                %%
+                %   (1)  dimLegendreBase    : Number of Functions in the Base (Dirichlet). If we
+                %                             consider the Robin Case, the number of functions
+                %                             goes to 'm+1' 
+                %   (2)  evalLegendreNodes  : Point in which the Base Functions will be Evaluated.
+                %                             They often coincide with the Quadrature Nodes
+                %   
+                % The outputs are:
+                %%
+                %   (1) coeffModalBaseLegendre    : Matrix Containing the Base Functions (Columns)
+                %                                   Evaluated at the Nodes (Rows)
+                %   (2) coeffModalBaseLegendreDer : Matrix Conatining the Derivative of the Base
+                %                                   Functions (Columns)
+                %                                   Evaluated at the Nodes (Rows) 
+                
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.AssemblerStokesHandler
+                import Core.AssemblerNSHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+                
+                %% COMPUTE MODAL BASIS
+                
+                evalNodesLeg = obj.evalLegendreNodes - 0.5;
+
+                if(strcmp(obj.labelUpBoundCond,'rob') && strcmp(obj.labelDownBoundCond,'rob'))
+
+                    coeffModalBaseLegendre = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+
+                    obj_polyLegendre = IntegrateHandler();
+                    obj_polyLegendre.degreePolyLegendre = obj.dimLegendreBase;
+                    [P,Pd] = polyLegendre(obj_polyLegendre);
+
+                    % Loop on the Base Functions
+
+                    for n = 1:obj.dimLegendreBase
+
+                        % Loop on the Section
+
+                        coeffModalBaseLegendre(:,n) = polyval(P{n},evalNodesLeg);
+                        coeffModalBaseLegendreDer(:,n) = polyval(Pd{n},evalNodesLeg);
+
+                    end
+
+                elseif(strcmp(obj.labelUpBoundCond,'dir') && strcmp(obj.labelDownBoundCond,'dir'))
+
+                    coeffModalBaseLegendre   = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+
+                    % Loop on the Base Functions
+
+                    for n = 1:obj.dimLegendreBase
+
+                        % Loop on the Section
+
+                        for i = 1:length(evalNodesLeg)
+                            coeffModalBaseLegendre  ( i, n ) = evalNodesLeg(i).^(n-1)*(1 - evalNodesLeg(i).^2);
+                            coeffModalBaseLegendreDer( i, n ) = (n-1) * evalNodesLeg(i).^(n-2) * (1 - evalNodesLeg(i).^2) ...
+                                            + evalNodesLeg(i).^(n-1) * (-2 * evalNodesLeg(i));
+                        end
+
+                    end
+
+                end
+            end
     end
 end
