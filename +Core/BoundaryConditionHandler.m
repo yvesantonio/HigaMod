@@ -1056,8 +1056,49 @@ classdef BoundaryConditionHandler
                 import Core.SolverHandler
                 
                 %% IMPORT FEATURES
-
-                obj.boundaryStruct.boundCondStruc
+                
+                infBC    = obj.boundaryStruct.bc_inf_data;
+                outBC    = obj.boundaryStruct.bc_out_data;
+                nodes    = obj.boundaryStruct.augVerNodes;
+                wghts    = obj.boundaryStruct.augVerWeights;
+                modBasis = obj.boundaryStruct.modalBasis;
+                
+                %% COMPUTE PROJECTION
+                
+                valueInfBC = infBC(nodes);
+                valueOutBC = outBC(nodes);
+                
+                infStruct = [];
+                outStruct = [];
+                
+                for ii = 1:size(modBasis,2)
+                    
+                    infStruct(ii) = (valueInfBC .* modBasis(:,ii))' * wghts;
+                    outStruct(ii) = (valueOutBC .* modBasis(:,ii))' * wghts;                                                                                                                          
+                    
+                end
+                
+                aux1 = infStruct;
+                aux2 = outStruct;
+                infStruct = fliplr(aux1);
+                outStruct = fliplr(aux2);
+                
+            end
+            
+            %% Method 'computeFourierCoeffStokesTransient'
+            
+            function [infStruct,outStruct] = computeFourierCoeffStokesTransient(obj)
+                
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+                
+                %% IMPORT FEATURES
                 
                 infBC    = obj.boundaryStruct.bc_inf_data;
                 outBC    = obj.boundaryStruct.bc_out_data;
@@ -1106,7 +1147,7 @@ classdef BoundaryConditionHandler
                 % DEFINITION OF THE WEAK BC IMPOSITION %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
-                delta = 1e10 * max(max(max(abs(A)),max(abs(f))));
+                delta = 1e10;
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % IMPOSITION OF THE BC IN THE GLOBAL STIFFNESS MATRIX %
@@ -1118,12 +1159,18 @@ classdef BoundaryConditionHandler
 
                     for imb = 1 : numbModes
                         
-                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
-                        A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
-                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
-                        B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
-                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
-                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
+                        % A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        % A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
+                        % B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        % B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
+                        % P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        % P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
+                        % 
+                        % A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
+                        % A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
+                        % 
+                        % f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        % f(imb * numbCtrlPts) = delta * projOutBC(imb);
                         
                         A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
                         A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
@@ -1139,10 +1186,15 @@ classdef BoundaryConditionHandler
                     
                     for imb = 1 : numbModes
                         
-                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
-                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
-                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
-
+                        % A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        % B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        % P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        % 
+                        % A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
+                        % 
+                        % f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        % f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
+                        
                         A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
 
                         f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
@@ -1156,9 +1208,14 @@ classdef BoundaryConditionHandler
 
                     for imb = 1 : numbModes
                         
-                        A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
-                        B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
-                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
+                        % A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
+                        % B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
+                        % P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
+                        % 
+                        % A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
+                        % 
+                        % f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        % f(imb * numbCtrlPts) = delta * projOutBC(imb);
                         
                         A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
                         
@@ -1195,9 +1252,14 @@ classdef BoundaryConditionHandler
 
                     for imb = 1 : numbModes
                         
-                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
-                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
-                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        % A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        % B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        % P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        % 
+                        % A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
+                        % 
+                        % f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        % f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
                         
                         A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
                         

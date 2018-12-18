@@ -144,23 +144,15 @@ function [] = plotSolutionStokes(plotStruct)
     % EXTRACT SOLUTION VECTOR %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    uP  = cell(length(plotStruct.timeStruct.timeDomain),1);
-    uUx = cell(length(plotStruct.timeStruct.timeDomain),1);
-    uUy = cell(length(plotStruct.timeStruct.timeDomain),1);
-    
-    for tt = 1:length(plotStruct.timeStruct.timeDomain)
-        
-        AUX = plotStruct.solStruct{tt};
-        
-        index1 = numbControlPtsUx * plotStruct.discStruct.numbModesUx;
-        index2 = numbControlPtsUy * plotStruct.discStruct.numbModesUy;
-        index3 = numbControlPtsP  * plotStruct.discStruct.numbModesP;
-        
-        uUx{tt} = AUX(1:index1,1);
-        uUy{tt} = AUX(index1 + 1 : index1 + index2,1);
-        uP{tt}  = AUX(index1 + index2 + 1 : index1 + index2 + index3,1);
-        
-    end
+    AUX = plotStruct.solStruct;
+
+    index1 = numbControlPtsUx * plotStruct.discStruct.numbModesUx;
+    index2 = numbControlPtsUy * plotStruct.discStruct.numbModesUy;
+    index3 = numbControlPtsP  * plotStruct.discStruct.numbModesP;
+
+    uUx = AUX(1:index1,1);
+    uUy = AUX(index1 + 1 : index1 + index2,1);
+    uP  = AUX(index1 + index2 + 1 : index1 + index2 + index3,1);
     
     %%%%%%%%%%%%%%%%%%%%%%%
     % SOLUTION PROJECTION %
@@ -195,154 +187,140 @@ function [] = plotSolutionStokes(plotStruct)
     Xeval  = mapOut(x_eval,y_eval,plotStruct.map,1);
     Yeval  = mapOut(x_eval,y_eval,plotStruct.map,2);
     
-    % CREATION OF THE SOLUTION STRUCTURE
-    
-    solStruct.X  = cell(1,length(plotStruct.timeStruct.timeDomain));
-    solStruct.Y  = cell(1,length(plotStruct.timeStruct.timeDomain));
-    solStruct.P  = cell(1,length(plotStruct.timeStruct.timeDomain));
-    solStruct.Ux = cell(1,length(plotStruct.timeStruct.timeDomain));
-    solStruct.Uy = cell(1,length(plotStruct.timeStruct.timeDomain));
-    
-    % TIME LOOP
-    
-    for tt = 1:length(plotStruct.timeStruct.timeDomain)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % PROJECTION USING THE ISOGEOMETRIC BASIS %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % PROJECTION USING THE ISOGEOMETRIC BASIS %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        for m = 1:plotStruct.discStruct.numbModesP
-            
-            currUP = uP{tt};
-            spaceP    = plotStruct.spaceP;
-            geoP = plotStruct.refDomain1D;
-            approxP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP)  = sp_eval(currUP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP), spaceP, geoP, structEvalNodesXP);
-            dapproxP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP) = sp_eval(currUP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP), spaceP, geoP, structEvalNodesXP,'gradient');
-            
-        end
-        
-        for m = 1:plotStruct.discStruct.numbModesUx
-            
-            currUUx = uUx{tt};
-            spaceUx = plotStruct.spaceUx;
-            geoUx   = plotStruct.refDomain1D;
-            approxUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx)  = sp_eval(currUUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx), spaceUx, geoUx, structEvalNodesXUx);
-            dapproxUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx) = sp_eval(currUUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx), spaceUx, geoUx, structEvalNodesXUx,'gradient');
-            
-        end
-        
-        for m = 1:plotStruct.discStruct.numbModesUy
-            
-            currUUy = uUy{tt};
-            spaceUy = plotStruct.spaceUy;
-            geoUy   = plotStruct.refDomain1D;
-            approxUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy)  = sp_eval(currUUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy), spaceUy, geoUy, structEvalNodesXUy);
-            dapproxUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy) = sp_eval(currUUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy), spaceUy, geoUy, structEvalNodesXUy,'gradient');
+    for m = 1:plotStruct.discStruct.numbModesP
 
-        end
-
-        igaProjP  = approxP';
-        igaProjUx = approxUx';
-        igaProjUy = approxUy';
-
-        igaProjP_dx  = dapproxP';
-        igaProjUx_dx = dapproxUx';
-        igaProjUy_dx = dapproxUy';
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % MATRIX STRUCTURE FOR THE PROJECTED INFORMATION %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        solMatP   = zeros(M,numbControlPtsP);
-        solMatUx  = zeros(M,numbControlPtsUx);
-        solMatUy  = zeros(M,numbControlPtsUy);
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % PROJECTION USING THE MODAL BASIS %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        for kk = 1:M
-            
-            % PROJECTION OF THE PRESSURE
-            
-            for hh = 1:numbControlPtsP
-                for mb = 1:plotStruct.discStruct.numbModesP
-                    solP(hh,kk) = solP(hh,kk) + igaProjP(hh + (mb-1) * numbControlPtsP) * modalBasisP(kk,mb);
-                end
-            end
-            
-            % PROJECTION OF Ux
-            
-            for hh = 1:numbControlPtsUx
-                for mb = 1:plotStruct.discStruct.numbModesUx
-                    solUx(hh,kk) = solUx(hh,kk) + igaProjUx(hh + (mb-1) * numbControlPtsUx) * modalBasisUx(kk,mb);
-                end
-            end
-            
-            % PROJECTION OF Uy
-            
-            for hh = 1:numbControlPtsUy
-                for mb = 1:plotStruct.discStruct.numbModesUy
-                    solUy(hh,kk) = solUy(hh,kk) + igaProjUy(hh + (mb-1) * numbControlPtsUy) * modalBasisUy(kk,mb);
-                end
-            end
-            
-        end
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % COMPUTE THE SOLUTION MATRIX %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        finalSolP  = solP;
-        finalSolUx = solUx;
-        finalSolUy = solUy;
-        
-        for ii = 1:M
-            solMatP(ii,:)  = finalSolP((ii-1)  * numbControlPtsP  + 1 : ii * numbControlPtsP );
-            solMatUx(ii,:) = finalSolUx((ii-1) * numbControlPtsUx + 1 : ii * numbControlPtsUx);
-            solMatUy(ii,:) = finalSolUy((ii-1) * numbControlPtsUy + 1 : ii * numbControlPtsUy);
-        end
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % PROJECTION IN FINE MESH FOR THE PLOTTING %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %---------------------------------------------------------------------%
-        % Note : This step is necessary because during the previous projection
-        % step we could not choose the number of points to plot the solution
-        % along the centerline, only along the transverse direction.
-        %---------------------------------------------------------------------%
-
-        higaSolP  = griddata(XP ,YP ,solMatP ,Xeval,Yeval);
-        higaSolUx = griddata(XUx,YUx,solMatUx,Xeval,Yeval);
-        higaSolUy = griddata(XUy,YUy,solMatUy,Xeval,Yeval);
-
-        [numbX,numbY] = size(higaSolP);
-
-        for ii = 1:numbX
-            for jj = 1:numbY
-                if(isnan(higaSolP(ii,jj)))
-                    higaSolP(ii,jj) = 0;
-                end
-                if(isnan(higaSolUx(ii,jj)))
-                    higaSolUx(ii,jj) = 0;
-                end
-                if(isnan(higaSolUy(ii,jj)))
-                    higaSolUy(ii,jj) = 0;
-                end
-            end
-        end
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % STORE SOLUTION STRUCTURE %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        solStruct.P{tt}  = higaSolP;
-        solStruct.Ux{tt} = higaSolUx;
-        solStruct.Uy{tt} = higaSolUy;
-        solStruct.X{tt}  = Xeval;
-        solStruct.Y{tt}  = Yeval;
+        currUP = uP;
+        spaceP    = plotStruct.spaceP;
+        geoP = plotStruct.refDomain1D;
+        approxP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP)  = sp_eval(currUP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP), spaceP, geoP, structEvalNodesXP);
+        dapproxP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP) = sp_eval(currUP((m-1) * numbControlPtsP + 1 : m * numbControlPtsP), spaceP, geoP, structEvalNodesXP,'gradient');
 
     end
+
+    for m = 1:plotStruct.discStruct.numbModesUx
+
+        currUUx = uUx;
+        spaceUx = plotStruct.spaceUx;
+        geoUx   = plotStruct.refDomain1D;
+        approxUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx)  = sp_eval(currUUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx), spaceUx, geoUx, structEvalNodesXUx);
+        dapproxUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx) = sp_eval(currUUx((m-1) * numbControlPtsUx + 1 : m * numbControlPtsUx), spaceUx, geoUx, structEvalNodesXUx,'gradient');
+
+    end
+
+    for m = 1:plotStruct.discStruct.numbModesUy
+
+        currUUy = uUy;
+        spaceUy = plotStruct.spaceUy;
+        geoUy   = plotStruct.refDomain1D;
+        approxUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy)  = sp_eval(currUUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy), spaceUy, geoUy, structEvalNodesXUy);
+        dapproxUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy) = sp_eval(currUUy((m-1) * numbControlPtsUy + 1 : m * numbControlPtsUy), spaceUy, geoUy, structEvalNodesXUy,'gradient');
+
+    end
+
+    igaProjP  = approxP';
+    igaProjUx = approxUx';
+    igaProjUy = approxUy';
+
+    igaProjP_dx  = dapproxP';
+    igaProjUx_dx = dapproxUx';
+    igaProjUy_dx = dapproxUy';
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % MATRIX STRUCTURE FOR THE PROJECTED INFORMATION %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    solMatP   = zeros(M,numbControlPtsP);
+    solMatUx  = zeros(M,numbControlPtsUx);
+    solMatUy  = zeros(M,numbControlPtsUy);
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % PROJECTION USING THE MODAL BASIS %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    for kk = 1:M
+
+        % PROJECTION OF THE PRESSURE
+
+        for hh = 1:numbControlPtsP
+            for mb = 1:plotStruct.discStruct.numbModesP
+                solP(hh,kk) = solP(hh,kk) + igaProjP(hh + (mb-1) * numbControlPtsP) * modalBasisP(kk,mb);
+            end
+        end
+
+        % PROJECTION OF Ux
+
+        for hh = 1:numbControlPtsUx
+            for mb = 1:plotStruct.discStruct.numbModesUx
+                solUx(hh,kk) = solUx(hh,kk) + igaProjUx(hh + (mb-1) * numbControlPtsUx) * modalBasisUx(kk,mb);
+            end
+        end
+
+        % PROJECTION OF Uy
+
+        for hh = 1:numbControlPtsUy
+            for mb = 1:plotStruct.discStruct.numbModesUy
+                solUy(hh,kk) = solUy(hh,kk) + igaProjUy(hh + (mb-1) * numbControlPtsUy) * modalBasisUy(kk,mb);
+            end
+        end
+
+    end
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % COMPUTE THE SOLUTION MATRIX %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    finalSolP  = solP;
+    finalSolUx = solUx;
+    finalSolUy = solUy;
+
+    for ii = 1:M
+        solMatP(ii,:)  = finalSolP((ii-1)  * numbControlPtsP  + 1 : ii * numbControlPtsP );
+        solMatUx(ii,:) = finalSolUx((ii-1) * numbControlPtsUx + 1 : ii * numbControlPtsUx);
+        solMatUy(ii,:) = finalSolUy((ii-1) * numbControlPtsUy + 1 : ii * numbControlPtsUy);
+    end
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % PROJECTION IN FINE MESH FOR THE PLOTTING %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %---------------------------------------------------------------------%
+    % Note : This step is necessary because during the previous projection
+    % step we could not choose the number of points to plot the solution
+    % along the centerline, only along the transverse direction.
+    %---------------------------------------------------------------------%
+
+    higaSolP  = griddata(XP ,YP ,solMatP ,Xeval,Yeval);
+    higaSolUx = griddata(XUx,YUx,solMatUx,Xeval,Yeval);
+    higaSolUy = griddata(XUy,YUy,solMatUy,Xeval,Yeval);
+
+    [numbX,numbY] = size(higaSolP);
+
+    for ii = 1:numbX
+        for jj = 1:numbY
+            if(isnan(higaSolP(ii,jj)))
+                higaSolP(ii,jj) = 0;
+            end
+            if(isnan(higaSolUx(ii,jj)))
+                higaSolUx(ii,jj) = 0;
+            end
+            if(isnan(higaSolUy(ii,jj)))
+                higaSolUy(ii,jj) = 0;
+            end
+        end
+    end
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % STORE SOLUTION STRUCTURE %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    solStruct.P  = higaSolP;
+    solStruct.Ux = higaSolUx;
+    solStruct.Uy = higaSolUy;
+    solStruct.X  = Xeval;
+    solStruct.Y  = Yeval;
 
     %%%%%%%%%%%%%%%%%%%%%%%
     % CHECK EXPORT FOLDER %
@@ -378,88 +356,84 @@ function [] = plotSolutionStokes(plotStruct)
     %---------------------------------------------------------------------%
     % Note : Create figure to store the plots and exporting format.
     %---------------------------------------------------------------------%
-    
-    for tt = 1:length(plotStruct.timeStruct.timeDomain)
         
-        X  = solStruct.X{tt};
-        Y  = solStruct.Y{tt};
-        P  = solStruct.P{tt};
-        Ux = solStruct.Ux{tt};
-        Uy = solStruct.Uy{tt};
+    X  = solStruct.X;
+    Y  = solStruct.Y;
+    P  = solStruct.P;
+    Ux = solStruct.Ux;
+    Uy = solStruct.Uy;
 
-        fig1 = figure('visible','off');
-        quiver(X,Y,Ux,Uy)
+    fig1 = figure('visible','off');
+    quiver(X,Y,Ux,Uy);
 
-        fig2 = figure('visible','off');
-        [~,~] = contourf(X,Y,P,20);    
-        colormap(jet);
-        cmin = min(min(P));
-        cmax = max(max(P));
-        caxis([cmin cmax]);
-        colorbar();
-        minX = min(min(X));
-        maxX = max(max(X));
-        minY = min(min(Y));
-        maxY = max(max(Y));
-        axis([minX maxX minY maxY]);
-        axis equal
-        scale = 0.1;
-        daspect([1 1 scale])
-        pbaspect([1 1 scale])
-        set(gca, 'FontSize', 14)
-        hold on;
-        
-        fig3 = figure('visible','off');
-        [~,~] = contourf(X,Y,Ux,20);    
-        colormap(jet);
-        cmin = min(min(Ux));
-        cmax = max(max(Ux));
-        caxis([cmin cmax])
-        colorbar();
-        minX = min(min(X));
-        maxX = max(max(X));
-        minY = min(min(Y));
-        maxY = max(max(Y));
-        axis([minX maxX minY maxY]);
-        axis equal
-        scale = 0.1;
-        daspect([1 1 scale])
-        pbaspect([1 1 scale])
-        set(gca, 'FontSize', 14)
-        hold on;
-        
-        fig4 = figure('visible','off');
-        [~,~] = contourf(X,Y,Uy,20);    
-        colormap(jet);
-        cmin = min(min(Uy));
-        cmax = max(max(Uy));
-        caxis([cmin cmax])
-        colorbar();
-        minX = min(min(X));
-        maxX = max(max(X));
-        minY = min(min(Y));
-        maxY = max(max(Y));
-        axis([minX maxX minY maxY]);
-        axis equal
-        scale = 0.1;
-        daspect([1 1 scale])
-        pbaspect([1 1 scale])
-        set(gca, 'FontSize', 14)
-        hold on;
+    fig2 = figure('visible','off');
+    [~,~] = contourf(X,Y,P,20);    
+    colormap(jet);
+    cmin = min(min(P));
+    cmax = max(max(P));
+    caxis([cmin cmax]);
+    colorbar();
+    minX = min(min(X));
+    maxX = max(max(X));
+    minY = min(min(Y));
+    maxY = max(max(Y));
+    axis([minX maxX minY maxY]);
+    axis equal
+    scale = 0.1;
+    daspect([1 1 scale]);
+    pbaspect([1 1 scale]);
+    set(gca, 'FontSize', 14);
+    hold on;
 
-        %%%%%%%%%%%%%
-        % SAVE FIGURE
-        %%%%%%%%%%%%%
-        %---------------------------------------------------------------------%
-        % Note : Save the current figure.
-        %---------------------------------------------------------------------%
+    fig3 = figure('visible','off');
+    [~,~] = contourf(X,Y,Ux,20);    
+    colormap(jet);
+    cmin = min(min(Ux));
+    cmax = max(max(Ux));
+    caxis([cmin cmax]);
+    colorbar();
+    minX = min(min(X));
+    maxX = max(max(X));
+    minY = min(min(Y));
+    maxY = max(max(Y));
+    axis([minX maxX minY maxY]);
+    axis equal
+    scale = 0.1;
+    daspect([1 1 scale]);
+    pbaspect([1 1 scale]);
+    set(gca, 'FontSize', 14);
+    hold on;
 
-        print(fig1,['Quiver_At_t=',num2str(tt)],'-dpng')
-        print(fig2,['P_At_t=',num2str(tt)],'-dpng')
-        print(fig3,['Ux_At_t=',num2str(tt)],'-dpng')
-        print(fig4,['Uy_At_t=',num2str(tt)],'-dpng')
-    
-    end
+    fig4 = figure('visible','off');
+    [~,~] = contourf(X,Y,Uy,20);    
+    colormap(jet);
+    cmin = min(min(Uy));
+    cmax = max(max(Uy));
+    caxis([cmin cmax]);
+    colorbar();
+    minX = min(min(X));
+    maxX = max(max(X));
+    minY = min(min(Y));
+    maxY = max(max(Y));
+    axis([minX maxX minY maxY]);
+    axis equal
+    scale = 0.1;
+    daspect([1 1 scale]);
+    pbaspect([1 1 scale]);
+    set(gca, 'FontSize', 14);
+    hold on;
+
+    %%%%%%%%%%%%%
+    % SAVE FIGURE
+    %%%%%%%%%%%%%
+    %---------------------------------------------------------------------%
+    % Note : Save the current figure.
+    %---------------------------------------------------------------------%
+
+    print(fig1,'Quiver','-dpng');
+    print(fig2,'Contour_P','-dpng');
+    print(fig3,'Contour_Ux','-dpng');
+    print(fig4,'Contour_Uy','-dpng');
     
     cd ..
     
@@ -472,14 +446,5 @@ function [] = plotSolutionStokes(plotStruct)
     % reference solution, so the L2 and H1 norms of the error are set to
     % zero.
     %---------------------------------------------------------------------%
-    
-    errStruct = cell(2,length(plotStruct.timeStruct.timeDomain));
-    
-    for tt = 1:length(plotStruct.timeStruct.timeDomain)
-        
-        errStruct{1,tt} = 0;
-        errStruct{2,tt} = 0;
-        
-    end
 
 end

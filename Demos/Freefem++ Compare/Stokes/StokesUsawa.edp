@@ -1,0 +1,108 @@
+///////////////////////////
+// DEFINE CLOCK VARIABLE //
+///////////////////////////
+
+real s0 = clock();
+
+/////////////////////////////
+// CREATE RECTANGULAR MESH //
+/////////////////////////////
+
+mesh Th=square(20,20);
+
+////////////////////////////////////////////////////
+// GENERATE THE FUNCTIONAL SPACE FOR THE VELOCITY //
+////////////////////////////////////////////////////
+
+fespace Xh(Th,P2);
+Xh u1,u2,v1,v2;
+Xh u3,u4,v3,v4;
+
+//////////////////////////////////////////////////
+// DEFINE THE FUNCTIONAL SPACE FOR THE PRESSURE //
+//////////////////////////////////////////////////
+
+fespace Mh(Th,P1);
+Mh p,q,ppp;
+Mh p1,q1,ppp1;
+
+/////////////////////////////////////////////////////
+// DEFINE THE BILINEAR FORMS OF THE STOKES PROBLEM //
+/////////////////////////////////////////////////////
+
+varf bx(u1,q) = int2d(Th)( (dx(u1)*q));
+varf by(u1,q) = int2d(Th)( (dy(u1)*q));
+varf mp(p,q)  = int2d(Th)( p*q );
+varf a(u1,u2) = int2d(Th)( dx(u1)*dx(u2) + dy(u1)*dy(u2) ) + on(1,2,4,u1=0);// + on(3,u1=1) ;
+
+Xh bc1;
+Xh b;
+bc1[] = a(0,Xh);
+
+///////////////////////////////////////////////////////
+// COMPUTE THE BLOCK MATRICES FOR THE STOKES PROBLEM //
+///////////////////////////////////////////////////////
+
+matrix A  = a(Xh,Xh,solver=UMFPACK);
+matrix Bx = bx(Xh,Mh);
+matrix By = by(Xh,Mh);
+matrix M  = mp(Mh,Mh,solver=UMFPACK);
+
+//////////////////////////////////////////////////
+// DEFINITION OF THE UZAWA ITERATION PARAMETERS //
+ /////////////////////////////////////////////////
+
+Xh bcx=1,bcy=0;
+
+///////////////////////////////
+// UZAWA ITERATION ALGORITHM //
+///////////////////////////////
+
+func real[int] divup(real[int] & pp)
+{
+    int verb=verbosity;
+    verbosity=0;
+    b[] = Bx' * pp;
+    b[] += bc1[] .* bcx[];
+    u1[] = A^-1 * b[];
+    b[] = By' * pp;
+    b[] += bc1[] .* bcy[];
+    u2[] = A^-1 * b[];
+    ppp[] = Bx * u1[];
+    ppp[] += By * u2[];
+    verbosity = verb;
+    return ppp[];
+};
+
+//////////////////////////////////
+// PRESSURE MASS PRECONDITIONER //
+//////////////////////////////////
+
+func real[int] precM(real[int] & pp)
+{
+   ppp[] = M^-1 * pp;
+   return ppp[];
+};
+
+///////////////////////////////////////////////
+// SET THE INITIAL CONDITIONS OF THE PROBLEM //
+///////////////////////////////////////////////
+
+p  = 0;
+q  = 0;
+u1 = 0;
+v1 = 0;
+
+////////////////////////////////////////////////
+// COMPUTE THE SOLUTION OF THE STOKES PROBLEM //
+////////////////////////////////////////////////
+
+LinearCG(divup , p[] , q[] , eps=1.e-6 , nbiter=50);
+//LinearCG(divup,p[],precon=precM,eps=1.e-6,nbiter=50); divup(p[]);
+divup(p[]);
+
+/////////////////////////////////////////////
+// PLOT THE SOLUTION OF THE STOKES PROBLEM //
+/////////////////////////////////////////////
+
+plot([u1,u2],p,wait=1,value=true,coef=0.1);

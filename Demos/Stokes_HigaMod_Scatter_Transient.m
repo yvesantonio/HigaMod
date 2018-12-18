@@ -80,12 +80,9 @@
     
     discStruct = [];
     
-    modesVelc = 20;
-    modesPres = 15;
-    
     % Step used to generate the knot vector
     
-    discStruct.stepHorMesh     = 0.2;
+    discStruct.stepHorMesh     = 0.05;
     
     % Number of knots/elements in the isogeometric space
     
@@ -95,7 +92,7 @@
     % DISCRETIZATION PARAMETERS FOR THE PRESSURE %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    discStruct.numbModesP       = modesPres;
+    discStruct.numbModesP       = 2;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE X COMPONENT OF THE VELOCITY %
@@ -103,7 +100,7 @@
     
     % Number of transverse modes
     
-    discStruct.numbModesUx       = modesVelc;
+    discStruct.numbModesUx       = 4;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DISCRETIZATION PARAMETERS FOR THE Y COMPONENT OF THE VELOCITY %
@@ -111,7 +108,7 @@
     
     % Number of transverse modes
     
-    discStruct.numbModesUy       = modesVelc;
+    discStruct.numbModesUy       = 4;
     
     %% Isogeometric basis properties
     
@@ -171,6 +168,56 @@
                                       (igaBasisStruct.degreeSplineBasisUy - igaBasisStruct.continuityParameterUy) + ...
                                       1 + igaBasisStruct.continuityParameterUy;
     
+    %% Time simulation parameters
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INITIAL SIMULATION TIME %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialTime = 0.0;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%
+    % FINAL SIMULATION TIME %
+    %%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.finalTime = 1e-1;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % TOTAL NUMBER OF TIME STEPS %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.numbSteps = 5;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%
+    % SIMULATION TIME STEP %
+    %%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.timeStep = (timeStruct.finalTime - timeStruct.initialTime)/timeStruct.numbSteps;
+    
+    %%%%%%%%%%%%%%%
+    % TIME DOMAIN %
+    %%%%%%%%%%%%%%%
+    
+    timeStruct.timeDomain = timeStruct.initialTime:timeStruct.timeStep:timeStruct.finalTime;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INITIAL STATE OF THE PRESSURE %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialStateP = zeros(igaBasisStruct.numbControlPtsP * discStruct.numbModesP,1);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INTIAL STATE OF THE VELOCITY FIELD ALONG X %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialStateUx = zeros(igaBasisStruct.numbControlPtsUx * discStruct.numbModesUx,1);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INTIAL STATE OF THE VELOCITY FIELD ALONG Y %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    timeStruct.initialStateUy = zeros(igaBasisStruct.numbControlPtsUy * discStruct.numbModesUy,1);
+
     %% Boundary conditions
     
     boundCondStruct = [];
@@ -181,32 +228,20 @@
     
     % INFLOW PRESSURE
     
-    Pinf = 1;
+    Pinf = 5;
     
     % OUTFLOW PRESSURE
     
-    Pout = 0;
+    Pout = 1;
     
-    % PRESSURE DROP
-    
-    dP = Pinf - Pout;
-    
-    % DYNAMIC VISCOSITY
-    
-    nu = 0.1;
-        
-    % LENGTH OF THE CHANNEL
-    
-    L = 1;
-    
-    boundCondStruct.bc_up_tag_P    = 'neu';
-    boundCondStruct.bc_down_tag_P  = 'neu';
-    boundCondStruct.bc_inf_tag_P   = 'neu';
-    boundCondStruct.bc_out_tag_P   = 'neu';
+    boundCondStruct.bc_up_tag_P    = 'dir';
+    boundCondStruct.bc_down_tag_P  = 'dir';
+    boundCondStruct.bc_inf_tag_P   = 'dir';
+    boundCondStruct.bc_out_tag_P   = 'dir';
     boundCondStruct.bc_up_data_P   = 0;
     boundCondStruct.bc_down_data_P = 0;
-    boundCondStruct.bc_inf_data_P  = @(rho) 0 + 0 * rho + 0 * rho.^2;
-    boundCondStruct.bc_out_data_P  = @(rho) 0 + 0 * rho + 0 * rho.^2;
+    boundCondStruct.bc_inf_data_P  = @(rho,t) (Pinf - 0.25) + 1 * rho - 1 * rho.^2 + 0*t;
+    boundCondStruct.bc_out_data_P  = @(rho,t) (Pout - 0.25) + 1 * rho - 1 * rho.^2 + 0*t;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Ux %
@@ -218,11 +253,9 @@
     boundCondStruct.bc_out_tag_Ux   = 'neu';
     boundCondStruct.bc_up_data_Ux   = 0;
     boundCondStruct.bc_down_data_Ux = 0;
-    boundCondStruct.bc_inf_data_Ux  = @(rho) 0 + 0 * rho - 0 * rho.^2;
-    boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho - 0 * rho.^2;
-%     boundCondStruct.bc_inf_data_Ux  = @(rho) dP/(2*nu*L);
-%     boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho - dP/(2*nu*L) * rho.^2;
-
+    boundCondStruct.bc_inf_data_Ux  = @(rho,t) (Pinf - 0.25) + 1 * rho - 1 * rho.^2 + 0*t;
+    boundCondStruct.bc_out_data_Ux  = @(rho,t) (Pout - 0.25) + 1 * rho - 1 * rho.^2 + 0*t;
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Uy %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -233,8 +266,8 @@
     boundCondStruct.bc_out_tag_Uy   = 'dir';
     boundCondStruct.bc_up_data_Uy   = 0;
     boundCondStruct.bc_down_data_Uy = 0;
-    boundCondStruct.bc_inf_data_Uy  = @(rho) 0 + 0 * rho + 0 * rho.^2;
-    boundCondStruct.bc_out_data_Uy  = @(rho) 0 + 0 * rho + 0 * rho.^2;
+    boundCondStruct.bc_inf_data_Uy  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
+    boundCondStruct.bc_out_data_Uy  = @(rho,t) 0 + 0 * rho + 0 * rho.^2 + 0*t;
     
     %% Physical domain
     %---------------------------------------------------------------------%
@@ -286,7 +319,7 @@
         %%%%%%%%%%%%%
         
         minX = +0.0;
-        maxX = +1.0;
+        maxX = +3.0;
         minY = +0.0;
         maxY = +1.0;
                 
@@ -632,18 +665,14 @@
     switch caso
     case {1,2,3,4,5,6,7,8,9,10}
         
-        % Artificial reaction
-        
-        probParameters.sigma    = @(x,y) (  1e-3     + 0*x + 0*y );
-        
         % Fluid kinetic viscosity
         
-        probParameters.nu    = @(x,y) (  nu + 0*x + 0*y );
+        probParameters.nu    = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t );
         
         % Forcing term acting on the fluid
 
-        probParameters.force_x = @(x,y) (  1.00 + 0*x + 0*y );
-        probParameters.force_y = @(x,y) (  0.00 + 0*x + 0*y );
+        probParameters.force_x = @(x,y,t) (  0.00 + 0*x + 0*y + 0*t );
+        probParameters.force_y = @(x,y,t) (  0.00 + 0*x + 0*y + 0*t );
         
         % Robin coefficient for the modal basis
         
@@ -657,17 +686,18 @@
 
     import Core.SolverHandler
 
-    obj_solverIGA = SolverHandler();
+    objSolverIGA = SolverHandler();
 
     % Properties Assignment
 
-    obj_solverIGA.discStruct = discStruct;
-    obj_solverIGA.boundCondStruct = boundCondStruct;
-    obj_solverIGA.igaBasisStruct = igaBasisStruct;
-    obj_solverIGA.probParameters = probParameters;
-    obj_solverIGA.geometricInfo = geometricInfo;
-    obj_solverIGA.quadProperties = quadProperties;
+    objSolverIGA.discStruct = discStruct;
+    objSolverIGA.boundCondStruct = boundCondStruct;
+    objSolverIGA.igaBasisStruct = igaBasisStruct;
+    objSolverIGA.probParameters = probParameters;
+    objSolverIGA.timeStruct = timeStruct;
+    objSolverIGA.geometricInfo = geometricInfo;
+    objSolverIGA.quadProperties = quadProperties;
 
     tic;
-    solverIGAScatterStokes(obj_solverIGA);
+    solverIGAScatterStokesTransient(objSolverIGA);
     toc;
