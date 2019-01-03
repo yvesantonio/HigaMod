@@ -1003,7 +1003,10 @@ classdef BasisHandler
 
                 lambda = zeros(obj.dimModalBasis,1);
 
-                %% Computation of the Eigenvalues of the New Basis
+                %% Computation of the Eigenvalues of the New Basis - Legendre
+
+
+                %% Computation of the Eigenvalues of the New Basis - Educated
 
                 %---------------------------------------------------------------------%
                 % Note:
@@ -1160,7 +1163,7 @@ classdef BasisHandler
                 
                 %% COMPUTE MODAL BASIS
                 
-                evalNodesLeg = obj.evalLegendreNodes - 0.5;
+                evalNodesLeg = obj.evalLegendreNodes*2 - 1;
 
                 if(strcmp(obj.labelUpBoundCond,'rob') && strcmp(obj.labelDownBoundCond,'rob'))
 
@@ -1177,7 +1180,7 @@ classdef BasisHandler
 
                         % Loop on the Section
 
-                        coeffModalBaseLegendre(:,n) = polyval(P{n},evalNodesLeg);
+                        coeffModalBaseLegendre(:,n) = legendreP(n,evalNodesLeg); %polyval(P{n},evalNodesLeg);
                         coeffModalBaseLegendreDer(:,n) = polyval(Pd{n},evalNodesLeg);
 
                     end
@@ -1186,6 +1189,10 @@ classdef BasisHandler
 
                     coeffModalBaseLegendre   = zeros( length(evalNodesLeg), obj.dimLegendreBase);
                     coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    
+                    obj_polyLegendre = IntegrateHandler();
+                    obj_polyLegendre.degreePolyLegendre = obj.dimLegendreBase;
+                    [P,Pd] = polyLegendre(obj_polyLegendre);
 
                     % Loop on the Base Functions
 
@@ -1194,9 +1201,9 @@ classdef BasisHandler
                         % Loop on the Section
 
                         for i = 1:length(evalNodesLeg)
-                            coeffModalBaseLegendre  ( i, n ) = evalNodesLeg(i).^(n-1)*(1 - evalNodesLeg(i).^2);
-                            coeffModalBaseLegendreDer( i, n ) = (n-1) * evalNodesLeg(i).^(n-2) * (1 - evalNodesLeg(i).^2) ...
-                                            + evalNodesLeg(i).^(n-1) * (-2 * evalNodesLeg(i));
+                            coeffModalBaseLegendre  ( i, n ) = polyval(P{n},evalNodesLeg(i)) * (1 - evalNodesLeg(i).^2);
+                            coeffModalBaseLegendreDer( i, n ) = polyval(Pd{n},evalNodesLeg(i)) * (1 - evalNodesLeg(i).^2) ...
+                                            + polyval(P{n},evalNodesLeg(i)) * (-2 * evalNodesLeg(i));
                         end
 
                     end

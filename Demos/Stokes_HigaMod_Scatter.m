@@ -80,12 +80,12 @@
     
     discStruct = [];
     
-    modesVelc = 20;
-    modesPres = 15;
+    modesVelc = 10;
+    modesPres = 5;
     
     % Step used to generate the knot vector
     
-    discStruct.stepHorMesh     = 0.2;
+    discStruct.stepHorMesh     = 0.05;
     
     % Number of knots/elements in the isogeometric space
     
@@ -193,14 +193,14 @@
     
     % DYNAMIC VISCOSITY
     
-    nu = 0.1;
+    nu = 1;
         
     % LENGTH OF THE CHANNEL
     
     L = 1;
     
-    boundCondStruct.bc_up_tag_P    = 'neu';
-    boundCondStruct.bc_down_tag_P  = 'neu';
+    boundCondStruct.bc_up_tag_P    = 'rob';
+    boundCondStruct.bc_down_tag_P  = 'rob';
     boundCondStruct.bc_inf_tag_P   = 'neu';
     boundCondStruct.bc_out_tag_P   = 'neu';
     boundCondStruct.bc_up_data_P   = 0;
@@ -218,9 +218,9 @@
     boundCondStruct.bc_out_tag_Ux   = 'neu';
     boundCondStruct.bc_up_data_Ux   = 0;
     boundCondStruct.bc_down_data_Ux = 0;
+%     boundCondStruct.bc_inf_data_Ux  = @(rho) 0 + 0 * rho - dP/(2*nu*L) * rho.^2;
+    boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho - 10 * rho.^2;
     boundCondStruct.bc_inf_data_Ux  = @(rho) 0 + 0 * rho - 0 * rho.^2;
-    boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho - 0 * rho.^2;
-%     boundCondStruct.bc_inf_data_Ux  = @(rho) dP/(2*nu*L);
 %     boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho - dP/(2*nu*L) * rho.^2;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -632,9 +632,13 @@
     switch caso
     case {1,2,3,4,5,6,7,8,9,10}
         
+        % Pressure compensation
+        
+        probParameters.delta    = @(x,y) ( 0.001 + 0*x + 0*y );
+        
         % Artificial reaction
         
-        probParameters.sigma    = @(x,y) (  1e-3     + 0*x + 0*y );
+        probParameters.sigma    = @(x,y) ( 0.1 + 0*x + 0*y );
         
         % Fluid kinetic viscosity
         

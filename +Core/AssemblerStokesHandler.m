@@ -670,7 +670,7 @@ classdef AssemblerStokesHandler
             objNewModalBasisP.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_P;
             objNewModalBasisP.coeffForm = obj.probParameters;
 
-            [modalBasisP, modalBasisDerP] = newModalBasisStokes(objNewModalBasisP);
+            [modalBasisP, modalBasisDerP] = newModalBasisLegendreStokes(objNewModalBasisP);
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % VELOCITY FIELD ALONG X MODAL BASIS %
@@ -691,7 +691,7 @@ classdef AssemblerStokesHandler
             objNewModalBasisUx.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Ux;
             objNewModalBasisUx.coeffForm = obj.probParameters;
 
-            [modalBasisUx, modalBasisDerUx] = newModalBasisStokes(objNewModalBasisUx);
+            [modalBasisUx, modalBasisDerUx] = newModalBasisLegendreStokes(objNewModalBasisUx);
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % VELOCITY FIELD ALONG Y MODAL BASIS %
@@ -712,7 +712,23 @@ classdef AssemblerStokesHandler
             objNewModalBasisUy.labelDownBoundCond = obj.boundCondStruct.bc_down_tag_Uy;
             objNewModalBasisUy.coeffForm = obj.probParameters;
 
-            [modalBasisUy, modalBasisDerUy] = newModalBasisStokes(objNewModalBasisUy);
+            [modalBasisUy, modalBasisDerUy] = newModalBasisLegendreStokes(objNewModalBasisUy);
+            
+%             % DEBUG
+%             
+%             figure
+%             syms x y
+%             fplot(legendreP(1:4, x))
+%             axis([-1.0 1.0 -1.0 1.0])
+%             
+%             figure
+%             for ii = 1:obj.discStruct.numbModesP
+%                 plot(verGLNodesUy,modalBasisP(:,ii))
+%                 hold on
+%                 grid on
+%             end
+%             
+%             return
             
             %% EVALUATION OF THE GEOMETRIC PROPERTIES OF THE DOMAIN
             %-------------------------------------------------------------%
@@ -837,6 +853,10 @@ classdef AssemblerStokesHandler
             % ARTIFICIAL REACTION OF THE FLUID
 
             evalSigma = obj.probParameters.sigma(XP,YP);
+            
+            % PRESSURE COMPENSATION
+
+            evalDelta = obj.probParameters.delta(XP,YP);
 
             %% EVALUATION OF THE EXCITING FORCE 
             %-------------------------------------------------------------%
@@ -857,6 +877,7 @@ classdef AssemblerStokesHandler
 
             Computed.nu = evalNu;
             Computed.sigma = evalSigma;
+            Computed.delta = evalDelta;
             Computed.forceX = evalForceX;
             Computed.forceY = evalForceY;
             Computed.y = verEvalNodesP;
@@ -2608,7 +2629,7 @@ function [Mx,Ax,Fx] = assemblerIGAScatterAx(assemblerStruct)
     funcToIntegrate_06 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.Phi1_dy .* assemblerStruct.jacFunc.Phi2_dy;
     funcToIntegrate_07 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.Phi2_dy .* assemblerStruct.jacFunc.Phi1_dy;
     funcToIntegrate_08 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.Phi2_dy .* assemblerStruct.jacFunc.Phi2_dy;
-    funcToIntegrate_09 = assemblerStruct.jacFunc.evalDetJac .* ones(size(assemblerStruct.param.nu));
+    funcToIntegrate_09 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.sigma;
     
     % Computation of quadrature weights for the modal expansion
     
@@ -2637,7 +2658,7 @@ function [Mx,Ax,Fx] = assemblerIGAScatterAx(assemblerStruct)
     % Definition of the modal coefficients
     
     m00 = aux5;
-    r00 = aux4 + aux8;
+    r00 = aux4 + aux8 + aux9;
     r10 = aux3 + aux7;
     r01 = aux2 + aux6;
     r11 = aux1 + aux5;
@@ -2722,7 +2743,7 @@ function [My,Ay,Fy] = assemblerIGAScatterAy(assemblerStruct)
     funcToIntegrate_06 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.Phi1_dy .* assemblerStruct.jacFunc.Phi2_dy;
     funcToIntegrate_07 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.Phi2_dy .* assemblerStruct.jacFunc.Phi1_dy;
     funcToIntegrate_08 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.Phi2_dy .* assemblerStruct.jacFunc.Phi2_dy;
-    funcToIntegrate_09 = assemblerStruct.jacFunc.evalDetJac .* ones(size(assemblerStruct.param.nu));
+    funcToIntegrate_09 = assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.sigma;
     
     % Computation of quadrature weights for the modal expansion
     
@@ -2751,7 +2772,7 @@ function [My,Ay,Fy] = assemblerIGAScatterAy(assemblerStruct)
     % Definition of the modal coefficients
     
     m00 = aux5;
-    r00 = aux4 + aux8;
+    r00 = aux4 + aux8 + aux9;
     r10 = aux3 + aux7;
     r01 = aux2 + aux6;
     r11 = aux1 + aux5;
@@ -3070,7 +3091,7 @@ function [Py] = assemblerIGAScatterPy(assemblerStruct)
     
 end
 
-%% Method 'assemblerIGAScatterPy'
+%% Method 'assemblerIGAScatterP'
             
 function [P] = assemblerIGAScatterP(assemblerStruct)
 
@@ -3092,7 +3113,7 @@ function [P] = assemblerIGAScatterP(assemblerStruct)
     
     % Computation of coefficients of the modal expansion
     
-    funcToIntegrate_01 = assemblerStruct.param.sigma .* assemblerStruct.jacFunc.evalDetJac;
+    funcToIntegrate_01 = assemblerStruct.param.delta .* assemblerStruct.jacFunc.evalDetJac;
     
     % Computation of quadrature weights for the modal expansion
     
