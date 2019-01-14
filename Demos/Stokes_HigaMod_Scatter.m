@@ -76,7 +76,7 @@
     % be performed inside the class 'AssemblerIGA'.
     %-------------------------------------------------------------------------%
 
-    %% Discrtization parameters
+    %% Discretization parameters
     
     discStruct = [];
     
@@ -85,7 +85,7 @@
     
     % Step used to generate the knot vector
     
-    discStruct.stepHorMesh     = 0.05;
+    discStruct.stepHorMesh     = 0.1;
     
     % Number of knots/elements in the isogeometric space
     
@@ -175,13 +175,13 @@
     
     boundCondStruct = [];
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR THE PRESSURE %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%
+    % PARAMTERS %
+    %%%%%%%%%%%%%
     
     % INFLOW PRESSURE
     
-    Pinf = 1;
+    Pinf = 2;
     
     % OUTFLOW PRESSURE
     
@@ -195,12 +195,28 @@
     
     nu = 1;
         
-    % LENGTH OF THE CHANNEL
+    % LENGTH OF THE CYLINDER
     
-    L = 1;
+    L = 5;
     
-    boundCondStruct.bc_up_tag_P    = 'rob';
-    boundCondStruct.bc_down_tag_P  = 'rob';
+    % RADIUS OF THE CYLINDER
+    
+    R = 0.5;
+    
+    % PARABOLIC PROFILE PARAMETERS
+    
+    a0 = 0;
+    a1 = (dP * R) / (2 * nu * L);
+    a2 = (-1 * dP) / (4 * nu * L);
+    
+    Umax = a1^2 / 4 * a2;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR THE PRESSURE %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    boundCondStruct.bc_up_tag_P    = 'neu';
+    boundCondStruct.bc_down_tag_P  = 'neu';
     boundCondStruct.bc_inf_tag_P   = 'neu';
     boundCondStruct.bc_out_tag_P   = 'neu';
     boundCondStruct.bc_up_data_P   = 0;
@@ -214,14 +230,12 @@
 
     boundCondStruct.bc_up_tag_Ux    = 'dir';
     boundCondStruct.bc_down_tag_Ux  = 'dir';
-    boundCondStruct.bc_inf_tag_Ux   = 'neu';
+    boundCondStruct.bc_inf_tag_Ux   = 'dir';
     boundCondStruct.bc_out_tag_Ux   = 'neu';
     boundCondStruct.bc_up_data_Ux   = 0;
     boundCondStruct.bc_down_data_Ux = 0;
-%     boundCondStruct.bc_inf_data_Ux  = @(rho) 0 + 0 * rho - dP/(2*nu*L) * rho.^2;
-    boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho - 10 * rho.^2;
-    boundCondStruct.bc_inf_data_Ux  = @(rho) 0 + 0 * rho - 0 * rho.^2;
-%     boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho - dP/(2*nu*L) * rho.^2;
+    boundCondStruct.bc_inf_data_Ux  = @(rho) a0 + a1 * rho + a2 * rho.^2;
+    boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho + 0 * rho.^2;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Uy %
@@ -285,10 +299,10 @@
         % RECTANGLE %
         %%%%%%%%%%%%%
         
-        minX = +0.0;
-        maxX = +1.0;
-        minY = +0.0;
-        maxY = +1.0;
+        minX = 0.0;
+        maxX = L;
+        minY = 0.0;
+        maxY = 2 * R;
                 
         % IMPORT THE GEOMETRY FILES FROM "Demos/ScatterGeometry" FOLDER
         
@@ -634,11 +648,11 @@
         
         % Pressure compensation
         
-        probParameters.delta    = @(x,y) ( 0.001 + 0*x + 0*y );
+        probParameters.delta    = @(x,y) ( 0.0 + 0*x + 0*y );
         
         % Artificial reaction
         
-        probParameters.sigma    = @(x,y) ( 0.1 + 0*x + 0*y );
+        probParameters.sigma    = @(x,y) ( 0.0 + 0*x + 0*y );
         
         % Fluid kinetic viscosity
         
@@ -646,7 +660,7 @@
         
         % Forcing term acting on the fluid
 
-        probParameters.force_x = @(x,y) (  1.00 + 0*x + 0*y );
+        probParameters.force_x = @(x,y) (  0.00 + 0*x + 0*y );
         probParameters.force_y = @(x,y) (  0.00 + 0*x + 0*y );
         
         % Robin coefficient for the modal basis
@@ -673,5 +687,5 @@
     obj_solverIGA.quadProperties = quadProperties;
 
     tic;
-    solverIGAScatterStokes(obj_solverIGA);
+    [errStruct] = solverIGAScatterStokes(obj_solverIGA);
     toc;

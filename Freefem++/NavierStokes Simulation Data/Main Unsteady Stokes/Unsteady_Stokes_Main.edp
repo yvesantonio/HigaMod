@@ -1,0 +1,268 @@
+load "medit"
+
+/////////////////////////////////////////
+// DEFINITION OF SIMULATION PARAMETERS //
+/////////////////////////////////////////
+
+real Pinf   = 2;
+real Pout   = 0;
+real dP     = Pinf - Pout;
+real period = 10;
+real w      = (2 * pi)/period;
+real rho    = 20;
+real mu     = 1;
+real nu     = mu/rho;
+real L      = 5;
+real R      = L/2;
+
+/////////////////////////////
+// CREATE RECTANGULAR MESH //
+/////////////////////////////
+
+real maxHor=L;
+real minHor=0;
+real maxVer=2*R;
+real minVer=0;
+int N = 50;
+int numbHorNodes = N;
+int numbVerNodes = N;
+
+real xx1 = minHor;
+real xx2 = maxHor;
+real xx3 = maxHor;
+real xx4 = minHor;
+
+real yy1 = minVer;
+real yy2 = minVer;
+real yy3 = maxVer;
+real yy4 = maxVer;
+
+border aa(t=0,1) {x = xx1 + t * ( xx2 - xx1 ); y = yy1 + t * ( yy2 - yy1 ); label=1;}
+border bb(t=0,1) {x = xx2 + t * ( xx3 - xx2 ); y = yy2 + t * ( yy3 - yy2 ); label=2;}
+border cc(t=0,1) {x = xx3 + t * ( xx4 - xx3 ); y = yy3 + t * ( yy4 - yy3 ); label=3;}
+border dd(t=0,1) {x = xx4 + t * ( xx1 - xx4 ); y = yy4 + t * ( yy1 - yy4 ); label=4;}
+mesh Th=buildmesh( aa(numbVerNodes) + bb(numbHorNodes) + cc(numbVerNodes) + dd(numbHorNodes) );
+
+////////////////////////////////////////////////////
+// GENERATE THE FUNCTIONAL SPACE FOR THE VELOCITY //
+////////////////////////////////////////////////////
+
+fespace Xh(Th,P2);
+Xh u1,u2,v1,v2;
+Xh u1OLD=0;
+Xh u2OLD=0;
+Xh h;
+
+//////////////////////////////////////////////////
+// DEFINE THE FUNCTIONAL SPACE FOR THE PRESSURE //
+//////////////////////////////////////////////////
+
+fespace Mh(Th,P1);
+Mh p,q;
+
+//////////////////////////////////
+// DEFINITION OF INFLOW PROFILE //
+//////////////////////////////////
+
+// WOMERSLEY PROFILE
+
+func real Womersley(real t) {
+  real sigma = nu/(L^2);
+  int numbModes = 15;
+  real Wom = 0;
+
+  for(int kk = 1; kk < numbModes + 1;kk++)
+  {
+    real dk = 4 * dP / (rho * pi * (2 * kk + 1) * (((2 * kk + 1)^4) * (sigma^2) * (pi^4) + w^2));
+    real Sk = sin(pi * (2 * kk + 1) * y / L);
+    real Pk = ((2 * kk + 1)^2) * sigma * (pi^2) * sin(w * t) - w * cos(w * t) + w * exp(-((2 * kk + 1)^2) * sigma * (pi^2) * t);
+
+    Wom = Wom + dk * Sk * Pk;
+  }
+
+  return Wom;
+}
+
+// COMPUTE WOMERSLEY NUMBER
+
+real Wo = L * (w * rho / mu)^0.5;
+
+cout << endl;
+cout << "------------------------------------------" << endl;
+cout << "   WOMERSLEY NUMBER  : " << Wo << endl;
+cout << "------------------------------------------" << endl;
+cout << endl;
+
+// SINE PROFILE
+
+func real hFunc(real t) {
+ return -1 * sin(pi * y) * sin(2 * pi * t);
+}
+
+//////////////////////////////////////////////////
+// DEFINITION OF TIME DISCRETIZATION PARAMETERS //
+//////////////////////////////////////////////////
+
+// NUMBER OF TIME FRAMES
+
+int Nt = 10;
+
+// TIME STEP
+
+real dT = period/Nt;
+
+// FINAL SIMULATION TIME
+
+real T  = period;
+
+///////////////////////////////////////////////
+// DEFINE THE COMPONENTS OF THE FORCING TERM //
+///////////////////////////////////////////////
+
+// REACTION TERM TO CONSIDER THE TIME DEPENDENCE
+
+func sigma = 0.0;
+
+// STABILITY TERM TO COMPENSATE FOR PRESSURE SATURATION
+
+func delta = 1e-6;
+
+// FORCING COMPONENTS
+
+func f1 = 0;
+func f2 = 0;
+
+/////////////////////////////////////////////////
+// DEFINITION OF MACROS FOR THE SOTKES PROBLEM //
+/////////////////////////////////////////////////
+
+macro dXX(uX)     dx(uX) //
+macro dYY(uY)     dy(uY) //
+macro dXY(uX,uY)  (dy(uX) + dx(uY))/2.0 //
+
+/////////////////////////////////////
+// DEFINTION OF THE STOKES PROBLEM //
+/////////////////////////////////////
+
+problem Stokes ([u1,u2,p],[v1,v2,q],solver=Crout) =
+int2d(Th)(
+  (u1 * v1)/dT
+  + (u2 * v2)/dT
+  + 2 * nu * (dXX(u1) * dXX(v1))
+  + 2 * nu * (dYY(u2)*dYY(v2))
+  + 2 * nu * (dXY(u1,u2)*dXY(v1,v2))
+  + 2 * nu * (dXY(u1,u2)*dXY(v1,v2))
+  + u1 * v1 * sigma
+  + u2 * v2 * sigma
+  - p * q * delta
+  - p * dx(v1)
+  - p * dy(v2)
+  - dx(u1) * q
+  - dy(u2) * q
+  )
++ int2d(Th)(
+  - f1 * v1
+  - f2 * v2
+  )
++ int2d(Th)(
+  - (u1OLD * v1)/dT
+  - (u2OLD * v2)/dT
+  )
++ on(1,2,3,4, u2 = 0)
++ on(4, u1 = h)
++ on(1,3, u1 = 0);
+
+///////////////
+// TIME LOOP //
+///////////////
+
+int m;
+int M = T/dT;
+real tt;
+
+for(m = 0; m < M; m++){
+
+    // COMPUTE CURRENT TIME
+
+    tt = m * dT;
+
+    // COMPUTE CURRENT INFLOW PROFILE
+
+    h = Womersley(tt);
+
+    // COMPUTE STOKES SOLUTION FOR CURRENT INFLOW PROFILE
+
+    Stokes;
+
+    // STORE SOLUTION FOR THE NEXT TIME STEP
+
+    u1OLD = u1;
+    u2OLD = u2;
+
+    /////////////////////////////////////////////////////////////////////
+    // PLOT THE SOLUTION OF THE STOKES PROBLEM WITH TRADITIONAL SOLVER //
+    /////////////////////////////////////////////////////////////////////
+
+    // PLOT THE PRESSURE CONTOUR PLOT
+
+    // plot(p, value = true, wait = true);
+
+    // PLOT THE VELOCITY FIELD
+
+    // plot(p, [u1,u2], value = true, wait = true, cmm = "t="+tt);
+
+    /////////////////////////////////////////////////////////////////
+    // EXPORT THE COMPONENTS OF THE SOLUTION OF THE STOKES PROBLEM //
+    /////////////////////////////////////////////////////////////////
+
+    savesol("ffSolUx_"+m+".sol",Th,u1);
+    savesol("ffSolUy_"+m+".sol",Th,u2);
+    savesol("ffSolP_"+m+".sol",Th,p);
+}
+
+/////////////////////////////
+// COMPUTE THE MASS MATRIX //
+/////////////////////////////
+
+varf mass(u,v) = int2d(Th) ( u * v );
+matrix Mp = mass(Mh,Mh);
+
+//////////////////////////////////
+// COMPUTE THE STIFFNESS MATRIX //
+//////////////////////////////////
+
+varf stiff(u,v) = int2d(Th) ( dx(u) * dx(v) + dy(u) * dy(v));
+matrix Ap = stiff(Mh,Mh);
+
+////////////////////////
+// SAVE THE MESH FILE //
+////////////////////////
+
+savemesh(Th,"ffMesh.msh");
+
+/////////////////////
+// EXPORT MATRICES //
+/////////////////////
+
+// STIFFNESS MATRIX - PRESSURE SOLUTION
+
+{
+	ofstream fout("Ap.txt");
+	fout << Ap << endl;
+}
+
+// MASS MATRIX - PRESSURE SOLUTION
+
+{
+	ofstream fout("Mp.txt");
+	fout << Mp << endl;
+}
+
+/////////////////////////////////////////////
+// FINISHED SOLUTION OF THE STOKES PROBLEM //
+/////////////////////////////////////////////
+
+cout << endl;
+cout << "------------------------------------------" << endl;
+cout << "   FINISHED SIMULATION - STOKES PROBLEM   " << endl;
+cout << "------------------------------------------" << endl;

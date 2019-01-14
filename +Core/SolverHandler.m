@@ -5727,7 +5727,7 @@ classdef SolverHandler
             
             %% Method 'solverIGAScatterStokes'
             
-            function [] = solverIGAScatterStokes(obj)
+            function [errStruct] = solverIGAScatterStokes(obj)
 
                 %%
                 % solverIGA     - This function solves an elliptic problem definied
@@ -5846,13 +5846,6 @@ classdef SolverHandler
                 disp('---------------------------------------------------------------------------------------------')
                 disp('  ');
                 
-                rcond(full(AA))
-                
-                figure
-                spy(full(AA))
-                figure
-                spy(FF)
-                
                 solStruct = AA\FF;
 
                 %% GENERATE SOLUTION PLOTS
@@ -5861,7 +5854,20 @@ classdef SolverHandler
                 %                  	       SOLUTION PLOT                          %
                 %-----------------------------------------------------------------%
                 
-                % Create the Freefem++ simulation folder
+                % CHECK SIMULATION RESULTS FOLDER
+                
+                folder = 'Results';
+                checkFolder = exist(folder);
+                
+                if (checkFolder == 7)
+                    disp('CHECK - THE SIMULATION RESULT FOLDER EXIST')
+                else
+                    disp('ERROR - THE SIMULATION RESULT FOLDER DOES NOT EXIST')
+                end
+                
+                cd(folder);
+                
+                % CREATE THE CURRENT SIMULATION RESULTS FOLDER
     
                 for ii = 1:1000
         
@@ -5876,13 +5882,17 @@ classdef SolverHandler
                     end
                 end
                 
-                % Print the solution
+                % PRINT THE PLOTS AND SIMULATION RESULTS
                 
-                plotStruct.solStruct  = solStruct;
+                plotStruct.solStruct        = solStruct;
+                plotStruct.boundCondStruct  = obj.boundCondStruct;
                 
                 plotSolutionStokes(plotStruct);
-
-                disp('Finished Plot Operation');
+                errStruct = 0;
+                
+                % [errStruct] = computeErrorStokes(plotStruct);
+                
+                cd ..
                 
                 disp('  '); 
                 disp('---------------------------------------------------------------------------------------------')
@@ -6020,7 +6030,7 @@ classdef SolverHandler
                 %    EVOLUTION OF THE SOLUTION WITH THE THETA METHOD    
                 %---------------------------------------------------------%
                 
-                theta = 1;
+                theta = 1.0;
                 dt = obj.timeStruct.timeStep;
                 
                 solStruct = cell(1,length(obj.timeStruct.timeDomain));
@@ -6030,33 +6040,20 @@ classdef SolverHandler
                             
                 tic;
                 
-                AUX1old = zeros(size(MM{1}));
-                AUX2old = zeros(size(MM{1}));
-                AUX3old = zeros(size(MM{1}));
-                
                 for tt = 1:length(obj.timeStruct.timeDomain)-1
                     
-%                     AUX1 = dt^1 * MM{tt+1} + theta * AA{tt+1};
-%                     AUX2 = (theta-1) * AA{tt} + dt^-1 * MM{tt};
-%                     AUX3 = (theta * FF{tt+1} + (1-theta) * FF{tt});
-%                     
-%                     check1 = AUX1old - AUX1;
-%                     check2 = AUX2old - AUX2;
-%                     check3 = AUX3old - AUX3;
-%                     
-%                     figure
-%                     plot(check1(:)); hold on;
-%                     plot(check2(:)); hold on;
-%                     plot(check3(:)); hold on;
-%                     
-%                     
-%                     solStruct{tt+1} = AUX1\AUX2 * solStruct{tt} + AUX1\AUX3;
-%                     
-%                     AUX1old = AUX1;
-%                     AUX2old = AUX2;
-%                     AUX3old = AUX3;
-
-                    solStruct{tt+1} = AA{tt+1}\FF{tt+1};
+                    M1 = MM{tt+1};
+                    A1 = AA{tt+1};
+                    M0 = MM{tt};
+                    A0 = AA{tt};
+                    F1 = FF{tt+1};
+                    F0 = FF{tt};
+                    
+                    AUX1 = (dt^-1) * M1 + theta * A1;
+                    AUX2 = (dt^-1) * M0 - (1-theta) * A0;
+                    AUX3 = theta * F1 + (1-theta) * F0;
+                    
+                    solStruct{tt+1} = AUX1\AUX2 * solStruct{tt} + AUX1\AUX3;
                     
                 end
                 
@@ -6069,6 +6066,19 @@ classdef SolverHandler
                 disp('  '); 
 
                 %% GENERATE SOLUTION PLOTS
+                
+                % CHECK SIMULATION RESULTS FOLDER
+                
+                folder = 'Results';
+                checkFolder = exist(folder);
+                
+                if (checkFolder == 7)
+                    disp('CHECK - THE SIMULATION RESULT FOLDER EXIST')
+                else
+                    disp('ERROR - THE SIMULATION RESULT FOLDER DOES NOT EXIST')
+                end
+                
+                cd(folder);
                 
                 %-----------------------------------------------------------------%
                 %                  	       SOLUTION PLOT                          %
@@ -6096,7 +6106,7 @@ classdef SolverHandler
                 plotStruct.timeStruct = obj.timeStruct;
                 plotStruct.solStruct  = solStruct;
                 
-                plotSolutionStokes(plotStruct);
+                plotSolutionStokesTransient(plotStruct);
 
                 disp('Finished Plot Operation');
                 
@@ -6107,6 +6117,8 @@ classdef SolverHandler
                 disp('  '); 
                 
                 %% CREATE QUIVER VIDEO
+                
+                frameRate = 2;
                 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % CREATE QUIVER SIMULATION VIDEO %
@@ -6122,7 +6134,7 @@ classdef SolverHandler
                 workingDir = [pwd,'/',fileNameF];
 
                 outputVideo = VideoWriter(fullfile(workingDir,'StokesQuiver.avi'));
-                outputVideo.FrameRate = 10;
+                outputVideo.FrameRate = frameRate;
                 open(outputVideo)
 
                 for ii = 1:length(imageNames)
@@ -6148,7 +6160,7 @@ classdef SolverHandler
                 workingDir = [pwd,'/',fileNameF];
 
                 outputVideo = VideoWriter(fullfile(workingDir,'StokesP.avi'));
-                outputVideo.FrameRate = 10;
+                outputVideo.FrameRate = frameRate;
                 open(outputVideo)
 
                 for ii = 1:length(imageNames)
@@ -6174,7 +6186,7 @@ classdef SolverHandler
                 workingDir = [pwd,'/',fileNameF];
 
                 outputVideo = VideoWriter(fullfile(workingDir,'StokesUx.avi'));
-                outputVideo.FrameRate = 10;
+                outputVideo.FrameRate = frameRate;
                 open(outputVideo)
 
                 for ii = 1:length(imageNames)
@@ -6200,7 +6212,7 @@ classdef SolverHandler
                 workingDir = [pwd,'/',fileNameF];
 
                 outputVideo = VideoWriter(fullfile(workingDir,'StokesUy.avi'));
-                outputVideo.FrameRate = 10;
+                outputVideo.FrameRate = frameRate;
                 open(outputVideo)
 
                 for ii = 1:length(imageNames)
@@ -6209,6 +6221,8 @@ classdef SolverHandler
                 end
 
                 close(outputVideo)
+                
+                cd ..
 
                 disp('  '); 
                 disp('---------------------------------------------------------------------------------------------')

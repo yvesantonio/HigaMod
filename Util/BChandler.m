@@ -11,7 +11,7 @@ function [Ax,Ay,bx,by] = BChandler(Ax,Ay,bx,by,BC,mx,my,fedof,wyhat,modalbx,Jin_
 %         bx=NeumannOutflow(weights_yhat,bx,Data.Pout(t),ModalBasisX,fedof,Jin_out);
 switch BC.INF_x
     case 'dir'
-        [Ax,bx]=DirichletInflow(Ax,bx,BC.dataINFx,mx,fedof);
+        [Ax,bx]=DirichletInflow(struct.Ax,struct.bx,struct.BC.dataINFx,struct.mx,struct.fedof);
     case 'neu'
         bx=NeumannInflow(wyhat,bx,BC.dataINFx(t),modalbx,fedof,Jin_out');
 end

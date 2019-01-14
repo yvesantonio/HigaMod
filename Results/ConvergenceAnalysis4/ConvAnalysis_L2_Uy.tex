@@ -1,0 +1,127 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\documentclass[tikz]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{pgfplots}
+\usepackage{grffile}
+\pgfplotsset{compat=newest}
+\usetikzlibrary{plotmarks}
+\usetikzlibrary{arrows.meta}
+\usepgfplotslibrary{patchplots}
+\usepackage{amsmath}
+
+\begin{document}
+\definecolor{mycolor1}{rgb}{0.00000,0.44700,0.74100}%
+\definecolor{mycolor2}{rgb}{0.85000,0.32500,0.09800}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.49400,0.18400,0.55600}%
+\definecolor{mycolor5}{rgb}{0.46600,0.67400,0.18800}%
+\definecolor{mycolor6}{rgb}{0.30100,0.74500,0.93300}%
+\definecolor{mycolor7}{rgb}{0.63500,0.07800,0.18400}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\fwidth,
+height=0.75\fwidth,
+at={(0\fwidth,0\fwidth)},
+scale only axis,
+xmode=log,
+xmin=1,
+xmax=13,
+xminorticks=true,
+ymode=log,
+ymin=1e-07,
+ymax=1,
+yminorticks=true,
+axis background/.style={fill=white},
+title style={font=\bfseries},
+title={Convergence Analysis $\|p - \tilde{p}\|_{L^{2}(\Omega)}$},
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left, draw=white!15!black}
+]
+\addplot [color=mycolor1, line width=3.0pt, mark size=1.5pt, mark=o, mark options={solid, mycolor1}]
+  table[row sep=crcr]{%
+1	4.46910309708075e-07\\
+3	4.46910309579473e-07\\
+5	4.46910309627664e-07\\
+7	4.46910309622017e-07\\
+9.00000000000001	4.46910309640119e-07\\
+11	4.46910309536795e-07\\
+13	4.46910308805402e-07\\
+};
+\addlegendentry{h = 0.2}
+
+\addplot [color=mycolor2, line width=3.0pt, mark size=1.5pt, mark=o, mark options={solid, mycolor2}]
+  table[row sep=crcr]{%
+1	4.46910309585599e-07\\
+3	4.4691030947142e-07\\
+5	4.46910309503878e-07\\
+7	4.46910309548574e-07\\
+9.00000000000001	4.46910309519343e-07\\
+11	4.46910309483339e-07\\
+13	4.46910309280029e-07\\
+};
+\addlegendentry{h = 0.1}
+
+\addplot [color=mycolor3, line width=3.0pt, mark size=1.5pt, mark=o, mark options={solid, mycolor3}]
+  table[row sep=crcr]{%
+1	4.46910309411123e-07\\
+3	4.46910309328595e-07\\
+5	4.46910309324682e-07\\
+7	4.46910309372531e-07\\
+9.00000000000001	4.46910309517955e-07\\
+11	4.46910309451e-07\\
+13	4.46910309235319e-07\\
+};
+\addlegendentry{h = 0.05}
+
+\addplot [color=mycolor4, line width=3.0pt, mark size=1.5pt, mark=o, mark options={solid, mycolor4}]
+  table[row sep=crcr]{%
+1	4.46910309160731e-07\\
+3	4.4691030908624e-07\\
+5	4.4691030910554e-07\\
+7	4.46910309368425e-07\\
+9.00000000000001	4.46910309200216e-07\\
+11	4.46910309107607e-07\\
+13	4.46910309104481e-07\\
+};
+\addlegendentry{h = 0.025}
+
+\addplot [color=mycolor5, line width=3.0pt, mark size=1.5pt, mark=o, mark options={solid, mycolor5}]
+  table[row sep=crcr]{%
+1	4.46910310299665e-07\\
+3	4.46910310245296e-07\\
+5	4.46910310143341e-07\\
+7	4.46910310267517e-07\\
+9.00000000000001	4.46910310417421e-07\\
+11	4.46910310503031e-07\\
+13	4.46910310165899e-07\\
+};
+\addlegendentry{h = 0.0125}
+
+\addplot [color=mycolor6, dashed, line width=2.0pt]
+  table[row sep=crcr]{%
+1	1\\
+13	0.0769230769230769\\
+};
+\addlegendentry{Order 1}
+
+\addplot [color=mycolor7, dashed, line width=2.0pt]
+  table[row sep=crcr]{%
+1	1\\
+13	0.00591715976331361\\
+};
+\addlegendentry{Order 2}
+
+\end{axis}
+\end{tikzpicture}%
+\end{document}

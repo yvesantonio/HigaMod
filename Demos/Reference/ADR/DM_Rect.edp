@@ -1,0 +1,130 @@
+// Define the parameters of the mesh
+
+int N=500;
+
+real maxHor=2;
+real minHor=0;
+real maxVer=1;
+real minVer=0;
+int numbHorNodes = N;
+int numbVerNodes = N;
+real horStep = (maxHor - minHor)/numbHorNodes;
+real verStep = (maxVer - minVer)/numbVerNodes;
+
+// Define the equation of the centreline
+
+func real form(real x)
+{
+	return sqrt(1 - (x - 1)^2);
+}
+
+func real dform(real x)
+{
+	real temp = sqrt(1 - (x - 1)^2);
+	if(temp == 0) {temp = 1e-20; cout << "Here!" << endl;}
+
+	return -(x-1)/temp;
+}
+
+// Define the function to change the system coordinates
+
+// Create the boundary of the mesh
+
+real x1 = 0;
+real x2 = 2;
+real x3 = 2;
+real x4 = 0;
+
+real y1 = 0;
+real y2 = 0;
+real y3 = 1;
+real y4 = 1;
+
+border aa(t=0,1) {x = x1 + t * ( x2 - x1 ); y = y1 + t * ( y2 - y1 ); label=1;}
+border bb(t=0,1) {x = x2 + t * ( x3 - x2 ); y = y2 + t * ( y3 - y2 ); label=2;}
+border cc(t=0,1) {x = x3 + t * ( x4 - x3 ); y = y3 + t * ( y4 - y3 ); label=3;}
+border dd(t=0,1) {x = x4 + t * ( x1 - x4 ); y = y4 + t * ( y1 - y4 ); label=4;}
+mesh Th=buildmesh( aa(numbVerNodes) + bb(numbHorNodes) + cc(numbVerNodes) + dd(numbHorNodes) );
+
+// mesh Th = square(numbHorNodes, numbVerNodes, [x,y]);
+
+// Plot the created mesh for evaluation
+
+// plot(Th);
+
+// Definition of the bilinear coefficients of the differential problem
+
+real datoup,datodown;
+real chi=1.0;
+real mu=1;
+real beta1=0;
+real beta2=0;
+real sigma=0;
+
+func force = mu * (sin(x*pi/maxHor)*sin(y*pi/maxVer)*(pi/maxHor)^2 + sin(x*pi/maxHor)*sin(y*pi/maxVer)*(pi/maxVer)^2);
+
+fespace Vh(Th,P1);
+Vh w,u,v,ux,uy;
+w=force;
+
+load "UMFPACK64"
+problem DirDir(u,v)=
+
+		int2d(Th)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) )  // Laplacian operator
+		+ int2d(Th)   ( beta1*dx(u)*v )						// Advection in x direction
+		+ int2d(Th)   ( beta2*dy(u)*v )						// Advection in y direction
+		+ int2d(Th)   ( sigma*u*v     )						// Reaction
+		- int2d(Th)   ( force*v       )						// Force term
+		+ on(1,u=0)
+    + on(2,u=0)
+		+ on(3,u=0)
+		+ on(4,u=0);									// Dirichlet su lato up.
+
+DirDir;
+
+// DEBUG
+cout << "-----------------" << endl;
+cout << "FINISHED SOLUTION" << endl;
+cout << "-----------------" << endl;
+
+// Compute the mass matrix
+
+varf bid ( u, v ) = int2d ( Th ) ( u * v );
+
+matrix M = bid ( Vh, Vh );
+
+// Compute the stiffness matrix
+
+varf bilinearForm(u,v) = 	int2d(Th)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) )
+
+matrix A = bilinearForm(Vh, Vh );
+
+// Save the mesh file
+
+savemesh(Th,"ffMesh.msh");
+
+// Export the stiffness matrix
+
+{
+	ofstream fout("A.txt");
+	fout << A << endl;
+}
+
+// Export the mass matrix
+
+{
+	ofstream fout("M.txt");
+	fout << M << endl;
+}
+
+// Export the solution of the system
+
+load "medit"
+
+savesol("ffSolution.sol",Th , u );
+
+// DEBUG
+cout << endl;
+cout << "---------------------------------" << endl;
+cout << "FINISHED EXPORT SOLUTION AND MESH" << endl;
+cout << "---------------------------------" << endl;

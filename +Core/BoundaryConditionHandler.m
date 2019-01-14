@@ -1078,11 +1078,6 @@ classdef BoundaryConditionHandler
                     
                 end
                 
-                aux1 = infStruct;
-                aux2 = outStruct;
-                infStruct = fliplr(aux1);
-                outStruct = fliplr(aux2);
-                
             end
             
             %% Method 'computeFourierCoeffStokesTransient'
@@ -1121,11 +1116,6 @@ classdef BoundaryConditionHandler
                     
                 end
                 
-                aux1 = infStruct;
-                aux2 = outStruct;
-                infStruct = fliplr(aux1);
-                outStruct = fliplr(aux2);
-                
             end
             
             %% Method 'imposeBoundaryStokes'
@@ -1147,7 +1137,7 @@ classdef BoundaryConditionHandler
                 % DEFINITION OF THE WEAK BC IMPOSITION %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
-                delta = 1e10;
+                delta = 1;
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % IMPOSITION OF THE BC IN THE GLOBAL STIFFNESS MATRIX %
@@ -1159,18 +1149,12 @@ classdef BoundaryConditionHandler
 
                     for imb = 1 : numbModes
                         
-                        % A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
-                        % A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
-                        % B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
-                        % B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
-                        % P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
-                        % P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
-                        % 
-                        % A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
-                        % A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
-                        % 
-                        % f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
-                        % f(imb * numbCtrlPts) = delta * projOutBC(imb);
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
+                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
                         
                         A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
                         A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
@@ -1186,17 +1170,12 @@ classdef BoundaryConditionHandler
                     
                     for imb = 1 : numbModes
                         
-                        % A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
-                        % B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
-                        % P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
-                        % 
-                        % A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
-                        % 
-                        % f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
-                        % f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
                         
                         A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
-
+                        
                         f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
                         f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
                         
@@ -1208,20 +1187,15 @@ classdef BoundaryConditionHandler
 
                     for imb = 1 : numbModes
                         
-                        % A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
-                        % B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
-                        % P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
-                        % 
-                        % A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
-                        % 
-                        % f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
-                        % f(imb * numbCtrlPts) = delta * projOutBC(imb);
+                        A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
+                        B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
+                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
                         
                         A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
                         
                         f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
                         f(imb * numbCtrlPts) = delta * projOutBC(imb);
-
+                        
                     end
                     
                 % (4) ROBIN - ROBIAN & ROBIN - NEUMANN
@@ -1252,14 +1226,125 @@ classdef BoundaryConditionHandler
 
                     for imb = 1 : numbModes
                         
-                        % A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
-                        % B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
-                        % P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
-                        % 
-                        % A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
-                        % 
-                        % f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
-                        % f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        
+                        A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
+                        
+                        f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+                end
+                
+            end
+            
+            %% Method 'imposeBoundaryStokesSimplified'
+            
+            function [A,P,f] = imposeBoundaryStokesSimplified(obj)
+                
+                bc_inf_tag  = obj.boundaryStruct.bc_inf_tag;
+                bc_out_tag  = obj.boundaryStruct.bc_out_tag;
+                numbModes   = obj.boundaryStruct.numbModes;
+                numbCtrlPts = obj.boundaryStruct.numbCtrlPts;
+                projInfBC   = obj.boundaryStruct.projInfBC;
+                projOutBC   = obj.boundaryStruct.projOutBC;
+                A           = obj.boundaryStruct.stiffMatrix;
+                P           = obj.boundaryStruct.pressureMat;
+                f           = obj.boundaryStruct.forceTerm;
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % DEFINITION OF THE WEAK BC IMPOSITION %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                delta = 1e1;
+
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % IMPOSITION OF THE BC IN THE GLOBAL STIFFNESS MATRIX %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                % (1) DIRICHLET - DIRICHLET
+                
+                if (strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'dir'))
+
+                    for imb = 1 : numbModes
+                        
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
+                        
+                        A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
+                        A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
+                        
+                        f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        f(imb * numbCtrlPts) = delta * projOutBC(imb);
+
+                    end
+                    
+                % (2) DIRICHLET - NEUMANN
+
+                elseif ( strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'neu') )
+                    
+                    for imb = 1 : numbModes
+                        
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        
+                        A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
+                        
+                        f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+
+                % (3) NEUMANN - DIRICHLET
+                
+                elseif ( strcmp(bc_inf_tag,'neu') && strcmp(bc_out_tag,'dir') )
+
+                    for imb = 1 : numbModes
+                        
+                        A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
+                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
+                        
+                        A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
+                        
+                        f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        f(imb * numbCtrlPts) = delta * projOutBC(imb);
+                        
+                    end
+                    
+                % (4) ROBIN - ROBIAN & ROBIN - NEUMANN
+                    
+                elseif ( strcmp(bc_inf_tag,'rob') && (strcmp(bc_out_tag,'rob') || (strcmp(bc_out_tag,'neu') ) ) ) %robrob e robneu condividono lo stesso codice.
+
+                    for imb = 1 : numbModes
+                        
+                        f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+                    
+                % (5) NEUMANN - NEUMANN
+                    
+                elseif ( strcmp(bc_inf_tag,'neu') && (strcmp(bc_out_tag,'neu') ) )
+
+                    for imb = 1 : numbModes
+                        
+                        f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
+                        
+                    end
+                    
+                % DIRICHLET - ROBIN
+                    
+                elseif ( strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'rob') )
+
+                    for imb = 1 : numbModes
+                        
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
                         
                         A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
                         
