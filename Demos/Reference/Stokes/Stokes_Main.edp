@@ -8,10 +8,10 @@ real s0 = clock();
 // DEFINITION OF SIMULATION PARAMETERS //
 /////////////////////////////////////////
 
-real Pinf = 2;
+real Pinf = 10;
 real Pout = 0;
 real dP   = Pinf - Pout;
-real nu   = 1;
+real nu   = 0.1;
 real L    = 5;
 real R    = 0.5;
 

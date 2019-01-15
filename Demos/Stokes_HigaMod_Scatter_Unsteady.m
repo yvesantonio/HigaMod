@@ -189,7 +189,7 @@
     % TOTAL NUMBER OF TIME STEPS %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    timeStruct.numbSteps = 20;
+    timeStruct.numbSteps = 10;
     
     %%%%%%%%%%%%%%%%%%%%%%%%
     % SIMULATION TIME STEP %

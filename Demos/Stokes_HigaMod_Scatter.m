@@ -181,7 +181,7 @@
     
     % INFLOW PRESSURE
     
-    Pinf = 2;
+    Pinf = 10;
     
     % OUTFLOW PRESSURE
     
@@ -193,7 +193,7 @@
     
     % DYNAMIC VISCOSITY
     
-    nu = 1;
+    nu = 0.1;
         
     % LENGTH OF THE CYLINDER
     

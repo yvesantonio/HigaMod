@@ -363,65 +363,110 @@ function [errStruct] = computeErrorStokes(plotStruct)
     Ux = solStruct.Ux;
     Uy = solStruct.Uy;
 
-%     fig1 = figure('visible','off');
-%     quiver(X,Y,Ux,Uy);
-% 
-%     fig2 = figure('visible','off');
-%     [~,~] = contourf(X,Y,P,20);    
-%     colormap(jet);
-%     cmin = min(min(P));
-%     cmax = max(max(P));
-%     caxis([cmin cmax]);
-%     colorbar();
-%     minX = min(min(X));
-%     maxX = max(max(X));
-%     minY = min(min(Y));
-%     maxY = max(max(Y));
-%     axis([minX maxX minY maxY]);
-%     axis equal
-%     scale = 0.1;
-%     daspect([1 1 scale]);
-%     pbaspect([1 1 scale]);
-%     set(gca, 'FontSize', 14);
-%     hold on;
-% 
-%     fig3 = figure('visible','off');
-%     [~,~] = contourf(X,Y,Ux,20);    
-%     colormap(jet);
-%     cmin = min(min(Ux));
-%     cmax = max(max(Ux));
-%     caxis([cmin cmax]);
-%     colorbar();
-%     minX = min(min(X));
-%     maxX = max(max(X));
-%     minY = min(min(Y));
-%     maxY = max(max(Y));
-%     axis([minX maxX minY maxY]);
-%     axis equal
-%     scale = 0.1;
-%     daspect([1 1 scale]);
-%     pbaspect([1 1 scale]);
-%     set(gca, 'FontSize', 14);
-%     hold on;
-% 
-%     fig4 = figure('visible','off');
-%     [~,~] = contourf(X,Y,Uy,20);    
-%     colormap(jet);
-%     cmin = min(min(Uy));
-%     cmax = max(max(Uy));
-%     caxis([cmin cmax]);
-%     colorbar();
-%     minX = min(min(X));
-%     maxX = max(max(X));
-%     minY = min(min(Y));
-%     maxY = max(max(Y));
-%     axis([minX maxX minY maxY]);
-%     axis equal
-%     scale = 0.1;
-%     daspect([1 1 scale]);
-%     pbaspect([1 1 scale]);
-%     set(gca, 'FontSize', 14);
-%     hold on;
+fig1 = figure('visible','off');
+    quiver(X,Y,Ux,Uy);
+
+    fig2 = figure('visible','off');
+    [~,~] = contourf(X,Y,P,20);    
+    colormap(jet);
+    cmin = min(min(P));
+    cmax = max(max(P));
+    caxis([cmin cmax]);
+    colorbar();
+    minX = min(min(X));
+    maxX = max(max(X));
+    minY = min(min(Y));
+    maxY = max(max(Y));
+    axis([minX maxX minY maxY]);
+    axis equal
+    scale = 0.1;
+    daspect([1 1 scale]);
+    pbaspect([1 1 scale]);
+    set(gca, 'FontSize', 14);
+    hold on;
+
+    fig3 = figure('visible','off');
+    [~,~] = contourf(X,Y,Ux,20);    
+    colormap(jet);
+    cmin = min(min(Ux));
+    cmax = max(max(Ux));
+    caxis([cmin cmax]);
+    colorbar();
+    minX = min(min(X));
+    maxX = max(max(X));
+    minY = min(min(Y));
+    maxY = max(max(Y));
+    axis([minX maxX minY maxY]);
+    axis equal
+    scale = 0.1;
+    daspect([1 1 scale]);
+    pbaspect([1 1 scale]);
+    set(gca, 'FontSize', 14);
+    hold on;
+
+    fig4 = figure('visible','off');
+    [~,~] = contourf(X,Y,Uy,20);    
+    colormap(jet);
+    cmin = min(min(Uy));
+    cmax = max(max(Uy));
+    caxis([cmin cmax]);
+    colorbar();
+    minX = min(min(X));
+    maxX = max(max(X));
+    minY = min(min(Y));
+    maxY = max(max(Y));
+    axis([minX maxX minY maxY]);
+    axis equal
+    scale = 0.1;
+    daspect([1 1 scale]);
+    pbaspect([1 1 scale]);
+    set(gca, 'FontSize', 14);
+    hold on;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % PLOT INFLOW AND OUTFLOW PROFILES %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    numbPts = 12;
+    
+    fig5 = figure('visible','off');
+    plot(Ux(linspace(1,Ny,numbPts),1),...
+        Y(linspace(1,Ny,numbPts),1),...
+        'o',...
+        'LineWidth',2,...
+        'MarkerSize',5,...
+        'MarkerEdgeColor','r',...
+        'MarkerFaceColor',[1.0,1.0,1.0]);
+    hold on
+    plot(plotStruct.boundCondStruct.bc_inf_data_Ux(Y(:,1)),...
+        Y(:,1),...
+        '--.',...
+        'LineWidth',2,...
+        'MarkerSize',8,...
+        'MarkerEdgeColor','k',...
+        'MarkerFaceColor',[1.0,1.0,1.0]);
+    l = legend({'$\tilde{u}_{x}|_{\Gamma_{out}}$','$u_{x}|_{\Gamma_{out}}$'},'FontSize',14);
+    set(l, 'Interpreter', 'latex')
+    
+    
+    fig6 = figure('visible','off');
+    plot(Ux(linspace(1,Ny,numbPts),end),...
+        Y(linspace(1,Ny,numbPts),end),...
+        'o',...
+        'LineWidth',2,...
+        'MarkerSize',5,...
+        'MarkerEdgeColor','r',...
+        'MarkerFaceColor',[1.0,1.0,1.0]);
+    hold on
+    plot(plotStruct.boundCondStruct.bc_inf_data_Ux(Y(:,end)),...
+        Y(:,end),...
+        '--.',...
+        'LineWidth',2,...
+        'MarkerSize',8,...
+        'MarkerEdgeColor','k',...
+        'MarkerFaceColor',[1.0,1.0,1.0]);
+    l = legend({'$\tilde{u}_{x}|_{\Gamma_{out}}$','$u_{x}|_{\Gamma_{out}}$'},'FontSize',14);
+    set(l, 'Interpreter', 'latex')
 
     %%%%%%%%%%%%%
     % SAVE FIGURE
@@ -430,13 +475,13 @@ function [errStruct] = computeErrorStokes(plotStruct)
     % Note : Save the current figure.
     %---------------------------------------------------------------------%
 
-%     print(fig1,'Quiver','-dpng');
-%     print(fig2,'Contour_P','-dpng');
-%     print(fig3,'Contour_Ux','-dpng');
-%     print(fig4,'Contour_Uy','-dpng');
-%     
-%     cd ..
-    
+    print(fig1,'Quiver','-dpng');
+    print(fig2,'Contour_P','-dpng');
+    print(fig3,'Contour_Ux','-dpng');
+    print(fig4,'Contour_Uy','-dpng');
+    print(fig5,'Inflow_Profile','-dpng');
+    print(fig6,'Outflow_Profile','-dpng');
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % EXTRACT FREEFEM++ SOLUTION %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

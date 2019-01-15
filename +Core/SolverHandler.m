@@ -5887,10 +5887,10 @@ classdef SolverHandler
                 plotStruct.solStruct        = solStruct;
                 plotStruct.boundCondStruct  = obj.boundCondStruct;
                 
-                plotSolutionStokes(plotStruct);
-                errStruct = 0;
+%                 plotSolutionStokes(plotStruct);
+%                 errStruct = 0;
                 
-                % [errStruct] = computeErrorStokes(plotStruct);
+                [errStruct] = computeErrorStokes(plotStruct);
                 
                 cd ..
                 
@@ -6086,7 +6086,9 @@ classdef SolverHandler
 
                 numbIterations = length(obj.timeStruct.timeDomain) - 1;
                 
-                % Create the Freefem++ simulation folder
+                %%%%%%%%%%%%%%%%%%%%%%%%
+                % CREATE EXPORT FOLDER %
+                %%%%%%%%%%%%%%%%%%%%%%%%
     
                 for ii = 1:1000
         
@@ -6101,13 +6103,21 @@ classdef SolverHandler
                     end
                 end
                 
-                % Print the solution
+                %%%%%%%%%%%%%%%%%%
+                % PRINT SOLUTION %
+                %%%%%%%%%%%%%%%%%%
                 
                 plotStruct.timeStruct = obj.timeStruct;
                 plotStruct.solStruct  = solStruct;
                 
-                plotSolutionStokesTransient(plotStruct);
-
+                % plotSolutionStokesTransient(plotStruct);
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % PRINT SOLUTION AND COMPUTE ERROR %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                computeErrorStokesUnsteady(plotStruct)
+                
                 disp('Finished Plot Operation');
                 
                 disp('  '); 
