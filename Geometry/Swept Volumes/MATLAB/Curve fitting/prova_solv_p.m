@@ -1,0 +1,11 @@
+%     p=(J'*J)\(J'*fu);
+A=J'*J;
+rcondA=rcond(A)
+xex=ones(41,1);
+b=A*xex;
+x=A\b;
+xg=mygaus(A,b,zeros(41,1),1.e-5,1000);
+bx=A*x;
+bxg=A*xg;
+n1=norm(x-xex)
+n2=norm(xg-xex)
