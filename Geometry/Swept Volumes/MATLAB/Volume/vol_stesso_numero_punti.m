@@ -145,5 +145,26 @@ for i=1:mid
 end
 %%
 VOL = nrbmak(volCoefs,{U,V,W});
-figure
-nrbplot(VOL,[20 20 150]);
+
+% SET VIEW PARAMETERS
+
+az = [0 45 90 135 180];
+el = [45 45 45 45 45];
+
+for ii = 1:length(az)
+    
+    % VIEW PARAMETERS
+    
+    param.az = az(ii);
+    param.el = el(ii);
+    
+    % BUILD FIGURE
+    
+    fig = figure;
+    nrbplot(VOL,[20 20 400],'light','on','colormap','pink','view',param);
+    
+    % EXPORT FIGURE
+    
+    print(fig,['VOL_AZ',num2str(az(ii)),'_EL',num2str(el(ii))],'-dpng');
+    
+end

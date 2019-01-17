@@ -1,4 +1,0 @@
-4) Approximate swept volumes of NURBS surfaces or solids
-2) Swept Volume Parameterization for Isogeometric Analysis
-1) On_NURBS_A_Survey
-3) NURBS Surface Fitting with Gauss-Newton

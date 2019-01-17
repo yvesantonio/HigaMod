@@ -57,6 +57,8 @@ end
 % Default values
 light='off';
 cmap='copper';
+gridd='off';
+axiss='off';
 
 % Recover Param/Value pairs from argument list
 for i=1:2:nargs-2
@@ -72,7 +74,7 @@ for i=1:2:nargs-2
     light = lower (Value);
     if (~ischar (light))
       error ('light must be a string.')
-    elseif ~(strcmp(light,'off') | strcmp(light,'on'))
+    elseif ~(strcmp(light,'off') || strcmp(light,'on') ||    strcmp(light,'flat'))
       error ('light must be off | on')
     end
   case 'colormap'
@@ -83,6 +85,8 @@ for i=1:2:nargs-2
     else
       cmap=Value;
     end
+  case 'view'
+    viewparam = Value;
   otherwise
     error ('Unknown parameter: %s', Param)
   end
@@ -102,11 +106,31 @@ if (iscell (nurbs.knots))
                        linspace(knt{2}(order(2)),knt{2}(end-order(2)+1),subd(2))});
   if (strcmp (light,'on'))
     % light surface
-    surfl (squeeze(p(1,:,:)), squeeze(p(2,:,:)), squeeze(p(3,:,:)));
+    ss = surfl (squeeze(p(1,:,:)), squeeze(p(2,:,:)), squeeze(p(3,:,:)));
+    az = viewparam.az;
+    el = viewparam.el;
+    view(az, el);
+    alpha(ss,viewparam.alpha)
+    grid off
+    axis off
     shading interp;
-  else 
-    surf (squeeze (p(1,:,:)), squeeze (p(2,:,:)), squeeze (p(3,:,:)));
+  elseif (strcmp (light,'off'))
+    ss = surfl (squeeze(p(1,:,:)), squeeze(p(2,:,:)), squeeze(p(3,:,:)));
+    az = viewparam.az;
+    el = viewparam.el;
+    view(az, el);
+    alpha(ss,viewparam.alpha)
+    grid off
+    axis off
     shading faceted;
+  else
+    ss = surfl (squeeze(p(1,:,:)), squeeze(p(2,:,:)), squeeze(p(3,:,:)));
+    az = viewparam.az;
+    el = viewparam.el;
+    view(az, el);
+    ss.FaceAlpha = viewparam.alpha;
+    grid off
+    axis off
   end
  elseif (size (nurbs.knots,2) == 3) % plot the boundaries of a NURBS volume
   bnd = nrbextract (nurbs);

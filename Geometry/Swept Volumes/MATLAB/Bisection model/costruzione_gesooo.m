@@ -2,11 +2,11 @@
 clear all
 close all
 clc
-addpath('C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\NURBS',...
-'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\nurbs_toolbox',...
-'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\My_Function');
-Data=importdata('C:\Users\Leo\Desktop\cent_bifurcation.dat');
-[vertices,faces,normals,name] = stlRead('C:\Users\Leo\Desktop\bifurcation.stl');
+% addpath('C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\NURBS',...
+% 'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\nurbs_toolbox',...
+% 'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\My_Function');
+Data=importdata('cent_bifurcation.dat');
+[vertices,faces,normals,name] = stlRead('bifurcation.stl');
 load('surf1.mat')
 load('surf2.mat')
 %%

@@ -1,14 +1,15 @@
 clear all
 close all
 clc
-addpath('C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\NURBS',...
-'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\nurbs_toolbox',...
-'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\My_Function');
+% addpath('C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\NURBS',...
+% 'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\nurbs_toolbox',...
+% 'C:\Users\Leo\Documents\MATLAB\Add-Ons\Collections\My_Function');
 
 
 load('coordtg_1_5_380.mat')
 load('section_model_1_5_380.mat')
 load('Tg_1_5_380.mat')
+
 %% mettere tutto in senso di percorrenza orario
 for i=1:numel(surf_point)
 ss=surf_point{i};
@@ -49,15 +50,25 @@ prodscal_best(i)=tg*prodvett;
 end
 min(prodscal_best)
 %%
-figure
+fig = figure;
 hold on
-grid on
+grid off
+axis off
+
 for i=1:numel(surf_point)
 
-plot3(surf_point{i}(:,1),surf_point{i}(:,2),surf_point{i}(:,3),'b',...
-      surf_point{i}(1,1),surf_point{i}(1,2),surf_point{i}(1,3),'rd',...
-      surf_point{i}(10,1),surf_point{i}(10,2),surf_point{i}(10,3),'gd')
+    plot3(surf_point{i}(:,1),surf_point{i}(:,2),surf_point{i}(:,3),'k'); hold on;
+    plot3(surf_point{i}(1,1),surf_point{i}(1,2),surf_point{i}(1,3),'o','LineWidth',0.6,'MarkerEdgeColor','k','MarkerFaceColor',[0 0.5 0.5]); hold on;
+    plot3(surf_point{i}(10,1),surf_point{i}(10,2),surf_point{i}(10,3),'o','LineWidth',0.6,'MarkerEdgeColor','k','MarkerFaceColor',[1.0 0.0 0.0]); hold on;
+    
+    az = 180;
+    el = 75;
+    view(az, el);
+    
 end
+
+export_fig 'GUIDING_SURFACES.png' -transparent
+
 %% oridane
 figure
 hold on
@@ -131,5 +142,118 @@ for i=1:mid
 end
 %%
 VOL = nrbmak(volCoefs,{U,V,W});
-figure
-nrbplot(VOL,[20 20 400]);
+
+%%%%%%%%%%%%%%%
+% REAL ARTERY %
+%%%%%%%%%%%%%%%
+
+az = [0 45 90 135 180];
+el = [45 45 45 45 45];
+
+for ii = 1:length(az)
+    
+    % VIEW PARAMETERS
+    
+    param.az = az(ii);
+    param.el = el(ii);
+    param.alpha = 1.0;
+    
+    % BUILD FIGURE
+    
+    figure;
+    nrbplot(VOL,[20 20 400],'light','on','colormap','copper','view',param);
+    
+    % EXPORT FIGURE
+    
+    figName = ['VOL_AZ',num2str(az(ii)),'_EL',num2str(el(ii)),'_REAL.png'];
+    export_fig(figName,'-transparent','-append')
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% VOLUME APPROXIMATION %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+az = [0 45 90 135 180];
+el = [45 45 45 45 45];
+
+for ii = 1:length(az)
+    
+    % VIEW PARAMETERS
+    
+    param.az = az(ii);
+    param.el = el(ii);
+    param.alpha = 1.0;
+    
+    % BUILD FIGURE
+    
+    figure;
+    nrbplot(VOL,[20 20 100],'light','off','colormap','pink','view',param);
+    
+    % EXPORT FIGURE
+    
+    figName = ['VOL_AZ',num2str(az(ii)),'_EL',num2str(el(ii)),'_FACES.png'];
+    export_fig(figName,'-transparent','-append')
+    
+end
+
+%%%%%%%%%%%%%%%%%%%%
+% REFERENCE ARTERY %
+%%%%%%%%%%%%%%%%%%%%
+
+az = [0 45 90 135 180];
+el = [45 45 45 45 45];
+
+% VIEW PARAMETERS
+    
+param.az = 180;
+param.el = 75;
+param.alpha = 1.0;
+
+% BUILD FIGURE
+
+fig = figure;
+nrbplot(VOL,[20 20 200],'light','on','colormap','copper','view',param);
+
+% EXPORT FIGURE
+
+export_fig 'REAL_AZ180_EL90.png' -transparent
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% COMPARE GUIDE LINES %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+% VIEW PARAMETERS
+    
+param.az = 180;
+param.el = 75;
+param.alpha = 0.3;
+
+% BUILD FIGURE
+
+fig = figure;
+nrbplot(VOL,[20 20 200],'light','on','colormap','copper','view',param);
+hold on;
+
+for i=1:numel(surf_point)
+
+    plot3(surf_point{i}(:,1),surf_point{i}(:,2),surf_point{i}(:,3),'k'); hold on;
+    plot3(surf_point{i}(1,1),surf_point{i}(1,2),surf_point{i}(1,3),'o','LineWidth',0.6,'MarkerEdgeColor','k','MarkerFaceColor',[0 0.5 0.5]); hold on;
+    plot3(surf_point{i}(10,1),surf_point{i}(10,2),surf_point{i}(10,3),'o','LineWidth',0.6,'MarkerEdgeColor','k','MarkerFaceColor',[1.0 0.0 0.0]); hold on;
+    
+    az = 180;
+    el = 75;
+    view(az, el);
+    
+end
+
+% EXPORT FIGURE
+
+export_fig 'GL_AZ180_EL90.png' -transparent
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% EXPORT ORIGINAL .STL %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+[vertices,faces,normals,name] = stlRead('ArtCor_red.stl');
+name = '  ';
+stlPlot(vertices,faces,name);

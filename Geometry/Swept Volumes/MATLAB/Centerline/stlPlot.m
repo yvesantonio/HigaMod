@@ -7,10 +7,10 @@ function stlPlot(v, f, name)
 figure;
 object.vertices = v;
 object.faces = f;
-patch(object,'FaceColor',       [0.8 0.8 1.0], ...
-         'EdgeColor',       'none',        ...
-         'FaceLighting',    'gouraud',     ...
-         'AmbientStrength', 0.15);
+patch(object,'FaceColor',       [0.8 0.0 0.0], ...
+             'EdgeColor',       'none',        ...
+             'FaceLighting',    'gouraud',     ...
+             'AmbientStrength', 0.15);
 
 % Add a camera light, and tone down the specular highlighting
 camlight('headlight');
@@ -19,5 +19,6 @@ material('dull');
 % Fix the axes scaling, and set a nice view angle
 axis('image');
 view([-135 35]);
-grid on;
+grid off;
+axis off;
 title(name);

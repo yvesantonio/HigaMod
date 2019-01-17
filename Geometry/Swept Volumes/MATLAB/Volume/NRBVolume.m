@@ -7,7 +7,7 @@
 % 'C:\Users\XPS\Desktop\PC port\My_Function');
 % 
 
-load('section_of_model.mat')
+% load('section_model_1_1_380.mat')
 %% get coons surface in nurbs structure
 for i=1:numel(surf_point)
     coons{i}=get_coons(surf_point{i},10,2);
