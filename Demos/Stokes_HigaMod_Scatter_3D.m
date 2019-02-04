@@ -48,7 +48,7 @@
     import Core.SolverHandler
 
     %% Simulation case   
-    caso  = 2;      % Analysed Case
+    caso  = 3;      % Analysed Case
     
     %-------------------------------------------------------------------------%
     % Note;
@@ -80,8 +80,8 @@
     
     discStruct = [];
     
-    modesVelc = 10;
-    modesPres = 5;
+    modesVelc = 5;
+    modesPres = 3;
     
     % Step used to generate the knot vector
     
@@ -247,8 +247,8 @@
     boundCondStruct.bc_out_tag_P   = 'neu';
     boundCondStruct.bc_up_data_P   = 0;
     boundCondStruct.bc_down_data_P = 0;
-    boundCondStruct.bc_inf_data_P  = @(rho,eta) 0 + 0 * rho + 0 * rho.^2;
-    boundCondStruct.bc_out_data_P  = @(rho,eta) 0 + 0 * rho + 0 * rho.^2;
+    boundCondStruct.bc_inf_data_P  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
+    boundCondStruct.bc_out_data_P  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Ux %
@@ -260,8 +260,8 @@
     boundCondStruct.bc_out_tag_Ux   = 'neu';
     boundCondStruct.bc_up_data_Ux   = 0;
     boundCondStruct.bc_down_data_Ux = 0;
-    boundCondStruct.bc_inf_data_Ux  = @(rho,eta) a0 + a1 * rho + a2 * rho.^2;
-    boundCondStruct.bc_out_data_Ux  = @(rho,eta) 0 + 0 * rho + 0 * rho.^2;
+    boundCondStruct.bc_inf_data_Ux  = @(rho,eta) (rho - 0.5).^2 + (eta - 0.5).^2;
+    boundCondStruct.bc_out_data_Ux  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Uy %
@@ -273,8 +273,8 @@
     boundCondStruct.bc_out_tag_Uy   = 'dir';
     boundCondStruct.bc_up_data_Uy   = 0;
     boundCondStruct.bc_down_data_Uy = 0;
-    boundCondStruct.bc_inf_data_Uy  = @(rho,eta) 0 + 0 * rho + 0 * rho.^2;
-    boundCondStruct.bc_out_data_Uy  = @(rho,eta) 0 + 0 * rho + 0 * rho.^2;
+    boundCondStruct.bc_inf_data_Uy  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
+    boundCondStruct.bc_out_data_Uy  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % INFLOW, OUTFLOW AND LATERAL BOUNDARY CONDITIONS FOR Uz %
@@ -286,8 +286,8 @@
     boundCondStruct.bc_out_tag_Uz   = 'dir';
     boundCondStruct.bc_up_data_Uz   = 0;
     boundCondStruct.bc_down_data_Uz = 0;
-    boundCondStruct.bc_inf_data_Uz  = @(rho,eta) 0 + 0 * rho + 0 * rho.^2;
-    boundCondStruct.bc_out_data_Uz  = @(rho,eta) 0 + 0 * rho + 0 * rho.^2;
+    boundCondStruct.bc_inf_data_Uz  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
+    boundCondStruct.bc_out_data_Uz  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
     
     %% Physical domain
     %---------------------------------------------------------------------%
@@ -353,7 +353,7 @@
     case {3}
         
         %%%%%%%%
-        % Slab %
+        % Slab %    
         %%%%%%%%
         
         currentFolder = pwd;
@@ -440,15 +440,15 @@
         
         % Pressure compensation
         
-        probParameters.delta    = @(x,y,z) ( 0.0 + 0*x + 0*y + 0*z );
+        probParameters.delta    = @(x,y,z) ( 1e-3 + 0*x + 0*y + 0*z );
         
         % Artificial reaction
         
-        probParameters.sigma    = @(x,y,z) ( 0.0 + 0*x + 0*y + 0*z );
+        probParameters.sigma    = @(x,y,z) ( 1e-3 + 0*x + 0*y + 0*z );
         
         % Fluid kinetic viscosity
         
-        probParameters.nu    = @(x,y,z) (  nu + 0*x + 0*y + 0*z );
+        probParameters.nu       = @(x,y,z) (   nu + 0*x + 0*y + 0*z );
         
         % Forcing term acting on the fluid
 

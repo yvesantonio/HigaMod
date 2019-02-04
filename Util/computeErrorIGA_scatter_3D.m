@@ -151,8 +151,6 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     
     type = geoInfo.Type;
     
-    type
-    
     [X,Y,Z] = mapOut3DHiMod(evalNodesX,evalNodesTrans,evalNodesTrans,geoInfo,type);
     
     % PLOT SLICES
@@ -174,17 +172,15 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     view(az, el);
     colorbar
     
-    Type = 'Patient_1';
+    fileToRead1 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffMesh.mesh'];
+    fileToRead2 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffSolution.sol'];
+    fileToRead3 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/A.txt'];
+    fileToRead4 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/M.txt'];
     
-%     fileToRead1 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffMesh.mesh'];
-%     fileToRead2 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffSolution.sol'];
-%     fileToRead3 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/A.txt'];
-%     fileToRead4 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/M.txt'];
-    
-    fileToRead1 = [pwd,'/Geometry/3D_',Type,'/ff/ffMesh.mesh'];
-    fileToRead2 = [pwd,'/Geometry/3D_',Type,'/ff/ffSolution.sol'];
-    fileToRead3 = [pwd,'/Geometry/3D_',Type,'/ff/A.txt'];
-    fileToRead4 = [pwd,'/Geometry/3D_',Type,'/ff/M.txt'];
+%     fileToRead1 = [pwd,'/Geometry/3D_',Type,'/ff/ffMesh.mesh'];
+%     fileToRead2 = [pwd,'/Geometry/3D_',Type,'/ff/ffSolution.sol'];
+%     fileToRead3 = [pwd,'/Geometry/3D_',Type,'/ff/A.txt'];
+%     fileToRead4 = [pwd,'/Geometry/3D_',Type,'/ff/M.txt'];
     
     
     [structMesh,ffSol,stiffMat,massMat] = my_FFimportfilemesh_3D(fileToRead1, ...   
@@ -234,11 +230,57 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     xyz = [pts(:,1),pts(:,2),pts(:,3)]';
     uvw = 0 .* [pts(:,1),pts(:,2),pts(:,3)]';
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % CHECK SIMULATION RESULTS FOLDER %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    folder = 'Results';
+    checkFolder = exist(folder);
+
+    if (checkFolder == 7)
+        disp('CHECK - THE SIMULATION RESULT FOLDER EXIST')
+    else
+        disp('ERROR - THE SIMULATION RESULT FOLDER DOES NOT EXIST')
+    end
+
+    cd(folder);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%
+    % CHECK EXPORT FOLDER %
+    %%%%%%%%%%%%%%%%%%%%%%%
+    %---------------------------------------------------------------------%
+    % Note : Create the export folder to save the plots and video of the
+    % simulation.
+    %---------------------------------------------------------------------%
+    
+    for ii = 1:1000
+
+        checkFolder = exist(['MatlabPlots',num2str(ii)]);
+
+        if (checkFolder == 7)
+        else
+            fileName = ['MatlabPlots',num2str(ii)];
+            mkdir(fileName);
+            break
+        end
+    end
+
+    %%%%%%%%%%%%%%%%%%%%%
+    % OPEN CURRENT FOLDER 
+    %%%%%%%%%%%%%%%%%%%%%
+    %---------------------------------------------------------------------%
+    % Note : Open the current export folder.
+    %---------------------------------------------------------------------%
+        
+    cd(fileName);
+    
     fileVTK = 'HigaSol.vtk';
     fid = fopen(fileVTK,'w');
     vtk_puvw_write (fid, fileVTK, node_num, element_num, ...
                     element_order, xyz, element_node', higaSol', uvw )
     fclose(fid);
+    
+    cd ../..
 
 	disp('FINISHED EXPORTING FILE .VTK')
     

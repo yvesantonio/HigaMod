@@ -47,14 +47,14 @@
     import Core.BasisHandler
     import Core.SolverHandler
 
-MM = [ 5 ];
-HH = [ 0.1 ];
+MM = [ 8 ];
+HH = [ 0.05 ];
     
 for ii = 1:length(MM)
     for jj = 1:length(HH)
     
     %% Simulation case   
-    caso  = 3;      % Analysed Case
+    caso  = 4; 
     
     %-------------------------------------------------------------------------%
     % Note;
@@ -165,6 +165,19 @@ for ii = 1:length(MM)
     BoundCond.inflowINFO     = infLabelBC;
     BoundCond.outflowINFO    = outLabelBC;
 
+    %%%%%%%%%%%%%%%%%
+    % CHANGE BC HERE!
+    %%%%%%%%%%%%%%%%%
+        
+    igaBoundCond.BC_UP_TAG    = 'dir';
+    igaBoundCond.BC_DOWN_TAG  = 'dir';
+    igaBoundCond.BC_INF_TAG   = 'dir';
+    igaBoundCond.BC_OUT_TAG   = 'dir';
+    igaBoundCond.BC_UP_DATA   = 0;
+    igaBoundCond.BC_DOWN_DATA = 0;
+    igaBoundCond.BC_INF_DATA  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
+    igaBoundCond.BC_OUT_DATA  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
+
     %% Physical domain
     %---------------------------------------------------------------------%
     % Note: Complete domain is defined using the nurbs functions, not only
@@ -176,7 +189,7 @@ for ii = 1:length(MM)
 
     switch caso
         
-    case {1,4,5,6,7,8,9,10}
+    case {1,6,7,8,9,10}
         
         %%%%%%%%%%%%%%%%%%%%%%%%%
         % Artery from PATIENT 1 %
@@ -201,7 +214,7 @@ for ii = 1:length(MM)
         % figure
         % nrbplot(Vol,[15 15 500]);
         
-    case{2}
+    case {2}
         
         %%%%%%%%%%%%
         % Cylinder %
@@ -234,11 +247,55 @@ for ii = 1:length(MM)
         
         currentFolder = pwd;
         
-        folder = [pwd,'/Geometry/3D_Slab/'];
+        folder = [pwd,'/Geometry/3D_Slab_1/'];
         cd(folder);
         
-        filename1 = 'Slab3DGeo.mat';
-        filename2 = 'Slab3DMap.mat';
+        filename1 = 'Slab3DGeo_1.mat';
+        filename2 = 'Slab3DMap_1.mat';
+        
+        load(filename1);
+        load(filename2);
+        
+        cd ..
+        cd ..
+        
+        Vol = geo;
+        
+    case {4}
+        
+        %%%%%%%%
+        % Slab %
+        %%%%%%%%
+        
+        currentFolder = pwd;
+        
+        folder = [pwd,'/Geometry/3D_Slab_2/'];
+        cd(folder);
+        
+        filename1 = 'Slab3DGeo_2.mat';
+        filename2 = 'Slab3DMap_2.mat';
+        
+        load(filename1);
+        load(filename2);
+        
+        cd ..
+        cd ..
+        
+        Vol = geo;
+        
+    case {5}
+        
+        %%%%%%%%
+        % Slab %
+        %%%%%%%%
+        
+        currentFolder = pwd;
+        
+        folder = [pwd,'/Geometry/3D_Slab_3/'];
+        cd(folder);
+        
+        filename1 = 'Slab3DGeo_3.mat';
+        filename2 = 'Slab3DMap_3.mat';
         
         load(filename1);
         load(filename2);
@@ -313,6 +370,7 @@ for ii = 1:length(MM)
 
     Dati.BoundCond = BoundCond;
     Dati.force = force;
+    Dati.igaBoundCond = igaBoundCond;
 
     %-------------------------------------------------------------------------%
     % Note;

@@ -17,7 +17,15 @@ function [evalJac,structPsi,evalDetJac] = jacOut3DHiMod(x,y,z,geoInfo,type)
         zNew = xOld;
         yNew = yOld;
         xNew = zOld;
-    elseif(strcmp(type,'Slab'))
+    elseif(strcmp(type,'Slab_1'))
+        zNew = xOld;
+        yNew = zOld;
+        xNew = yOld;
+    elseif(strcmp(type,'Slab_2'))
+        zNew = xOld;
+        yNew = zOld;
+        xNew = yOld;
+    elseif(strcmp(type,'Slab_3'))
         zNew = xOld;
         yNew = zOld;
         xNew = yOld;

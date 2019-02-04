@@ -141,8 +141,9 @@ for ii = 1:length(az)
     
     % VIEW PARAMETERS
     
-    param.az = az(ii);
-    param.el = el(ii);
+    param.az    = az(ii);
+    param.el    = el(ii);
+    param.alpha = 1.0;
     
     % BUILD FIGURE
     

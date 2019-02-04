@@ -107,28 +107,28 @@ if (iscell (nurbs.knots))
   if (strcmp (light,'on'))
     % light surface
     ss = surfl (squeeze(p(1,:,:)), squeeze(p(2,:,:)), squeeze(p(3,:,:)));
-    az = viewparam.az;
-    el = viewparam.el;
-    view(az, el);
-    alpha(ss,viewparam.alpha)
+    % az = viewparam.az;
+    % el = viewparam.el;
+    % view(az, el);
+    % alpha(ss,viewparam.alpha)
     grid off
     axis off
     shading interp;
   elseif (strcmp (light,'off'))
     ss = surfl (squeeze(p(1,:,:)), squeeze(p(2,:,:)), squeeze(p(3,:,:)));
-    az = viewparam.az;
-    el = viewparam.el;
-    view(az, el);
-    alpha(ss,viewparam.alpha)
+    % az = viewparam.az;
+    % el = viewparam.el;
+    % view(az, el);
+    % alpha(ss,viewparam.alpha)
     grid off
     axis off
     shading faceted;
   else
     ss = surfl (squeeze(p(1,:,:)), squeeze(p(2,:,:)), squeeze(p(3,:,:)));
-    az = viewparam.az;
-    el = viewparam.el;
-    view(az, el);
-    ss.FaceAlpha = viewparam.alpha;
+    % az = viewparam.az;
+    % el = viewparam.el;
+    % view(az, el);
+    % ss.FaceAlpha = viewparam.alpha;
     grid off
     axis off
   end

@@ -4284,9 +4284,9 @@ classdef AssemblerStokesHandler
                 % Store the spaces in the cell matrix
                 %---------------------------------------------------------%
                 
-                spaceFuncUy{iel,1} = shapFuncUz;
-                spaceFuncUy{iel,2} = gradFuncUz;
-                spaceFuncUy{iel,3} = msh_colUz;
+                spaceFuncUz{iel,1} = shapFuncUz;
+                spaceFuncUz{iel,2} = gradFuncUz;
+                spaceFuncUz{iel,3} = msh_colUz;
 
             end
             
@@ -4559,13 +4559,13 @@ classdef AssemblerStokesHandler
             % geoData.YUz = YUz;
             % geoData.ZUz = ZUz;
             geoData.horNodesP = horEvalNodesP;
-            geoData.verNodesP = verEvalNodesP;
+            geoData.verNodesP = augVerNodesP;
             % geoData.horNodesUx = horEvalNodesUx;
-            % geoData.verNodesUx = verEvalNodesUx;
+            % geoData.verNodesUx = augVerNodesUx;
             % geoData.horNodesUy = horEvalNodesUy;
-            % geoData.verNodesUy = verEvalNodesUy;
+            % geoData.verNodesUy = augVerNodesyx;
             % geoData.horNodesUz = horEvalNodesUz;
-            % geoData.verNodesUz = verEvalNodesUz;
+            % geoData.verNodesUz = augVerNodesUz;
             
             %%%%%%%%%%%%%%%%%%%%%%%
             % JACOBIAN PROPERTIES %
@@ -4677,7 +4677,7 @@ classdef AssemblerStokesHandler
             Computed.forceX = evalForceX;
             Computed.forceY = evalForceY;
             Computed.forceZ = evalForceZ;
-            Computed.y = verEvalNodesP;
+            Computed.y = augVerNodesP;
 
             %% Axx 3D - ASSEMBLING LOOP
 
@@ -5369,6 +5369,32 @@ classdef AssemblerStokesHandler
 
             AA = [Axx,Bxy,Bxz,Px;Byx,Ayy,Byz,Py;Bzx,Bzy,Azz,Pz;Qx,Qy,Qz,P];
             FF = [Fx;Fy;Fz;Fp];
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % DEBUG
+            
+            disp('DEBUG INSIDE ASSEMBLER')
+            
+            rcond(full(Axx))
+            rcond(full(Ayy))
+            rcond(full(Azz))
+            rcond(full(Bxy))
+            rcond(full(Byx))
+            rcond(full(Bxz))
+            rcond(full(Bzx))
+            rcond(full(Byz))
+            rcond(full(Bzy))
+            rcond(full(Px))
+            rcond(full(Py))
+            rcond(full(Pz))
+            rcond(full(Qx))
+            rcond(full(Qy))
+            rcond(full(Qz))
+            rcond(full(P))
+            
+            return
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             tGMat = toc;
 
@@ -6302,25 +6328,25 @@ function [Mxx,Axx,Fxx] = assemblerIGAScatterAxx3D(assemblerStruct)
     funcToIntegrate_08 = 2 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiY_dx;
     funcToIntegrate_09 = 2 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiZ_dx;
     
-    funcToIntegrate_10 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dy .* assemblerStruct.jacFunc.PhiX_dy;
-    funcToIntegrate_11 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dy .* assemblerStruct.jacFunc.PhiY_dy;
-    funcToIntegrate_12 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dy .* assemblerStruct.jacFunc.PhiZ_dy;
-    funcToIntegrate_13 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dy .* assemblerStruct.jacFunc.PhiX_dy;
-    funcToIntegrate_14 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dy .* assemblerStruct.jacFunc.PhiY_dy;
-    funcToIntegrate_15 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dy .* assemblerStruct.jacFunc.PhiZ_dy;
-    funcToIntegrate_16 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dy .* assemblerStruct.jacFunc.PhiX_dy;
-    funcToIntegrate_17 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dy .* assemblerStruct.jacFunc.PhiY_dy;
-    funcToIntegrate_18 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dy .* assemblerStruct.jacFunc.PhiZ_dy;
+    funcToIntegrate_10 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dy .* assemblerStruct.jacFunc.PsiX_dy;
+    funcToIntegrate_11 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dy .* assemblerStruct.jacFunc.PsiY_dy;
+    funcToIntegrate_12 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dy .* assemblerStruct.jacFunc.PsiZ_dy;
+    funcToIntegrate_13 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dy .* assemblerStruct.jacFunc.PsiX_dy;
+    funcToIntegrate_14 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dy .* assemblerStruct.jacFunc.PsiY_dy;
+    funcToIntegrate_15 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dy .* assemblerStruct.jacFunc.PsiZ_dy;
+    funcToIntegrate_16 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiX_dy;
+    funcToIntegrate_17 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiY_dy;
+    funcToIntegrate_18 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiZ_dy;
     
-    funcToIntegrate_21 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dz .* assemblerStruct.jacFunc.PhiX_dz;
-    funcToIntegrate_22 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dz .* assemblerStruct.jacFunc.PhiY_dz;
-    funcToIntegrate_23 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dz .* assemblerStruct.jacFunc.PhiZ_dz;
-    funcToIntegrate_24 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dz .* assemblerStruct.jacFunc.PhiX_dz;
-    funcToIntegrate_25 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dz .* assemblerStruct.jacFunc.PhiY_dz;
-    funcToIntegrate_26 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dz .* assemblerStruct.jacFunc.PhiZ_dz;
-    funcToIntegrate_27 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dz .* assemblerStruct.jacFunc.PhiX_dz;
-    funcToIntegrate_28 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dz .* assemblerStruct.jacFunc.PhiY_dz;
-    funcToIntegrate_29 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dz .* assemblerStruct.jacFunc.PhiZ_dz;
+    funcToIntegrate_21 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dz .* assemblerStruct.jacFunc.PsiX_dz;
+    funcToIntegrate_22 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dz .* assemblerStruct.jacFunc.PsiY_dz;
+    funcToIntegrate_23 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dz .* assemblerStruct.jacFunc.PsiZ_dz;
+    funcToIntegrate_24 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dz .* assemblerStruct.jacFunc.PsiX_dz;
+    funcToIntegrate_25 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dz .* assemblerStruct.jacFunc.PsiY_dz;
+    funcToIntegrate_26 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dz .* assemblerStruct.jacFunc.PsiZ_dz;
+    funcToIntegrate_27 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiX_dz;
+    funcToIntegrate_28 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiY_dz;
+    funcToIntegrate_29 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiZ_dz;
     
     % TIME COMPONENTS
     
@@ -6550,25 +6576,25 @@ function [Myy,Ayy,Fyy] = assemblerIGAScatterAyy3D(assemblerStruct)
     funcToIntegrate_08 = 2 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiY_dy;
     funcToIntegrate_09 = 2 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiZ_dy;
     
-    funcToIntegrate_10 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dx .* assemblerStruct.jacFunc.PhiX_dx;
-    funcToIntegrate_11 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dx .* assemblerStruct.jacFunc.PhiY_dx;
-    funcToIntegrate_12 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dx .* assemblerStruct.jacFunc.PhiZ_dx;
-    funcToIntegrate_13 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dx .* assemblerStruct.jacFunc.PhiX_dx;
-    funcToIntegrate_14 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dx .* assemblerStruct.jacFunc.PhiY_dx;
-    funcToIntegrate_15 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dx .* assemblerStruct.jacFunc.PhiZ_dx;
-    funcToIntegrate_16 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dx .* assemblerStruct.jacFunc.PhiX_dx;
-    funcToIntegrate_17 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dx .* assemblerStruct.jacFunc.PhiY_dx;
-    funcToIntegrate_18 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dx .* assemblerStruct.jacFunc.PhiZ_dx;
+    funcToIntegrate_10 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dx .* assemblerStruct.jacFunc.PsiX_dx;
+    funcToIntegrate_11 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dx .* assemblerStruct.jacFunc.PsiY_dx;
+    funcToIntegrate_12 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dx .* assemblerStruct.jacFunc.PsiZ_dx;
+    funcToIntegrate_13 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dx .* assemblerStruct.jacFunc.PsiX_dx;
+    funcToIntegrate_14 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dx .* assemblerStruct.jacFunc.PsiY_dx;
+    funcToIntegrate_15 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dx .* assemblerStruct.jacFunc.PsiZ_dx;
+    funcToIntegrate_16 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiX_dx;
+    funcToIntegrate_17 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiY_dx;
+    funcToIntegrate_18 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiZ_dx;
     
-    funcToIntegrate_21 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dz .* assemblerStruct.jacFunc.PhiX_dz;
-    funcToIntegrate_22 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dz .* assemblerStruct.jacFunc.PhiY_dz;
-    funcToIntegrate_23 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dz .* assemblerStruct.jacFunc.PhiZ_dz;
-    funcToIntegrate_24 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dz .* assemblerStruct.jacFunc.PhiX_dz;
-    funcToIntegrate_25 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dz .* assemblerStruct.jacFunc.PhiY_dz;
-    funcToIntegrate_26 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dz .* assemblerStruct.jacFunc.PhiZ_dz;
-    funcToIntegrate_27 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dz .* assemblerStruct.jacFunc.PhiX_dz;
-    funcToIntegrate_28 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dz .* assemblerStruct.jacFunc.PhiY_dz;
-    funcToIntegrate_29 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dz .* assemblerStruct.jacFunc.PhiZ_dz;
+    funcToIntegrate_21 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dz .* assemblerStruct.jacFunc.PsiX_dz;
+    funcToIntegrate_22 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dz .* assemblerStruct.jacFunc.PsiY_dz;
+    funcToIntegrate_23 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dz .* assemblerStruct.jacFunc.PsiZ_dz;
+    funcToIntegrate_24 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dz .* assemblerStruct.jacFunc.PsiX_dz;
+    funcToIntegrate_25 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dz .* assemblerStruct.jacFunc.PsiY_dz;
+    funcToIntegrate_26 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dz .* assemblerStruct.jacFunc.PsiZ_dz;
+    funcToIntegrate_27 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiX_dz;
+    funcToIntegrate_28 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiY_dz;
+    funcToIntegrate_29 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiZ_dz;
     
     % TIME COMPONENTS
     
@@ -6798,25 +6824,25 @@ function [Mzz,Azz,Fzz] = assemblerIGAScatterAzz3D(assemblerStruct)
     funcToIntegrate_08 = 2 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiY_dz;
     funcToIntegrate_09 = 2 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dz .* assemblerStruct.jacFunc.PsiZ_dz;
     
-    funcToIntegrate_10 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dx .* assemblerStruct.jacFunc.PhiX_dx;
-    funcToIntegrate_11 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dx .* assemblerStruct.jacFunc.PhiY_dx;
-    funcToIntegrate_12 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dx .* assemblerStruct.jacFunc.PhiZ_dx;
-    funcToIntegrate_13 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dx .* assemblerStruct.jacFunc.PhiX_dx;
-    funcToIntegrate_14 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dx .* assemblerStruct.jacFunc.PhiY_dx;
-    funcToIntegrate_15 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dx .* assemblerStruct.jacFunc.PhiZ_dx;
-    funcToIntegrate_16 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dx .* assemblerStruct.jacFunc.PhiX_dx;
-    funcToIntegrate_17 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dx .* assemblerStruct.jacFunc.PhiY_dx;
-    funcToIntegrate_18 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dx .* assemblerStruct.jacFunc.PhiZ_dx;
+    funcToIntegrate_10 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dx .* assemblerStruct.jacFunc.PsiX_dx;
+    funcToIntegrate_11 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dx .* assemblerStruct.jacFunc.PsiY_dx;
+    funcToIntegrate_12 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dx .* assemblerStruct.jacFunc.PsiZ_dx;
+    funcToIntegrate_13 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dx .* assemblerStruct.jacFunc.PsiX_dx;
+    funcToIntegrate_14 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dx .* assemblerStruct.jacFunc.PsiY_dx;
+    funcToIntegrate_15 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dx .* assemblerStruct.jacFunc.PsiZ_dx;
+    funcToIntegrate_16 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiX_dx;
+    funcToIntegrate_17 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiY_dx;
+    funcToIntegrate_18 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dx .* assemblerStruct.jacFunc.PsiZ_dx;
     
-    funcToIntegrate_21 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dy .* assemblerStruct.jacFunc.PhiX_dy;
-    funcToIntegrate_22 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dy .* assemblerStruct.jacFunc.PhiY_dy;
-    funcToIntegrate_23 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiX_dy .* assemblerStruct.jacFunc.PhiZ_dy;
-    funcToIntegrate_24 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dy .* assemblerStruct.jacFunc.PhiX_dy;
-    funcToIntegrate_25 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dy .* assemblerStruct.jacFunc.PhiY_dy;
-    funcToIntegrate_26 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiY_dy .* assemblerStruct.jacFunc.PhiZ_dy;
-    funcToIntegrate_27 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dy .* assemblerStruct.jacFunc.PhiX_dy;
-    funcToIntegrate_28 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dy .* assemblerStruct.jacFunc.PhiY_dy;
-    funcToIntegrate_29 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PhiZ_dy .* assemblerStruct.jacFunc.PhiZ_dy;
+    funcToIntegrate_21 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dy .* assemblerStruct.jacFunc.PsiX_dy;
+    funcToIntegrate_22 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dy .* assemblerStruct.jacFunc.PsiY_dy;
+    funcToIntegrate_23 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiX_dy .* assemblerStruct.jacFunc.PsiZ_dy;
+    funcToIntegrate_24 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dy .* assemblerStruct.jacFunc.PsiX_dy;
+    funcToIntegrate_25 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dy .* assemblerStruct.jacFunc.PsiY_dy;
+    funcToIntegrate_26 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiY_dy .* assemblerStruct.jacFunc.PsiZ_dy;
+    funcToIntegrate_27 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiX_dy;
+    funcToIntegrate_28 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiY_dy;
+    funcToIntegrate_29 = 1 * assemblerStruct.jacFunc.evalDetJac .* assemblerStruct.param.nu .* assemblerStruct.jacFunc.PsiZ_dy .* assemblerStruct.jacFunc.PsiZ_dy;
     
     % TIME COMPONENTS
     
@@ -7014,6 +7040,8 @@ function [Bxy] = assemblerIGAScatterBxy3D(assemblerStruct)
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -7134,6 +7162,8 @@ function [Bxz] = assemblerIGAScatterBxz3D(assemblerStruct)
     % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
     % the parts to be assembled.
     %---------------------------------------------------------------------%
+    
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
@@ -7256,6 +7286,8 @@ function [Byz] = assemblerIGAScatterByz3D(assemblerStruct)
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -7376,6 +7408,8 @@ function [Byx] = assemblerIGAScatterByx3D(assemblerStruct)
     % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
     % the parts to be assembled.
     %---------------------------------------------------------------------%
+    
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
@@ -7498,6 +7532,8 @@ function [Bzx] = assemblerIGAScatterBzx3D(assemblerStruct)
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -7618,6 +7654,8 @@ function [Bzy] = assemblerIGAScatterBzy3D(assemblerStruct)
     % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
     % the parts to be assembled.
     %---------------------------------------------------------------------%
+    
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
@@ -7740,6 +7778,8 @@ function [Px] = assemblerIGAScatterPx3D(assemblerStruct)
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -7794,8 +7834,8 @@ function [Px] = assemblerIGAScatterPx3D(assemblerStruct)
         r00Local = r00((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         r01Local = r01((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         
-        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local)';
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local)';
 
     end
 
@@ -7822,6 +7862,8 @@ function [Py] = assemblerIGAScatterPy3D(assemblerStruct)
     % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
     % the parts to be assembled.
     %---------------------------------------------------------------------%
+    
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
@@ -7877,8 +7919,8 @@ function [Py] = assemblerIGAScatterPy3D(assemblerStruct)
         r00Local = r00((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         r01Local = r01((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         
-        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local)';
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local)';
 
     end
 
@@ -7905,6 +7947,8 @@ function [Pz] = assemblerIGAScatterPz3D(assemblerStruct)
     % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
     % the parts to be assembled.
     %---------------------------------------------------------------------%
+    
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %
@@ -7960,8 +8004,8 @@ function [Pz] = assemblerIGAScatterPz3D(assemblerStruct)
         r00Local = r00((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         r01Local = r01((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes);
         
-        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local);
-        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local);
+        Local_00    = Local_00   + op_u_v(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,1}, assemblerStruct.spaceFunc1{iel,3}, r00Local)';
+        Local_01    = Local_01   + op_u_gradv(assemblerStruct.spaceFunc1{iel,1}, assemblerStruct.spaceFunc2{iel,2}, assemblerStruct.spaceFunc1{iel,3}, r01Local)';
 
     end
 
@@ -7988,6 +8032,8 @@ function [P] = assemblerIGAScatterP3D(assemblerStruct)
     % work as 'r_{ik}^{st}'. Those coeffients simplify the computation of 
     % the parts to be assembled.
     %---------------------------------------------------------------------%
+    
+    weightMat = assemblerStruct.wgh2 * assemblerStruct.wgh2';
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMPUTATION OF COEFFICIENTS OF THE MODAL EXPANSION %

@@ -2701,7 +2701,7 @@ classdef AssemblerADRHandler
             
             %% Method 'buildIGAScatter3D'
             
-            function [A,b,modalBasisStruct,liftCoeffA,liftCoeffB,space,refDomain1D] = buildSystemIGAScatter3D(obj)
+            function [AA,bb,bcStruct,liftCoeffA,liftCoeffB,space,refDomain1D] = buildSystemIGAScatter3D(obj)
                                                          
             %%
             % buildSystemIGA - This function computes the assembled matrices
@@ -2961,50 +2961,6 @@ classdef AssemblerADRHandler
             % define the modal basis is only necessary to multiply the
             % modal basis along "y" and the one along "z".
             
-            % (1) CHEBCHEV POLYNOMIALS
-            
-            % obj_newModalBasis = BasisHandler();
-            
-            % obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
-            % obj_newModalBasis.evalNodesY = verGLNodes;
-            
-            % [modalBasis, modalBasisDer1, modalBasisDer2] = newModalBasisCheb3D(obj_newModalBasis);
-            
-            % (2) LEGENDRE POLYNOMIALS
-            
-%             obj_newModalBasis = BasisHandler();
-%             
-%             obj_newModalBasis.dimLegendreBase = obj.dimModalBasis;
-%             obj_newModalBasis.evalLegendreNodes = verGLNodes;
-%             obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomain;
-%             obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
-%             obj_newModalBasis.coeffForm = obj.coefficientForm;
-%             
-%             [modalBasis, modalBasisDer1, modalBasisDer2] = newModalBasisLegendre3D(obj_newModalBasis);
-%             
-%             modalBasisStruct.modalBasis = modalBasis;
-%             modalBasisStruct.modalBasisDer1 = modalBasisDer1;
-%             modalBasisStruct.modalBasisDer2 = modalBasisDer2;
-%             modalBasisStruct.numbModes = obj.dimModalBasis;
-            
-%             size(modalBasis)
-%             
-%             x = verGLNodes;
-%             y = verGLNodes;
-%             [X,Y] = meshgrid(x,y);
-%             
-%             for ii = 1:obj.dimModalBasis^2
-%                 figure;
-%                 surf(X,Y,modalBasis(:,:,ii));
-%                 az = 45;
-%                 el = 30;
-%                 view(az, el);
-%             end
-%             
-%             return
-            
-            % (3) EDUCATED BASIS
-            
             obj_newModalBasis = BasisHandler();
             
             obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
@@ -3197,6 +3153,40 @@ classdef AssemblerADRHandler
                 % Assignment of the Block Vector Just Assembled
                 b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb;
             end
+            
+            %% IMPOSE BOUNDARY CONDITIONS
+            
+            %-------------------------------------------------------------%
+            % Compute the lifting contribution in the force vector due to
+            % the non homogeneous Dirichlet boundary conditions in the
+            % lower and upper boundary.
+            %-------------------------------------------------------------%
+            
+            BC_l = obj.igaBoundCond.BC_INF_TAG;
+            BC_r = obj.igaBoundCond.BC_OUT_TAG;
+            infBoundCond = obj.igaBoundCond.BC_INF_DATA;
+            outBoundCond = obj.igaBoundCond.BC_OUT_DATA;
+            
+            obj_bcCoeff = BoundaryConditionHandler();
+    
+            obj_bcCoeff.infBoundCond    = infBoundCond;
+            obj_bcCoeff.outBoundCond    = outBoundCond;
+            obj_bcCoeff.augVerNodes     = augVerNodes;
+            obj_bcCoeff.augVerWeights   = augVerWeights;
+            obj_bcCoeff.modalBasis      = modalBasis;
+            obj_bcCoeff.dimModalBasis   = obj.dimModalBasis;
+            obj_bcCoeff.coefficientForm = obj.coefficientForm;
+
+            [infStruct,outStruct] = computeFourierCoeff3D(obj_bcCoeff);
+            
+            bcStruct.bcInfTag = BC_l;
+            bcStruct.bcOutTag = BC_r;
+            bcStruct.infStruct = infStruct;
+            bcStruct.outStruct = outStruct;
+            bcStruct.numbControlPts = numbControlPts;
+            bcStruct.dimModalBasis = obj.dimModalBasis;
+            
+            [AA,bb] = impose_boundary(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,b,numbControlPts);
             
             end
             
@@ -6612,28 +6602,35 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
-    Psi11 = jacFunc.Psi1_dx.^2 + jacFunc.Psi1_dy.^2 + jacFunc.Psi1_dz.^2;
-    Psi22 = jacFunc.Psi2_dx.^2 + jacFunc.Psi2_dy.^2 + jacFunc.Psi2_dz.^2;
-    Psi33 = jacFunc.Psi3_dx.^2 + jacFunc.Psi3_dy.^2 + jacFunc.Psi3_dz.^2;
-    
+    Psi11 = jacFunc.Psi1_dx .* jacFunc.Psi1_dx + ...
+            jacFunc.Psi1_dy .* jacFunc.Psi1_dy + ...
+            jacFunc.Psi1_dz .* jacFunc.Psi1_dz;
     Psi12 = jacFunc.Psi1_dx .* jacFunc.Psi2_dx + ...
             jacFunc.Psi1_dy .* jacFunc.Psi2_dy + ...
             jacFunc.Psi1_dz .* jacFunc.Psi2_dz;
-    Psi21 = jacFunc.Psi2_dx .* jacFunc.Psi1_dx + ...
-            jacFunc.Psi2_dy .* jacFunc.Psi1_dy + ...
-            jacFunc.Psi2_dz .* jacFunc.Psi1_dz;
     Psi13 = jacFunc.Psi1_dx .* jacFunc.Psi3_dx + ...
             jacFunc.Psi1_dy .* jacFunc.Psi3_dy + ...
             jacFunc.Psi1_dz .* jacFunc.Psi3_dz;
-    Psi31 = jacFunc.Psi3_dx .* jacFunc.Psi1_dx + ...
-            jacFunc.Psi3_dy .* jacFunc.Psi1_dy + ...
-            jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
+        
+    Psi21 = jacFunc.Psi2_dx .* jacFunc.Psi1_dx + ...
+            jacFunc.Psi2_dy .* jacFunc.Psi1_dy + ...
+            jacFunc.Psi2_dz .* jacFunc.Psi1_dz;    
+    Psi22 = jacFunc.Psi2_dx .* jacFunc.Psi2_dx + ...
+            jacFunc.Psi2_dy .* jacFunc.Psi2_dy + ...
+            jacFunc.Psi2_dz .* jacFunc.Psi2_dz;
     Psi23 = jacFunc.Psi2_dx .* jacFunc.Psi3_dx + ...
             jacFunc.Psi2_dy .* jacFunc.Psi3_dy + ...
             jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
+    
+    Psi31 = jacFunc.Psi3_dx .* jacFunc.Psi1_dx + ...
+            jacFunc.Psi3_dy .* jacFunc.Psi1_dy + ...
+            jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
     Psi32 = jacFunc.Psi3_dx .* jacFunc.Psi2_dx + ...
             jacFunc.Psi3_dy .* jacFunc.Psi2_dy + ...
             jacFunc.Psi3_dz .* jacFunc.Psi2_dz;
+    Psi33 = jacFunc.Psi3_dx .* jacFunc.Psi3_dx + ...
+            jacFunc.Psi3_dy .* jacFunc.Psi3_dy + ...
+            jacFunc.Psi3_dz .* jacFunc.Psi3_dz;
     
     BetaPsi1 = Computed.beta1_c .* jacFunc.Psi1_dx + ...
                Computed.beta2_c .* jacFunc.Psi1_dy + ...
@@ -6657,6 +6654,24 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     funcToIntegrate_10 = jacFunc.evalDetJac .* BetaPsi1;
     funcToIntegrate_11 = jacFunc.evalDetJac .* BetaPsi2;
     funcToIntegrate_12 = jacFunc.evalDetJac .* BetaPsi3;
+    
+    % DEBUG
+    % 
+    % disp(Psi11(1,1,1))
+    % disp(Psi12(1,1,1))
+    % disp(Psi13(1,1,1))
+    % disp(Psi21(1,1,1))
+    % disp(Psi22(1,1,1))
+    % disp(Psi23(1,1,1))
+    % disp(Psi31(1,1,1))
+    % disp(Psi32(1,1,1))
+    % disp(Psi33(1,1,1))
+    % disp(BetaPsi1(1,1,1))
+    % disp(BetaPsi2(1,1,1))
+    % disp(BetaPsi3(1,1,1))
+    % disp(jacFunc.evalDetJac(1,1,1))
+    % 
+    % return
     
     funcWeight_1  = mb_k  .* mb_i  .* weightMat;
     funcWeight_2  = mb_k  .* mb_yi .* weightMat;
@@ -6741,40 +6756,6 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     
     Al       = Local_11 + Local_10 + Local_01 + Local_00;
     bl       = rhs;
-    
-    %% IMPOSITION OF DIRICHLET BOUNDARY CONDITION
-    %---------------------------------------------------------------------%
-    % This step is necessary to guarantee that the resulting linear system
-    % is not singular.
-    %---------------------------------------------------------------------%
-
-        % IMPLEMENT MODIFICATIONS IN THE STIFFNESS MATRIX
-        
-        if (imb == kmb)
-            AModified = Al;
-            AModified(1,:) = 0;
-            AModified(1,1) = 1e30;
-            %AModified(end,:) = 0;
-            %AModified(end,end) = 1e30;
-        else
-            AModified = Al;
-            AModified(1,:) = 0;
-            %AModified(end,:) = 0;
-        end
-        
-        Al = AModified;
-        
-        % IMPLEMENT MODIFICATIONS IN THE FORCING TERM
-        
-        if (imb == kmb)
-            bModified = bl;
-            bModified(1) = 0;
-            %bModified(end) = 0;
-        else
-            bModified = bl;
-        end   
-        
-        bl = bModified;
 
 end
 

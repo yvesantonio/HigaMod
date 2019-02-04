@@ -1403,10 +1403,11 @@ classdef SolverHandler
                 build_IGA.domainProfileDer = obj.domainProfileDer;
                 build_IGA.numbHorQuadNodes = obj.numbHorQuadNodes;
                 build_IGA.numbVerQuadNodes = obj.numbVerQuadNodes;
+                build_IGA.igaBoundCond = obj.dirCondFuncStruct.igaBoundCond;
 
                 % Call of the 'buildSystemIGA' Method
 
-                [A,b,modalBasisStruct,liftCoeffA(1),liftCoeffB(1),space,refDomain1D] = buildSystemIGAScatter3D(build_IGA); 
+                [A,b,boundStruct,liftCoeffA(1),liftCoeffB(1),space,refDomain1D] = buildSystemIGAScatter3D(build_IGA); 
 
                 disp('Finished BUILD SYSTEM IGA');                
                 
@@ -1422,6 +1423,18 @@ classdef SolverHandler
                 u = A\b;
                 
                 timeSolHigaMod = toc;
+                
+                %------------------%
+                % REBUILD SOLUTION %
+                %------------------%
+                
+                buildBC = BoundaryConditionHandler();
+                
+                buildBC.bcStruct = boundStruct;
+                buildBC.uRid = u;
+                
+                [uAug] = buildBoundCond(buildBC);
+                u = uAug;
                 
                 % DEBUG
                 
@@ -1446,8 +1459,8 @@ classdef SolverHandler
                 obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map,...
                 obj.geometricInfo);
 
-                errorNormH1 = errL2;
-                errorNormL2 = errH1;
+                errorNormH1 = errH1;
+                errorNormL2 = errL2;
                 
                 disp('Finished PLOT OPERATION / ERROR with EXACT SOLUTION')
 
@@ -6366,6 +6379,10 @@ classdef SolverHandler
                 tic;
                 
                 solStruct = AA\FF;
+                
+                disp('DEBUG INSIDE SOLVER')
+                find(isnan(solStruct))
+                rcond(AA)
                 
                 tSolve = toc;
                 

@@ -206,6 +206,55 @@ classdef BoundaryConditionHandler
                 
             end
             
+            %% Method 'computeFourierCoeff3D'
+            
+            function [infStruct,outStruct] = computeFourierCoeff3D(obj)
+                
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+                
+                %% IMPORT FEATURES
+
+                infBC = obj.infBoundCond;
+                outBC = obj.outBoundCond;
+                nodes = obj.augVerNodes;
+                wghts = obj.augVerWeights;
+                modBasis = obj.modalBasis;
+                
+                weightMat = wghts * wghts';
+                [X,Y]   = meshgrid(nodes,nodes);
+                
+                %% COMPUTE PROJECTION
+                
+                valueInfBC = infBC(X,Y);
+                valueOutBC = outBC(X,Y);
+                
+                infStruct = [];
+                outStruct = [];
+                
+                for ii = 1:size(modBasis,3)
+                    
+                    auxInf = sum(sum(valueInfBC .* modBasis(:,:,ii) .* weightMat));
+                    auxOut = sum(sum(valueOutBC .* modBasis(:,:,ii) .* weightMat));
+                    
+                    infStruct(ii) = auxInf;
+                    outStruct(ii) = auxOut;                                                                                                                         
+                    
+                end
+                
+                aux1 = infStruct;
+                aux2 = outStruct;
+                infStruct = fliplr(aux1);
+                outStruct = fliplr(aux2);                
+                
+            end
+            
             %% Method 'buildBoundCond'
             
             function [uAug] = buildBoundCond(obj)

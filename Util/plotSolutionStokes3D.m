@@ -27,7 +27,7 @@ function [] = plotSolutionStokes(plotStruct)
     % DEFINITION NUMBER OF VERTICAL EVALUATION POINTS %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    M = 1000;
+    M = 50;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % DEFINITION VERTICAL EVALUATION POINTS %
@@ -51,13 +51,13 @@ function [] = plotSolutionStokes(plotStruct)
     
     import Core.BasisHandler
 
-    objModalBasis = BasisHandler();
+    objNewModalBasisP = BasisHandler();
 
-    objModalBasis.dimModalBasis         = plotStruct.discStruct.numbModesP;
-    objModalBasis.evalNodesY            = evalNodesY;
-    objModalBasis.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_P;
-    objModalBasis.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_P;
-    objModalBasis.coeffForm             = plotStruct.probParameters;
+    objNewModalBasisP.dimModalBasis         = plotStruct.discStruct.numbModesP;
+    objNewModalBasisP.evalNodesY            = evalNodesY;
+    objNewModalBasisP.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_P;
+    objNewModalBasisP.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_P;
+    objNewModalBasisP.coeffForm             = plotStruct.probParameters;
 
     [modalBasisP,~,~] = newModalBasisStokes3D(objNewModalBasisP);
     
@@ -67,13 +67,13 @@ function [] = plotSolutionStokes(plotStruct)
     
     import Core.BasisHandler
 
-    objModalBasis = BasisHandler();
+    objNewModalBasisUx = BasisHandler();
 
-    objModalBasis.dimModalBasis         = plotStruct.discStruct.numbModesUx;
-    objModalBasis.evalNodesY            = evalNodesY;
-    objModalBasis.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_Ux;
-    objModalBasis.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_Ux;
-    objModalBasis.coeffForm             = plotStruct.probParameters;
+    objNewModalBasisUx.dimModalBasis         = plotStruct.discStruct.numbModesUx;
+    objNewModalBasisUx.evalNodesY            = evalNodesY;
+    objNewModalBasisUx.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_Ux;
+    objNewModalBasisUx.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_Ux;
+    objNewModalBasisUx.coeffForm             = plotStruct.probParameters;
 
     [modalBasisUx,~,~] = newModalBasisStokes3D(objNewModalBasisUx);
     
@@ -83,13 +83,13 @@ function [] = plotSolutionStokes(plotStruct)
     
     import Core.BasisHandler
 
-    objModalBasis = BasisHandler();
+    objNewModalBasisUy = BasisHandler();
 
-    objModalBasis.dimModalBasis         = plotStruct.discStruct.numbModesUy;
-    objModalBasis.evalNodesY            = evalNodesY;
-    objModalBasis.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_Uy;
-    objModalBasis.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_Uy;
-    objModalBasis.coeffForm             = plotStruct.probParameters;
+    objNewModalBasisUy.dimModalBasis         = plotStruct.discStruct.numbModesUy;
+    objNewModalBasisUy.evalNodesY            = evalNodesY;
+    objNewModalBasisUy.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_Uy;
+    objNewModalBasisUy.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_Uy;
+    objNewModalBasisUy.coeffForm             = plotStruct.probParameters;
 
     [modalBasisUy,~,~] = newModalBasisStokes3D(objNewModalBasisUy);
     
@@ -99,13 +99,13 @@ function [] = plotSolutionStokes(plotStruct)
     
     import Core.BasisHandler
 
-    objModalBasis = BasisHandler();
+    objNewModalBasisUz = BasisHandler();
 
-    objModalBasis.dimModalBasis         = plotStruct.discStruct.numbModesUz;
-    objModalBasis.evalNodesY            = evalNodesY;
-    objModalBasis.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_Uz;
-    objModalBasis.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_Uz;
-    objModalBasis.coeffForm             = plotStruct.probParameters;
+    objNewModalBasisUz.dimModalBasis         = plotStruct.discStruct.numbModesUz;
+    objNewModalBasisUz.evalNodesY            = evalNodesY;
+    objNewModalBasisUz.labelUpBoundCond      = plotStruct.boundaryStruct.boundCondStruc.bc_up_tag_Uz;
+    objNewModalBasisUz.labelDownBoundCond    = plotStruct.boundaryStruct.boundCondStruc.bc_down_tag_Uz;
+    objNewModalBasisUz.coeffForm             = plotStruct.probParameters;
 
     [modalBasisUz,~,~] = newModalBasisStokes3D(objNewModalBasisUz);
 
@@ -197,17 +197,17 @@ function [] = plotSolutionStokes(plotStruct)
 
     % PROJECTION POINTS
     
-    [XP ,YP ,ZP] = mapOut3DHiMod(evalNodesXP,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
-    [XUx,YUx,ZUx] = mapOut3DHiMod(evalNodesXP,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
-    [XUy,YUy,ZUy] = mapOut3DHiMod(evalNodesXP,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
-    [XUz,YUz,ZUz] = mapOut3DHiMod(evalNodesXP,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
+    [XP ,YP ,ZP ] = mapOut3DHiMod(evalNodesXP ,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
+    [XUx,YUx,ZUx] = mapOut3DHiMod(evalNodesXUx,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
+    [XUy,YUy,ZUy] = mapOut3DHiMod(evalNodesXUy,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
+    [XUz,YUz,ZUz] = mapOut3DHiMod(evalNodesXUz,evalNodesY,evalNodesY,plotStruct.geometricInfo,plotStruct.geometricInfo.Type);
 
-    % EXTENDED PROJECTION POINTS
+    % FINE MESH FOR THE VISUALIZATION OF THE SOLUTION
 
-    Nx = 100;
-    Ny = 100;
-    Nz = 100;
-
+    Nx = 10;
+    Ny = 10;
+    Nz = 10;
+    
     x_eval = linspace(0,1,Nx);
     y_eval = linspace(0,1,Ny);
     z_eval = linspace(0,1,Nz);
@@ -277,40 +277,46 @@ function [] = plotSolutionStokes(plotStruct)
     solMatUy  = zeros(M,M,numbControlPtsUy);
     solMatUz  = zeros(M,M,numbControlPtsUz);
     
-    
-    % --> DEVO RICOMINCIARE DA QUESTO PUNTO IN POI
-    
-
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % PROJECTION USING THE MODAL BASIS %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     for kk = 1:M
+        for jj = 1:M
 
-        % PROJECTION OF THE PRESSURE
+            % PROJECTION OF THE PRESSURE
 
-        for hh = 1:numbControlPtsP
-            for mb = 1:plotStruct.discStruct.numbModesP
-                solP(hh,kk) = solP(hh,kk) + igaProjP(hh + (mb-1) * numbControlPtsP) * modalBasisP(kk,mb);
+            for hh = 1:numbControlPtsP
+                for mb = 1:plotStruct.discStruct.numbModesP
+                    solP(hh,kk,jj) = solP(hh,kk,jj) + igaProjP(hh + (mb-1) * numbControlPtsP) * modalBasisP(kk,jj,mb);
+                end
             end
-        end
 
-        % PROJECTION OF Ux
+            % PROJECTION OF Ux
 
-        for hh = 1:numbControlPtsUx
-            for mb = 1:plotStruct.discStruct.numbModesUx
-                solUx(hh,kk) = solUx(hh,kk) + igaProjUx(hh + (mb-1) * numbControlPtsUx) * modalBasisUx(kk,mb);
+            for hh = 1:numbControlPtsUx
+                for mb = 1:plotStruct.discStruct.numbModesUx
+                    solUx(hh,kk,jj) = solUx(hh,kk,jj) + igaProjUx(hh + (mb-1) * numbControlPtsUx) * modalBasisUx(kk,jj,mb);
+                end
             end
-        end
 
-        % PROJECTION OF Uy
+            % PROJECTION OF Uy
 
-        for hh = 1:numbControlPtsUy
-            for mb = 1:plotStruct.discStruct.numbModesUy
-                solUy(hh,kk) = solUy(hh,kk) + igaProjUy(hh + (mb-1) * numbControlPtsUy) * modalBasisUy(kk,mb);
+            for hh = 1:numbControlPtsUy
+                for mb = 1:plotStruct.discStruct.numbModesUy
+                    solUy(hh,kk,jj) = solUy(hh,kk,jj) + igaProjUy(hh + (mb-1) * numbControlPtsUy) * modalBasisUy(kk,jj,mb);
+                end
             end
-        end
+            
+            % PROJECTION OF Uz
 
+            for hh = 1:numbControlPtsUz
+                for mb = 1:plotStruct.discStruct.numbModesUz
+                    solUz(hh,kk,jj) = solUz(hh,kk,jj) + igaProjUz(hh + (mb-1) * numbControlPtsUz) * modalBasisUz(kk,jj,mb);
+                end
+            end
+            
+        end
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -320,13 +326,38 @@ function [] = plotSolutionStokes(plotStruct)
     finalSolP  = solP;
     finalSolUx = solUx;
     finalSolUy = solUy;
-
+    finalSolUz = solUz;
+    
     for ii = 1:M
-        solMatP(ii,:)  = finalSolP((ii-1)  * numbControlPtsP  + 1 : ii * numbControlPtsP );
-        solMatUx(ii,:) = finalSolUx((ii-1) * numbControlPtsUx + 1 : ii * numbControlPtsUx);
-        solMatUy(ii,:) = finalSolUy((ii-1) * numbControlPtsUy + 1 : ii * numbControlPtsUy);
+        for jj = 1:M
+            
+            % PRESSURE
+            
+            for kk = 1:numbControlPtsP
+                solMatP(ii,jj,kk) = finalSolP(kk,ii,jj);
+            end
+            
+            % VELOCITY IN X
+            
+            for kk = 1:numbControlPtsUx
+                solMatUx(ii,jj,kk) = finalSolUx(kk,ii,jj);
+            end
+            
+            % VELOCITY IN Y
+            
+            for kk = 1:numbControlPtsUy
+                solMatUy(ii,jj,kk) = finalSolUy(kk,ii,jj);
+            end
+            
+            % VELOCITY IN Z
+            
+            for kk = 1:numbControlPtsUz
+                solMatUz(ii,jj,kk) = finalSolUz(kk,ii,jj);
+            end
+            
+        end
     end
-
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % PROJECTION IN FINE MESH FOR THE PLOTTING %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -335,23 +366,42 @@ function [] = plotSolutionStokes(plotStruct)
     % step we could not choose the number of points to plot the solution
     % along the centerline, only along the transverse direction.
     %---------------------------------------------------------------------%
-
-    higaSolP  = griddata(XP ,YP ,solMatP ,Xeval,Yeval);
-    higaSolUx = griddata(XUx,YUx,solMatUx,Xeval,Yeval);
-    higaSolUy = griddata(XUy,YUy,solMatUy,Xeval,Yeval);
-
-    [numbX,numbY] = size(higaSolP);
-
+    
+    higaSolP  = griddata(XP ,YP ,ZP ,solMatP ,Xeval,Yeval,Zeval);
+    higaSolUx = griddata(XUx,YUx,ZUx,solMatUx,Xeval,Yeval,Zeval);
+    higaSolUy = griddata(XUy,YUy,ZUy,solMatUy,Xeval,Yeval,Zeval);
+    higaSolUz = griddata(XUz,YUz,ZUz,solMatUz,Xeval,Yeval,Zeval);
+    
+    [numbX,numbY,numbZ] = size(higaSolP);
+    
     for ii = 1:numbX
         for jj = 1:numbY
-            if(isnan(higaSolP(ii,jj)))
-                higaSolP(ii,jj) = 0;
-            end
-            if(isnan(higaSolUx(ii,jj)))
-                higaSolUx(ii,jj) = 0;
-            end
-            if(isnan(higaSolUy(ii,jj)))
-                higaSolUy(ii,jj) = 0;
+            for kk = 1:numbZ
+                
+                % PRESSURE
+                
+                if(isnan(higaSolP(ii,jj,kk)))
+                    higaSolP(ii,jj,kk) = 0;
+                end
+                
+                % VELOCITY IN Ux
+                
+                if(isnan(higaSolUx(ii,jj,kk)))
+                    higaSolUx(ii,jj,kk) = 0;
+                end
+                
+                % VELOCITY IN Uy
+                
+                if(isnan(higaSolUy(ii,jj,kk)))
+                    higaSolUy(ii,jj,kk) = 0;
+                end
+                
+                % VELOCITY IN Uz
+                
+                if(isnan(higaSolUz(ii,jj,kk)))
+                    higaSolUz(ii,jj,kk) = 0;
+                end
+                
             end
         end
     end
@@ -363,8 +413,10 @@ function [] = plotSolutionStokes(plotStruct)
     solStruct.P  = higaSolP;
     solStruct.Ux = higaSolUx;
     solStruct.Uy = higaSolUy;
+    solStruct.Uz = higaSolUz;
     solStruct.X  = Xeval;
     solStruct.Y  = Yeval;
+    solStruct.Z  = Zeval;
 
     %%%%%%%%%%%%%%%%%%%%%%%
     % CHECK EXPORT FOLDER %
@@ -403,114 +455,144 @@ function [] = plotSolutionStokes(plotStruct)
         
     X  = solStruct.X;
     Y  = solStruct.Y;
+    Z  = solStruct.Z;
     P  = solStruct.P;
     Ux = solStruct.Ux;
     Uy = solStruct.Uy;
+    Uz = solStruct.Uz;
+    U  = sqrt(Ux.^2 + Uy.^2 + Uz.^2);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % SCATTER PLOT OF THE MAGNITUDE OF THE VELOCITY FIELD %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    fig1 = figure('visible','off');
-    quiver(X,Y,Ux,Uy);
-
-    fig2 = figure('visible','off');
-    [~,~] = contourf(X,Y,P,20);    
+    fig1 = figure('visible','on');
+    scatter3(XP(:),YP(:),ZP(:),40,solMatP(:),'filled');
+    
     colormap(jet);
-    cmin = min(min(P));
-    cmax = max(max(P));
-    caxis([cmin cmax]);
-    colorbar();
+    
+%     cmin = min(min(solMatP(:)));
+%     cmax = max(max(solMatP(:)));
+%     caxis([cmin cmax]);
+    cb = colorbar();
+    cb.Label.String = 'Velocity Magnitude';
+    
     minX = min(min(X));
     maxX = max(max(X));
     minY = min(min(Y));
     maxY = max(max(Y));
-    axis([minX maxX minY maxY]);
+    minZ = min(min(Z));
+    maxZ = max(max(Z));
+    
+    view(45,45)
+    xlabel('X')
+    ylabel('Y')
+    zlabel('Z')
     axis equal
-    scale = 0.1;
-    daspect([1 1 scale]);
-    pbaspect([1 1 scale]);
     set(gca, 'FontSize', 14);
     hold on;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % SCATTER PLOT OF THE MAGNITUDE OF THE VELOCITY FIELD %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    fig3 = figure('visible','off');
-    [~,~] = contourf(X,Y,Ux,20);    
+    fig2 = figure('visible','on');
+    scatter3(X(:),Y(:),Z(:),40,Uy(:),'filled');
+    
     colormap(jet);
-    cmin = min(min(Ux));
-    cmax = max(max(Ux));
+    
+    cmin = min(min(Uy(:)));
+    cmax = max(max(Uy(:)));
     caxis([cmin cmax]);
-    colorbar();
+    cb = colorbar();
+    cb.Label.String = 'Velocity Magnitude';
+    
     minX = min(min(X));
     maxX = max(max(X));
     minY = min(min(Y));
     maxY = max(max(Y));
-    axis([minX maxX minY maxY]);
+    minZ = min(min(Z));
+    maxZ = max(max(Z));
+    
+    view(45,45)
+    xlabel('X')
+    ylabel('Y')
+    zlabel('Z')
     axis equal
-    scale = 0.1;
-    daspect([1 1 scale]);
-    pbaspect([1 1 scale]);
     set(gca, 'FontSize', 14);
     hold on;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % SCATTER PLOT OF THE MAGNITUDE OF THE VELOCITY FIELD %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    fig4 = figure('visible','off');
-    [~,~] = contourf(X,Y,Uy,20);    
+    fig3 = figure('visible','on');
+    scatter3(X(:),Y(:),Z(:),40,Uz(:),'filled');
+    
     colormap(jet);
-    cmin = min(min(Uy));
-    cmax = max(max(Uy));
+    
+    cmin = min(min(Uz(:)));
+    cmax = max(max(Uz(:)));
     caxis([cmin cmax]);
-    colorbar();
+    cb = colorbar();
+    cb.Label.String = 'Velocity Magnitude';
+    
     minX = min(min(X));
     maxX = max(max(X));
     minY = min(min(Y));
     maxY = max(max(Y));
-    axis([minX maxX minY maxY]);
+    minZ = min(min(Z));
+    maxZ = max(max(Z));
+    
+    view(45,45)
+    xlabel('X')
+    ylabel('Y')
+    zlabel('Z')
     axis equal
-    scale = 0.1;
-    daspect([1 1 scale]);
-    pbaspect([1 1 scale]);
     set(gca, 'FontSize', 14);
     hold on;
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % PLOT INFLOW AND OUTFLOW PROFILES %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % SCATTER PLOT OF THE MAGNITUDE OF THE PRESSURE FIELD %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%     fig2 = figure('visible','off');
+%     scatter3(X,Y,Z,40,P,'filled');
+%     
+%     colormap(jet);
+%     
+%     cmin = min(min(P));
+%     cmax = max(max(P));
+%     caxis([cmin cmax]);
+%     cb = colorbar();
+%     cb.Label.String = 'Velocity Magnitude';
+%     
+%     minX = min(min(X));
+%     maxX = max(max(X));
+%     minY = min(min(Y));
+%     maxY = max(max(Y));
+%     minZ = min(min(Z));
+%     maxZ = max(max(Z));
+%     
+%     view(45,45)
+%     xlabel('X')
+%     ylabel('Y')
+%     zlabel('Z')
+%     axis([minX maxX minY maxY minZ maxZ]);
+%     axis equal
+%     scale = 0.1;
+%     daspect([1 1 scale]);
+%     pbaspect([1 1 scale]);
+%     set(gca, 'FontSize', 14);
+%     hold on;
+
+    % EXPORT VTK FILE OF THE HIGAMOD SOLUTION
     
-    numbPts = 12;
+    filename = 'HigaModSol.vtk';
+    title    = 'Velocity';
+    title2   = 'Pressure';
     
-    fig5 = figure('visible','off');
-    plot(Ux(linspace(1,Ny,numbPts),1),...
-        Y(linspace(1,Ny,numbPts),1),...
-        'o',...
-        'LineWidth',2,...
-        'MarkerSize',5,...
-        'MarkerEdgeColor','r',...
-        'MarkerFaceColor',[1.0,1.0,1.0]);
-    hold on
-    plot(plotStruct.boundCondStruct.bc_inf_data_Ux(Y(:,1)),...
-        Y(:,1),...
-        '--.',...
-        'LineWidth',2,...
-        'MarkerSize',8,...
-        'MarkerEdgeColor','k',...
-        'MarkerFaceColor',[1.0,1.0,1.0]);
-    l = legend({'$\tilde{u}_{x}|_{\Gamma_{out}}$','$u_{x}|_{\Gamma_{out}}$'},'FontSize',14);
-    set(l, 'Interpreter', 'latex')
-    
-    
-    fig6 = figure('visible','off');
-    plot(Ux(linspace(1,Ny,numbPts),end),...
-        Y(linspace(1,Ny,numbPts),end),...
-        'o',...
-        'LineWidth',2,...
-        'MarkerSize',5,...
-        'MarkerEdgeColor','r',...
-        'MarkerFaceColor',[1.0,1.0,1.0]);
-    hold on
-    plot(plotStruct.boundCondStruct.bc_inf_data_Ux(Y(:,end)),...
-        Y(:,end),...
-        '--.',...
-        'LineWidth',2,...
-        'MarkerSize',8,...
-        'MarkerEdgeColor','k',...
-        'MarkerFaceColor',[1.0,1.0,1.0]);
-    l = legend({'$\tilde{u}_{x}|_{\Gamma_{out}}$','$u_{x}|_{\Gamma_{out}}$'},'FontSize',14);
-    set(l, 'Interpreter', 'latex')
+    vtkwrite(filename,'unstructured_grid',X,Y,Z,'vectors',title,Ux,Uy,Uz,'scalars',title2,P);
 
     %%%%%%%%%%%%%
     % SAVE FIGURE
@@ -519,12 +601,8 @@ function [] = plotSolutionStokes(plotStruct)
     % Note : Save the current figure.
     %---------------------------------------------------------------------%
 
-    print(fig1,'Quiver','-dpng');
-    print(fig2,'Contour_P','-dpng');
-    print(fig3,'Contour_Ux','-dpng');
-    print(fig4,'Contour_Uy','-dpng');
-    print(fig5,'Inflow_Profile','-dpng');
-    print(fig6,'Outflow_Profile','-dpng');
+%     print(fig1,'VelocityField','-dpng');
+%     print(fig2,'PressureField','-dpng');
     
     cd ..
     

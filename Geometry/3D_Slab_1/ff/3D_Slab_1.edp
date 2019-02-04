@@ -1,0 +1,143 @@
+load "gmsh"
+load "medit"
+load "tetgen"
+load "iovtk"
+load "msh3"
+load "tetgen"
+load "mshmet"
+load "freeyams"
+load "mmg3d-v4.0"
+
+mesh3 Th = gmshload3("3D_Slab_1.msh");
+
+cout << "--------------------" << endl;
+cout << "FINISHED IMPORT MESH" << endl;
+cout << "--------------------" << endl;
+
+fespace Vh1(Th,P1);
+Vh1 auxiliary = 1;
+mesh3 Th1 = trunc(Th,auxiliary>0,split=3,label=2);
+
+cout << "--------------------" << endl;
+cout << "FINISHED REFINE MESH" << endl;
+cout << "--------------------" << endl;
+
+///////////////////////
+// PLOT REFINED MESH //
+///////////////////////
+
+plot(Th1);
+
+/////////////////////////////////////////
+// BILINEAR FORM PARAMETERS DEFINITION //
+/////////////////////////////////////////
+
+real datoup,datodown;
+real chi = 0.0;
+real mu = 1.0;
+real beta1 = 1.0;
+real beta2 = 1.0;
+real beta3 = 1.0;
+real sigma = 0.0;
+
+/////////////////////////////
+// FORCING TERM DEFINITION //
+/////////////////////////////
+
+func force = 1;
+
+/////////////////////////////////
+// FUNCTIONAL SPACE DEFINITION //
+/////////////////////////////////
+
+fespace Vh(Th1,P1);
+Vh w,u,v,ux,uy;
+w=force;
+
+//////////////////////////////////////////
+// SOLUTION OF THE DIFFERENTIAL PROBLEM //
+//////////////////////////////////////////
+
+load "UMFPACK64"
+problem DirDir(u,v)=
+
+		int3d(Th1)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) + dz(u)*dz(v) ) )  // Laplacian operator
+		+ int3d(Th1)   ( beta1*dx(u)*v )						// Advection in x direction
+		+ int3d(Th1)   ( beta2*dy(u)*v )						// Advection in y direction
+		+ int3d(Th1)   ( beta3*dz(u)*v )						// Advection in z direction
+		+ int3d(Th1)   ( sigma*u*v     )						// Reaction
+		- int3d(Th1)   ( force*v       )    					// Force term
+		+ on(101,u=0)    				     					// Dirichlet UP
+		+ on(102,u=0)  					     					// Dirichlet SIDE 1
+		+ on(103,u=0)  					     					// Dirichlet SIDE 1 OPPOSITE
+		+ on(104,u=0)  					     					// Dirichlet DOWN
+		+ on(105,u=0)  					     					// Dirichlet SIDE 2
+		+ on(106,u=0);					     					// Dirichlet SIDE 2 OPPOSITE
+
+DirDir;
+
+cout << "-----------------" << endl;
+cout << "FINISHED SOLUTION" << endl;
+cout << "-----------------" << endl;
+
+////////////////////////////////
+// PLOT THE OBTAINED SOLUTION //
+////////////////////////////////
+
+plot(u);
+
+/////////////////////////////
+// COMPUTE THE MASS MATRIX //
+/////////////////////////////
+
+varf bid ( u, v ) = int3d ( Th1 ) ( u * v );
+matrix M = bid ( Vh, Vh );
+
+//////////////////////////////////
+// COMPUTE THE STIFFNESS MATRIX //
+//////////////////////////////////
+
+varf bilinearForm(u,v) 	= int3d(Th1)  ( dx(u)*dx(v) + dy(u)*dy(v) ); // Laplacian operator
+matrix A = bilinearForm(Vh, Vh );
+
+////////////////////
+// SAVE .VTK FILE //
+////////////////////
+
+int[int] ffordervel = [1];
+savevtk("ffVTK.vtk", Th1, u, dataname="Concentration", order=ffordervel);
+
+////////////////////
+// SAVE MESH FILE //
+////////////////////
+
+savemesh(Th1,"ffMesh.mesh");
+
+/////////////////////////////
+// EXPORT STIFFNESS MATRIX //
+/////////////////////////////
+
+{
+	ofstream fout("A.txt");
+	fout << A << endl;
+}
+
+////////////////////////
+// EXPORT MASS MATRIX //
+////////////////////////
+
+{
+	ofstream fout("M.txt");
+	fout << M << endl;
+}
+
+////////////////////////////
+// EXPORT SOLUTION OF PDE //
+////////////////////////////
+
+savesol("ffSolution.sol",Th1 , u );
+
+cout << endl;
+cout << "---------------------------------" << endl;
+cout << "FINISHED EXPORT SOLUTION AND MESH" << endl;
+cout << "---------------------------------" << endl;
