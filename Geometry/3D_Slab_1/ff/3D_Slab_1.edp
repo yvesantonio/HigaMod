@@ -67,10 +67,10 @@ problem DirDir(u,v)=
 		+ int3d(Th1)   ( beta3*dz(u)*v )						// Advection in z direction
 		+ int3d(Th1)   ( sigma*u*v     )						// Reaction
 		- int3d(Th1)   ( force*v       )    					// Force term
-		+ on(101,u=0)    				     					// Dirichlet UP
+		//+ on(101,u=0)    				     					// Dirichlet UP
 		+ on(102,u=0)  					     					// Dirichlet SIDE 1
 		+ on(103,u=0)  					     					// Dirichlet SIDE 1 OPPOSITE
-		+ on(104,u=0)  					     					// Dirichlet DOWN
+		//+ on(104,u=0)  					     					// Dirichlet DOWN
 		+ on(105,u=0)  					     					// Dirichlet SIDE 2
 		+ on(106,u=0);					     					// Dirichlet SIDE 2 OPPOSITE
 

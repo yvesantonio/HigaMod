@@ -29,6 +29,10 @@ function [X,Y,Z] = mapOut3D(x,y,z,map,type)
         zNew = xOld;
         yNew = yOld;
         xNew = zOld;
+    elseif(strcmp(type,'Slab_4'))
+        zNew = xOld;
+        yNew = yOld;
+        xNew = zOld;
     end
     
     l = length(zNew);

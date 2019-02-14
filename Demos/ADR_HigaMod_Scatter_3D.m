@@ -47,14 +47,14 @@
     import Core.BasisHandler
     import Core.SolverHandler
 
-MM = [ 8 ];
-HH = [ 0.05 ];
+MM = [ 5 ];
+HH = [ 0.01 ];
     
 for ii = 1:length(MM)
     for jj = 1:length(HH)
     
     %% Simulation case   
-    caso  = 4; 
+    caso  = 7; 
     
     %-------------------------------------------------------------------------%
     % Note;
@@ -144,35 +144,14 @@ for ii = 1:length(MM)
     % Note: The current version of the code works only for constant
     % boundary conditions in inflow and outflow;
     
-    % BOUNDARY CONDITION LABELS
-    
-    infLabelBC = 'neu';
-    outLabelBC = 'neu';
-    
-    % DEFINE DIRICHLET AND NEUMANN BOUNDARY CONDITIONS
-    
-    infBCdir = @(x,y,z) (  0 + 0*x + 0*y + 0*z ); % Inflow
-    outBCdir = @(x,y,z) (  0 + 0*x + 0*y + 0*z ); % Outflow
-    infBCneu = @(x,y,z) (  0 + 0*x + 0*y + 0*z ); % Inflow
-    outBCneu = @(x,y,z) (  0 + 0*x + 0*y + 0*z ); % Outflow
-    
-    % CREATE DATA STRUCTURE
-    
-    BoundCond.inflowDATAdir  = infBCdir;
-    BoundCond.inflowDATAneu  = infBCneu;
-    BoundCond.outflowDATAdir = outBCdir;
-    BoundCond.outflowDATAneu = outBCneu;
-    BoundCond.inflowINFO     = infLabelBC;
-    BoundCond.outflowINFO    = outLabelBC;
-
     %%%%%%%%%%%%%%%%%
     % CHANGE BC HERE!
     %%%%%%%%%%%%%%%%%
         
     igaBoundCond.BC_UP_TAG    = 'dir';
     igaBoundCond.BC_DOWN_TAG  = 'dir';
-    igaBoundCond.BC_INF_TAG   = 'dir';
-    igaBoundCond.BC_OUT_TAG   = 'dir';
+    igaBoundCond.BC_INF_TAG   = 'neu';
+    igaBoundCond.BC_OUT_TAG   = 'neu';
     igaBoundCond.BC_UP_DATA   = 0;
     igaBoundCond.BC_DOWN_DATA = 0;
     igaBoundCond.BC_INF_DATA  = @(rho,eta) 0 + 0 * rho + 0 * eta + 0 * rho .* eta + 0 * rho.^2 + 0 * eta.^2;
@@ -189,7 +168,7 @@ for ii = 1:length(MM)
 
     switch caso
         
-    case {1,6,7,8,9,10}
+    case {1,7,8,9,10}
         
         %%%%%%%%%%%%%%%%%%%%%%%%%
         % Artery from PATIENT 1 %
@@ -197,11 +176,11 @@ for ii = 1:length(MM)
         
         currentFolder = pwd;
         
-        folder = [pwd,'/Geometry/3D_Patient_1/'];
+        folder = [pwd,'/Geometry/3D_Torus/'];
         cd(folder);
         
-        filename1 = '1Patient3DGeo.mat';
-        filename2 = '1Patient3DMap.mat';
+        filename1 = 'Torus3DGeo.mat';
+        filename2 = 'Torus3DMap.mat';
         
         load(filename1);
         load(filename2);
@@ -211,8 +190,8 @@ for ii = 1:length(MM)
         
         Vol = geo;
         
-        % figure
-        % nrbplot(Vol,[15 15 500]);
+        figure
+        nrbplot(Vol,[15 15 15]);
         
     case {2}
         
@@ -304,6 +283,28 @@ for ii = 1:length(MM)
         cd ..
         
         Vol = geo;
+        
+    case {6}
+        
+        %%%%%%%%
+        % Slab %
+        %%%%%%%%
+        
+        currentFolder = pwd;
+        
+        folder = [pwd,'/Geometry/3D_Slab_4/'];
+        cd(folder);
+        
+        filename1 = 'Slab3DGeo_4.mat';
+        filename2 = 'Slab3DMap_4.mat';
+        
+        load(filename1);
+        load(filename2);
+        
+        cd ..
+        cd ..
+        
+        Vol = geo;
 
     end
     
@@ -320,7 +321,7 @@ for ii = 1:length(MM)
     
     % Vertical direction
     
-    numbVerNodes = numbModes * 3;
+    numbVerNodes = numbModes * 7;
 
     %% Coefficients of the bilinear form
     %-------------------------------------------------------------------------%
@@ -368,7 +369,6 @@ for ii = 1:length(MM)
         force = @(x,y,z) 1 + 0 * x + 0 * y + 0*z;
     end
 
-    Dati.BoundCond = BoundCond;
     Dati.force = force;
     Dati.igaBoundCond = igaBoundCond;
 

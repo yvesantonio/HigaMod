@@ -29,6 +29,10 @@ function [evalJac,structPhi,evalDetJac] = jacOut3D(x,y,z,Jac,type)
         zNew = xOld;
         yNew = yOld;
         xNew = zOld;
+    elseif(strcmp(type,'Slab_4'))
+        zNew = xOld;
+        yNew = yOld;
+        xNew = zOld;
     end
     
     o = length(zNew);

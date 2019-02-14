@@ -75,6 +75,8 @@ classdef BasisHandler
                       
         evalLegendreNodes;       % Point in which the Base Functions will be Evaluated.
                                  % They often coincide with the Quadrature Nodes
+                                 
+        evalWeightsY;
         
     end
     
@@ -522,68 +524,68 @@ classdef BasisHandler
             
             %% Method 'newModalBasisLegendre'
             
-            function [coeffModalBaseLegendre,coeffModalBaseLegendreDer] = newModalBasisLegendre(obj)
+            function [coeffModalBase,coeffModalBaseDer] = newModalBasisLegendre(obj)
 
-                %%
-                % newModalBasisLegendre    - This function evaluates the modal basis 
-                %                            and their derivatives at the nodes. In 
-                %                            this case the we consider the functions 
-                %                            of the modal basis Standard Legendre.
-                %
-                % The inputs are:
-                %%
-                %   (1)  dimLegendreBase    : Number of Functions in the Base (Dirichlet). If we
-                %                             consider the Robin Case, the number of functions
-                %                             goes to 'm+1' 
-                %   (2)  evalLegendreNodes  : Point in which the Base Functions will be Evaluated.
-                %                             They often coincide with the Quadrature Nodes
-                %   
-                % The outputs are:
-                %%
-                %   (1) coeffModalBaseLegendre    : Matrix Containing the Base Functions (Columns)
-                %                                   Evaluated at the Nodes (Rows)
-                %   (2) coeffModalBaseLegendreDer : Matrix Conatining the Derivative of the Base
-                %                                   Functions (Columns)
-                %                                   Evaluated at the Nodes (Rows) 
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
                 
-                evalNodesLeg = obj.evalLegendreNodes - 0.5;
+                evalNodes   = obj.evalNodesY * 2.0 - 1.0;
+                wghts       = obj.evalWeightsY;
+                
+                xEval  = linspace(-1,1,1000);
+                fEval  = legendre(obj.dimModalBasis,xEval,'norm');                        
+                aux    = diff(fEval');
+                dfEval = aux';
 
                 if(strcmp(obj.labelUpBoundCond,'rob') && strcmp(obj.labelDownBoundCond,'rob'))
 
-                    coeffModalBaseLegendre = zeros( length(evalNodesLeg), obj.dimLegendreBase);
-                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    coeffModalBase    = zeros( length(evalNodes), obj.dimModalBasis);
+                    coeffModalBaseDer = zeros( length(evalNodes), obj.dimModalBasis);
 
                     obj_polyLegendre = IntegrateHandler();
-                    obj_polyLegendre.degreePolyLegendre = obj.dimLegendreBase;
+                    obj_polyLegendre.degreePolyLegendre = obj.dimModalBasis;
                     [P,Pd] = polyLegendre(obj_polyLegendre);
 
                     % Loop on the Base Functions
 
-                    for n = 1:obj.dimLegendreBase
+                    for n = 1:obj.dimModalBasis
 
                         % Loop on the Section
 
-                        coeffModalBaseLegendre(:,n) = polyval(P{n},evalNodesLeg);
-                        coeffModalBaseLegendreDer(:,n) = polyval(Pd{n},evalNodesLeg);
+                        coeffModalBase(:,n) = polyval(P{n},evalNodes);
+                        coeffModalBaseDer(:,n) = polyval(Pd{n},evalNodes);
 
                     end
 
                 elseif(strcmp(obj.labelUpBoundCond,'dir') && strcmp(obj.labelDownBoundCond,'dir'))
+                    
+                    coeffModalBase    = zeros( length(evalNodes), obj.dimModalBasis);
+                    coeffModalBaseDer = zeros( length(evalNodes), obj.dimModalBasis);
 
-                    coeffModalBaseLegendre   = zeros( length(evalNodesLeg), obj.dimLegendreBase);
-                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    obj_polyLegendre = IntegrateHandler();
+                    obj_polyLegendre.degreePolyLegendre = obj.dimModalBasis;
+                    [P,Pd] = polyLegendre(obj_polyLegendre);
 
                     % Loop on the Base Functions
 
-                    for n = 1:obj.dimLegendreBase
+                    for n = 1:obj.dimModalBasis
 
                         % Loop on the Section
 
-                        for i = 1:length(evalNodesLeg)
-                            coeffModalBaseLegendre  ( i, n ) = evalNodesLeg(i).^(n-1)*(1 - evalNodesLeg(i).^2);
-                            coeffModalBaseLegendreDer( i, n ) = (n-1) * evalNodesLeg(i).^(n-2) * (1 - evalNodesLeg(i).^2) ...
-                                            + evalNodesLeg(i).^(n-1) * (-2 * evalNodesLeg(i));
-                        end
+                        auxf  = -obj.evalNodesY.^2 + obj.evalNodesY;
+                        auxdf = -2 * obj.evalNodesY + 1;
+                        norm  = sqrt(sum(auxf.^2 .* wghts));
+                        aux1  = polyval(P{n},evalNodes) .* auxf;
+                        aux2  = polyval(Pd{n},evalNodes) .* auxf + polyval(P{n},evalNodes) .* auxdf;
+
+                        coeffModalBase(:,n) = aux1;
+                        coeffModalBaseDer(:,n) = aux2;
 
                     end
 
@@ -783,6 +785,7 @@ classdef BasisHandler
                     coeffsDer1(:,:,(kk-1)*m+1:kk*m) = aux2;
                     coeffsDer2(:,:,(kk-1)*m+1:kk*m) = aux3;
                 end
+                
             end
             
             %% Method 'newModalBasisLegendre3D'
@@ -810,84 +813,71 @@ classdef BasisHandler
                 %   (2) coeffModalBaseLegendreDer : Matrix Conatining the Derivative of the Base
                 %                                   Functions (Columns)
                 %                                   Evaluated at the Nodes (Rows) 
-
-                evalNodes = obj.evalLegendreNodes * 2 - 1;
-                obj.evalLegendreNodes = evalNodes;
                 
-%                 if(strcmp(obj.labelUpBoundCond,'rob') && strcmp(obj.labelDownBoundCond,'rob'))
-% 
-%                     coeffModalBaseLegendre = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
-%                     coeffModalBaseLegendreDer = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
-% 
-%                     obj_polyLegendre = IntegrateHandler();
-%                     obj_polyLegendre.degreePolyLegendre = obj.dimLegendreBase;
-%                     [P,Pd] = polyLegendre(obj_polyLegendre);
-% 
-%                     % Loop on the Base Functions
-% 
-%                     for m = 1:obj.dimLegendreBase
-% 
-%                         % Loop on the Section
-% 
-%                         coeffModalBaseLegendre(:,m) = polyval(P{m},obj.evalLegendreNodes);
-%                         coeffModalBaseLegendreDer(:,m) = polyval(Pd{m},obj.evalLegendreNodes);
-% 
-%                     end
-% 
-%                 elseif(strcmp(obj.labelUpBoundCond,'dir') && strcmp(obj.labelDownBoundCond,'dir'))
-% 
-%                     coeffModalBaseLegendre   = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
-%                     coeffModalBaseLegendreDer = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
-% 
-%                     % Loop on the Base Functions
-%                     
-%                     for m = 1:obj.dimLegendreBase
-% 
-%                         % Loop on the Section
-%                         
-%                         syms f(x)
-%                         f(x) = legendreP(m,x);
-%                         df = diff(f,x);
-%                         
-%                         coeffModalBaseLegendre(:,m) = f(obj.evalLegendreNodes);
-%                         coeffModalBaseLegendreDer(:,m) = df(obj.evalLegendreNodes);
-% 
-%                     end
-%                 end
-
-%                 syms f(y,z,modBasisJ,modBasisK)
-%                 f(y,z,modBasisJ,modBasisK) = legendreP(modBasisJ,y) .* legendreP(modBasisK,z);
-%                 dfy = diff(f,y);
-%                 dfz = diff(f,z);
+                %% IMPORT CLASSES
+            
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
                 
-                [Y,Z] = meshgrid(evalNodes,evalNodes);
+                %% COMPUTE 1D LEGENDRE POLYNOMIALS
+
+                evalNodes = obj.evalNodesY * 2 - 1;
+                wghts     = obj.evalWeightsY;
+                
+                obj_polyLegendre = IntegrateHandler();
+                obj_polyLegendre.degreePolyLegendre = obj.dimModalBasis;
+                [P,Pd] = polyLegendre(obj_polyLegendre);
+
+                % Loop on the Base Functions
+
+                for n = 1:obj.dimModalBasis
+
+                    % Loop on the Section
+                    
+                    aux1 = polyval(P{n},evalNodes) .* (obj.evalNodesY.^2 - obj.evalNodesY);
+                    aux2 = polyval(Pd{n},evalNodes).* (obj.evalNodesY.^2 - obj.evalNodesY) + polyval(P{n},evalNodes) .* (2 * obj.evalNodesY - 1);
+
+                    coeffModalBase(:,n) = aux1 ./ sqrt(sum(aux1.^2 .* wghts));
+                    coeffModalBaseDer(:,n) = aux2 ./ sqrt(sum(aux2.^2 .* wghts));
+
+                end
+                
+                %% COMPUTE MODAL BASIS AND DERIVATIVES
                 
                 N = length(evalNodes);
-                m = obj.dimLegendreBase;
+                m = obj.dimModalBasis;
                 
                 coeffs = zeros(N,N,m^2);
                 coeffsDer1 = zeros(N,N,m^2);
                 coeffsDer2 = zeros(N,N,m^2);
                 
+                % wghtMat = kron(wghts,wghts');
+                
                 for kk = 1:m
                     for ll = 1:m
+                        for ii = 1:N
+                            for jj = 1:N
+                                aux1(ii,jj,ll) = coeffModalBase(ii,kk) * coeffModalBase(jj,ll);
+                                aux2(ii,jj,ll) = coeffModalBaseDer(ii,kk) * coeffModalBase(jj,ll);
+                                aux3(ii,jj,ll) = coeffModalBase(ii,kk) * coeffModalBaseDer(jj,ll);
+                            end
+                        end
                         
-                        syms f(y,z)
-                        f(y,z) = legendreP(kk,y) .* legendreP(ll,z);
-                        dfy = diff(f,y);
-                        dfz = diff(f,z);
+                        % auxx = aux1(:,:,ll);
+                        % l2 = sqrt(sum(sum(auxx.^2 .* wghtMat)));
+                        % 
+                        % disp(['Modal base ',num2str(ll),' L2 norm : ',num2str(l2)])
                         
-                        aux1(:,:,ll) = f(Y,Z);
-                        aux2(:,:,ll) = dfy(Y,Z);
-                        aux3(:,:,ll) = dfz(Y,Z);
                     end
                     coeffs(:,:,(kk-1)*m+1:kk*m) = aux1;
                     coeffsDer1(:,:,(kk-1)*m+1:kk*m) = aux2;
                     coeffsDer2(:,:,(kk-1)*m+1:kk*m) = aux3;
                 end
-                
-                
-                
+         
             end
             
             %% Method 'newModalBasisCheb3D'

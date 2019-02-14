@@ -178,11 +178,12 @@ classdef BoundaryConditionHandler
             
                 obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
                 obj_newModalBasis.evalNodesY = verGLNodes;
+                obj_newModalBasis.evalWeightsY = verWeights;
                 obj_newModalBasis.labelUpBoundCond = 'dir';
                 obj_newModalBasis.labelDownBoundCond = 'dir';
                 obj_newModalBasis.coeffForm = obj.coefficientForm;
 
-                [refModalBasis, ~] = newModalBasis(obj_newModalBasis);
+                [refModalBasis, ~] = newModalBasisLegendre(obj_newModalBasis);
                 
                 %% COMPUTE PROJECTION
                 

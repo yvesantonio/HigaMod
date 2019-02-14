@@ -2,7 +2,16 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
                                                  hx, u,bc_up,bc_down,Coeff_forma,...
                                                  caso,p,k,space,geometry,map,geoInfo)
 
-        % SETTING THE NUMBER OF NODES AND INTERVALS
+    %% IMPORT CLASSES
+
+        import Core.AssemblerADRHandler
+        import Core.BoundaryConditionHandler
+        import Core.IntegrateHandler
+        import Core.EvaluationHandler
+        import Core.BasisHandler
+        import Core.SolverHandler
+        
+    % SETTING THE NUMBER OF NODES AND INTERVALS
 
     ne = round((cutx(2)-cutx(1))/hx);   % Number of Intervals
 
@@ -17,6 +26,12 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     % USED TO EVALUATE THE MODAL BASIS
 
     evalNodesTrans = linspace(0,1,M);
+    
+    % Vertical direction
+            
+    obj_gaussLegendre_2 = IntegrateHandler();
+    obj_gaussLegendre_2.numbQuadNodes = M;
+    [~, verGLNodes, verWeights] = gaussLegendre(obj_gaussLegendre_2);  
 
     % INITIALIZATION OF THE SOLUTION MATRICES
 
@@ -41,12 +56,28 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     obj_newModalBasis = BasisHandler();
 
     obj_newModalBasis.dimModalBasis         = size_mb;
-    obj_newModalBasis.evalNodesY            = evalNodesTrans;
+    obj_newModalBasis.evalNodesY            = verGLNodes;
+    obj_newModalBasis.evalWeightsY          = verWeights;
     obj_newModalBasis.labelUpBoundCond      = bc_up{1};
     obj_newModalBasis.labelDownBoundCond    = bc_down{1};
     obj_newModalBasis.coeffForm             = Coeff_forma;
 
     [coeffModalBase,~,~] = newModalBasis3D(obj_newModalBasis);
+    
+    % DEBUG
+            
+    x = verGLNodes;
+    y = verGLNodes;
+    [X,Y] = meshgrid(x,y);
+
+    figure;
+    for ii = 1:size_mb^2
+        subplot(size_mb,size_mb,ii)
+        surf(X,Y,coeffModalBase(:,:,ii));
+        az = 45;
+        el = 30;
+        view(az, el);
+    end
     
     disp('FINISHED COMPUTE MODAL BASIS for PLOT')
 
@@ -151,11 +182,11 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     
     type = geoInfo.Type;
     
+    % MAP THE REFERENCE NODES INTO PHYSICAL NODES
+    
     [X,Y,Z] = mapOut3DHiMod(evalNodesX,evalNodesTrans,evalNodesTrans,geoInfo,type);
     
-    % PLOT SLICES
-    
-    disp(max(max(max(solMat))))
+    % PLOT SLICES OF THE PHYSICAL VOLUME
 
     set(gcf, 'Renderer', 'OpenGL')
 
@@ -172,17 +203,15 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     view(az, el);
     colorbar
     
+    % LOCATION FREEFEM FILES
+    
     fileToRead1 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffMesh.mesh'];
     fileToRead2 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/ffSolution.sol'];
     fileToRead3 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/A.txt'];
     fileToRead4 = [pwd,'/Geometry/3D_',geoInfo.Type,'/ff/M.txt'];
     
-%     fileToRead1 = [pwd,'/Geometry/3D_',Type,'/ff/ffMesh.mesh'];
-%     fileToRead2 = [pwd,'/Geometry/3D_',Type,'/ff/ffSolution.sol'];
-%     fileToRead3 = [pwd,'/Geometry/3D_',Type,'/ff/A.txt'];
-%     fileToRead4 = [pwd,'/Geometry/3D_',Type,'/ff/M.txt'];
-    
-    
+    % IMPORT FREEFEM INFORMATION
+ 
     [structMesh,ffSol,stiffMat,massMat] = my_FFimportfilemesh_3D(fileToRead1, ...   
                                                              fileToRead2, ...
                                                              fileToRead3, ...
@@ -220,6 +249,13 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     disp('MESH STRUCTURE INFORMATION')
     disp(['Mesh number of nodes    : ',num2str(structMesh.NumbNodes)])
     disp(['Mesh number of elements : ',num2str(structMesh.NumbElements)])
+    
+    disp('  ')
+    disp('COMPARE SOLUTION INFORMATION')
+    disp(['Maximum HigaMod Solution Value : ',num2str(max(max(max(higaSol))))])
+    disp(['Maximum Freefem Solution Value : ',num2str(max(max(max(ffSol))))])
+    disp(['Minimum HigaMod Solution Value : ',num2str(min(min(min(higaSol))))])
+    disp(['Minimum Freefem Solution Value : ',num2str(min(min(min(ffSol))))])
     
     disp('STARTED EXPORTING FILE .VTK')
     
@@ -278,6 +314,18 @@ function [errL2,errH1] = computeErrorIGA_scatter_3D(size_mb,a_ril,b_ril,cutx,...
     fid = fopen(fileVTK,'w');
     vtk_puvw_write (fid, fileVTK, node_num, element_num, ...
                     element_order, xyz, element_node', higaSol', uvw )
+    fclose(fid);
+    
+    fileVTK = 'HigaError.vtk';
+    fid = fopen(fileVTK,'w');
+    vtk_puvw_write (fid, fileVTK, node_num, element_num, ...
+                    element_order, xyz, element_node', err', uvw )
+    fclose(fid);
+    
+    fileVTK = 'ffSol.vtk';
+    fid = fopen(fileVTK,'w');
+    vtk_puvw_write (fid, fileVTK, node_num, element_num, ...
+                    element_order, xyz, element_node', ffSol, uvw )
     fclose(fid);
     
     cd ../..

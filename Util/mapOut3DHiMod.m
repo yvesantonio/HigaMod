@@ -29,6 +29,10 @@ function [X,Y,Z] = mapOut3DHiMod(x,y,z,geoInfo,type)
         zNew = xOld;
         yNew = zOld;
         xNew = yOld;
+    elseif(strcmp(type,'Slab_4'))
+        zNew = xOld;
+        yNew = zOld;
+        xNew = yOld;
     end
     
     l = length(zNew);

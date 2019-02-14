@@ -1240,17 +1240,27 @@ classdef AssemblerADRHandler
             % Set variables to use a Legendre Modal Base
             
             obj_newModalBasis.dimLegendreBase = obj.dimModalBasis;
-            obj_newModalBasis.evalLegendreNodes = verGLNodes;
+            obj_newModalBasis.evalLegendreNodes = augVerNodes;
             
             % Set variables to use a Educated Modal Basis
             
             obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
-            obj_newModalBasis.evalNodesY = verGLNodes;
+            obj_newModalBasis.evalNodesY = augVerNodes;
+            obj_newModalBasis.evalWeightsY = augVerWeights;
             obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomain;
             obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
             obj_newModalBasis.coeffForm = obj.coefficientForm;
 
-            [modalBasis, modalBasisDer] = newModalBasis(obj_newModalBasis);
+            [modalBasis, modalBasisDer] = newModalBasisLegendre(obj_newModalBasis);
+            
+            % DEBUG
+            
+            figure
+            
+            for ii = 1:obj.dimModalBasis 
+                plot(verGLNodes, modalBasis(:,ii));
+                hold on;
+            end
             
             %% MEMORY ALLOCATION FOR SYSTEM MATRICES
 
@@ -2964,7 +2974,8 @@ classdef AssemblerADRHandler
             obj_newModalBasis = BasisHandler();
             
             obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
-            obj_newModalBasis.evalNodesY = verGLNodes;
+            obj_newModalBasis.evalNodesY = augVerNodes;
+            obj_newModalBasis.evalWeightsY = augVerWeights;
             obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomain;
             obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
             obj_newModalBasis.coeffForm = obj.coefficientForm;
@@ -2976,19 +2987,21 @@ classdef AssemblerADRHandler
             modalBasisStruct.modalBasisDer2 = modalBasisDer2;
             modalBasisStruct.numbModes = obj.dimModalBasis;
 
-            x = verGLNodes;
-            y = verGLNodes;
-            [X,Y] = meshgrid(x,y);
+%             % DEBUG
+%             
+%             x = augVerNodes;
+%             y = augVerNodes;
+%             [X,Y] = meshgrid(x,y);
+%             
+%             figure;
+%             for ii = 1:obj.dimModalBasis^2
+%                 subplot(obj.dimModalBasis,obj.dimModalBasis,ii)
+%                 surf(X,Y,modalBasis(:,:,ii));
+%                 az = 45;
+%                 el = 30;
+%                 view(az, el);
+%             end
             
-            figure;
-            for ii = 1:obj.dimModalBasis^2
-                subplot(obj.dimModalBasis,obj.dimModalBasis,ii)
-                surf(X,Y,modalBasis(:,:,ii));
-                az = 45;
-                el = 30;
-                view(az, el);
-            end
-
             disp('Finished COMPUTATION OF THE MODAL BASIS IN TRANSVERSE DOMAIN')
             
             %% MEMORY ALLOCATION FOR SYSTEM MATRICES
@@ -3138,7 +3151,7 @@ classdef AssemblerADRHandler
                     [Amb,bmb,liftCoeffA,liftCoeffB] = assemblerIGAScatter3D( imb, kmb, ...
                                             augVerWeights,modalBasis(:,:,imb),modalBasisDer1(:,:,imb),modalBasisDer2(:,:,imb),modalBasis(:,:,kmb),...
                                             modalBasisDer1(:,:,kmb),modalBasisDer2(:,:,kmb),geoData,Computed,lifting,aLift,bLift,msh,space,jacFunc,...
-                                            spaceFunc);
+                                            spaceFunc,X,Y);
 
                     % Assignment of the Block Matrix Just Assembled
 
@@ -6562,7 +6575,7 @@ end
 %% Method 'assemblerIGAScatter3D'
             
 function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,mb_yi,mb_zi,mb_k,mb_yk,mb_zk,geoData,...
-                                Computed,lifting,aLift,bLift,msh,space,jacFunc,spaceFunc,BoundCond)
+                                Computed,lifting,aLift,bLift,msh,space,jacFunc,spaceFunc,X,Y)
 
     %% IMPORT CLASS
     
@@ -6585,12 +6598,17 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     %                   (aLift).* Computed.beta2_c - ...
     %                   Computed.sigma_c .* lifting) .* ...
     %                   jacFunc.evalDetJac;
-
+    
     funcToIntegrate = jacFunc.evalDetJac .* Computed.force_c;
     
     weightMat = augVerWeights * augVerWeights';
     funcWeight = mb_i .* weightMat;
 
+    % DEBUG
+    
+    disp(size(funcToIntegrate))
+    disp(size(funcWeight))
+    
     aux = funcToIntegrate .* funcWeight;
     auxx = sum(sum(aux));
     forceVec(:) = auxx(1,1,:);
@@ -6602,120 +6620,188 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
-    Psi11 = jacFunc.Psi1_dx .* jacFunc.Psi1_dx + ...
-            jacFunc.Psi1_dy .* jacFunc.Psi1_dy + ...
-            jacFunc.Psi1_dz .* jacFunc.Psi1_dz;
-    Psi12 = jacFunc.Psi1_dx .* jacFunc.Psi2_dx + ...
-            jacFunc.Psi1_dy .* jacFunc.Psi2_dy + ...
-            jacFunc.Psi1_dz .* jacFunc.Psi2_dz;
-    Psi13 = jacFunc.Psi1_dx .* jacFunc.Psi3_dx + ...
-            jacFunc.Psi1_dy .* jacFunc.Psi3_dy + ...
-            jacFunc.Psi1_dz .* jacFunc.Psi3_dz;
-        
-    Psi21 = jacFunc.Psi2_dx .* jacFunc.Psi1_dx + ...
-            jacFunc.Psi2_dy .* jacFunc.Psi1_dy + ...
-            jacFunc.Psi2_dz .* jacFunc.Psi1_dz;    
-    Psi22 = jacFunc.Psi2_dx .* jacFunc.Psi2_dx + ...
-            jacFunc.Psi2_dy .* jacFunc.Psi2_dy + ...
-            jacFunc.Psi2_dz .* jacFunc.Psi2_dz;
-    Psi23 = jacFunc.Psi2_dx .* jacFunc.Psi3_dx + ...
-            jacFunc.Psi2_dy .* jacFunc.Psi3_dy + ...
-            jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
+    % FUNCTIONS TO INTEGRATE
     
-    Psi31 = jacFunc.Psi3_dx .* jacFunc.Psi1_dx + ...
-            jacFunc.Psi3_dy .* jacFunc.Psi1_dy + ...
-            jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
-    Psi32 = jacFunc.Psi3_dx .* jacFunc.Psi2_dx + ...
-            jacFunc.Psi3_dy .* jacFunc.Psi2_dy + ...
-            jacFunc.Psi3_dz .* jacFunc.Psi2_dz;
-    Psi33 = jacFunc.Psi3_dx .* jacFunc.Psi3_dx + ...
-            jacFunc.Psi3_dy .* jacFunc.Psi3_dy + ...
-            jacFunc.Psi3_dz .* jacFunc.Psi3_dz;
+    funcToIntegrate_01 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dz .* jacFunc.Psi1_dz;
+    funcToIntegrate_02 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi1_dz;
+    funcToIntegrate_03 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi1_dz;
     
-    BetaPsi1 = Computed.beta1_c .* jacFunc.Psi1_dx + ...
-               Computed.beta2_c .* jacFunc.Psi1_dy + ...
-               Computed.beta3_c .* jacFunc.Psi1_dz;
-    BetaPsi2 = Computed.beta1_c .* jacFunc.Psi2_dx + ...
-               Computed.beta2_c .* jacFunc.Psi2_dy + ...
-               Computed.beta3_c .* jacFunc.Psi2_dz;
-    BetaPsi3 = Computed.beta1_c .* jacFunc.Psi3_dx + ...
-               Computed.beta2_c .* jacFunc.Psi3_dy + ...
-               Computed.beta3_c .* jacFunc.Psi3_dz;
-
-    funcToIntegrate_1  = jacFunc.evalDetJac .* Computed.mu_c .* Psi11;
-    funcToIntegrate_2  = jacFunc.evalDetJac .* Computed.mu_c .* Psi12;
-    funcToIntegrate_3  = jacFunc.evalDetJac .* Computed.mu_c .* Psi13;
-    funcToIntegrate_4  = jacFunc.evalDetJac .* Computed.mu_c .* Psi21;
-    funcToIntegrate_5  = jacFunc.evalDetJac .* Computed.mu_c .* Psi22;
-    funcToIntegrate_6  = jacFunc.evalDetJac .* Computed.mu_c .* Psi23;
-    funcToIntegrate_7  = jacFunc.evalDetJac .* Computed.mu_c .* Psi31;
-    funcToIntegrate_8  = jacFunc.evalDetJac .* Computed.mu_c .* Psi32;
-    funcToIntegrate_9  = jacFunc.evalDetJac .* Computed.mu_c .* Psi33;
-    funcToIntegrate_10 = jacFunc.evalDetJac .* BetaPsi1;
-    funcToIntegrate_11 = jacFunc.evalDetJac .* BetaPsi2;
-    funcToIntegrate_12 = jacFunc.evalDetJac .* BetaPsi3;
+    funcToIntegrate_04 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
+    funcToIntegrate_05 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
+    funcToIntegrate_06 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi2_dz;
     
-    % DEBUG
-    % 
-    % disp(Psi11(1,1,1))
-    % disp(Psi12(1,1,1))
-    % disp(Psi13(1,1,1))
-    % disp(Psi21(1,1,1))
-    % disp(Psi22(1,1,1))
-    % disp(Psi23(1,1,1))
-    % disp(Psi31(1,1,1))
-    % disp(Psi32(1,1,1))
-    % disp(Psi33(1,1,1))
-    % disp(BetaPsi1(1,1,1))
-    % disp(BetaPsi2(1,1,1))
-    % disp(BetaPsi3(1,1,1))
-    % disp(jacFunc.evalDetJac(1,1,1))
-    % 
-    % return
+    funcToIntegrate_07 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dz .* jacFunc.Psi3_dz;
+    funcToIntegrate_08 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi1_dy;
+    funcToIntegrate_09 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dy .* jacFunc.Psi2_dy;
     
-    funcWeight_1  = mb_k  .* mb_i  .* weightMat;
-    funcWeight_2  = mb_k  .* mb_yi .* weightMat;
-    funcWeight_3  = mb_k  .* mb_zi .* weightMat;
-    funcWeight_4  = mb_yk .* mb_i  .* weightMat;
-    funcWeight_5  = mb_yk .* mb_yi .* weightMat;
-    funcWeight_6  = mb_yk .* mb_zi .* weightMat;
-    funcWeight_7  = mb_zk .* mb_i  .* weightMat;
-    funcWeight_8  = mb_zk .* mb_yi .* weightMat;
-    funcWeight_9  = mb_zk .* mb_zi .* weightMat;
-    funcWeight_10 = mb_k  .* mb_i  .* weightMat;
-    funcWeight_11 = mb_yk .* mb_i  .* weightMat;
-    funcWeight_12 = mb_zk .* mb_i  .* weightMat;
-
-    aux1  = funcToIntegrate_1  .* funcWeight_1;
-    aux2  = funcToIntegrate_2  .* funcWeight_2;
-    aux3  = funcToIntegrate_3  .* funcWeight_3;
-    aux4  = funcToIntegrate_4  .* funcWeight_4;
-    aux5  = funcToIntegrate_5  .* funcWeight_5;
-    aux6  = funcToIntegrate_6  .* funcWeight_6;
-    aux7  = funcToIntegrate_7  .* funcWeight_7;
-    aux8  = funcToIntegrate_8  .* funcWeight_8;
-    aux9  = funcToIntegrate_9  .* funcWeight_9;
-    aux10 = funcToIntegrate_10 .* funcWeight_10;
-    aux11 = funcToIntegrate_11 .* funcWeight_11;
-    aux12 = funcToIntegrate_12 .* funcWeight_12;
-
-    auxVec1  = sum(sum(aux1));
-    auxVec2  = sum(sum(aux2));
-    auxVec3  = sum(sum(aux3));
-    auxVec4  = sum(sum(aux4));
-    auxVec5  = sum(sum(aux5));
-    auxVec6  = sum(sum(aux6));
-    auxVec7  = sum(sum(aux7));
-    auxVec8  = sum(sum(aux8));
-    auxVec9  = sum(sum(aux9));
-    auxVec10 = sum(sum(aux10));
-    auxVec11 = sum(sum(aux11));
-    auxVec12 = sum(sum(aux12));
+    funcToIntegrate_10 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dy .* jacFunc.Psi3_dy;
+    funcToIntegrate_11 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi1_dx;
+    funcToIntegrate_12 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dx .* jacFunc.Psi2_dx;
     
-    r00 = auxVec5 + auxVec6 + auxVec8 + auxVec9 + auxVec11 + auxVec12;
-    r10 = auxVec2 + auxVec3 + auxVec10;
-    r01 = auxVec4 + auxVec7;
-    r11 = auxVec1;
+    funcToIntegrate_13 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dx .* jacFunc.Psi3_dx;
+    funcToIntegrate_14 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
+    funcToIntegrate_15 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
+    
+    funcToIntegrate_16 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi2_dy;
+    funcToIntegrate_17 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi2_dy;
+    funcToIntegrate_18 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi3_dy;
+    
+    funcToIntegrate_19 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi3_dy;
+    funcToIntegrate_20 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dy .* jacFunc.Psi3_dy;
+    funcToIntegrate_21 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dy .* jacFunc.Psi3_dy;
+    
+    funcToIntegrate_22 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi2_dx;
+    funcToIntegrate_23 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi2_dx;
+    funcToIntegrate_24 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi3_dx;
+    
+    funcToIntegrate_25 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi3_dx;
+    funcToIntegrate_26 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dx .* jacFunc.Psi3_dx;
+    funcToIntegrate_27 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dx .* jacFunc.Psi3_dx;
+    
+    funcToIntegrate_28 = jacFunc.evalDetJac .* Computed.beta3_c .* jacFunc.Psi1_dx;
+    funcToIntegrate_29 = jacFunc.evalDetJac .* Computed.beta2_c .* jacFunc.Psi1_dx;
+    funcToIntegrate_30 = jacFunc.evalDetJac .* Computed.beta1_c .* jacFunc.Psi1_dx;
+    
+    funcToIntegrate_31 = jacFunc.evalDetJac .* Computed.beta3_c .* jacFunc.Psi2_dx;
+    funcToIntegrate_32 = jacFunc.evalDetJac .* Computed.beta3_c .* jacFunc.Psi3_dx;
+    funcToIntegrate_33 = jacFunc.evalDetJac .* Computed.beta2_c .* jacFunc.Psi2_dx;
+    
+    funcToIntegrate_34 = jacFunc.evalDetJac .* Computed.beta2_c .* jacFunc.Psi3_dx;
+    funcToIntegrate_35 = jacFunc.evalDetJac .* Computed.beta1_c .* jacFunc.Psi2_dx;
+    funcToIntegrate_36 = jacFunc.evalDetJac .* Computed.beta1_c .* jacFunc.Psi3_dx;
+    
+    % INTEGRATION WEIGHTS
+    
+    funcWeight_01  = mb_k  .* mb_i  .* weightMat;
+    funcWeight_02  = mb_yk .* mb_i  .* weightMat;
+    funcWeight_03  = mb_k  .* mb_yi .* weightMat;
+    
+    funcWeight_04  = mb_zk .* mb_i  .* weightMat;
+    funcWeight_05  = mb_k  .* mb_zi .* weightMat;
+    funcWeight_06  = mb_yk .* mb_yi .* weightMat;
+    
+    funcWeight_07  = mb_zk .* mb_zi .* weightMat;
+    funcWeight_08  = mb_k  .* mb_i  .* weightMat;
+    funcWeight_09  = mb_yk .* mb_yi .* weightMat;
+    
+    funcWeight_10  = mb_zk .* mb_zi .* weightMat;
+    funcWeight_11  = mb_k  .* mb_i  .* weightMat;
+    funcWeight_12  = mb_yk .* mb_yi .* weightMat;
+    
+    funcWeight_13  = mb_zk .* mb_zi .* weightMat;
+    funcWeight_14  = mb_yk .* mb_zi .* weightMat;
+    funcWeight_15  = mb_zk .* mb_yi .* weightMat;
+    
+    funcWeight_16  = mb_yk .* mb_i  .* weightMat;
+    funcWeight_17  = mb_k  .* mb_yi .* weightMat;
+    funcWeight_18  = mb_zk .* mb_i  .* weightMat;
+    
+    funcWeight_19  = mb_k  .* mb_zi .* weightMat;
+    funcWeight_20  = mb_yk .* mb_zi .* weightMat;
+    funcWeight_21  = mb_zk .* mb_yi .* weightMat;
+    
+    funcWeight_22  = mb_yk .* mb_i  .* weightMat;
+    funcWeight_23  = mb_k  .* mb_yi .* weightMat;
+    funcWeight_24  = mb_zk .* mb_i  .* weightMat;
+    
+    funcWeight_25  = mb_k  .* mb_zi .* weightMat;
+    funcWeight_26  = mb_yk .* mb_zi .* weightMat;
+    funcWeight_27  = mb_zk .* mb_yi .* weightMat;
+    
+    funcWeight_28  = mb_k  .* mb_i  .* weightMat;
+    funcWeight_29  = mb_k  .* mb_i  .* weightMat;
+    funcWeight_30  = mb_k  .* mb_i  .* weightMat;
+    
+    funcWeight_31  = mb_yk .* mb_i  .* weightMat;
+    funcWeight_32  = mb_zk .* mb_i  .* weightMat;
+    funcWeight_33  = mb_yk .* mb_i  .* weightMat;
+    
+    funcWeight_34  = mb_zk .* mb_i  .* weightMat;
+    funcWeight_35  = mb_yk .* mb_i  .* weightMat;
+    funcWeight_36  = mb_zk .* mb_i  .* weightMat;
+    
+    % APPLICATION OF THE QUADRATURE RULE
+    
+    aux01  = funcToIntegrate_01  .* funcWeight_01;
+    aux02  = funcToIntegrate_02  .* funcWeight_02;
+    aux03  = funcToIntegrate_03  .* funcWeight_03;
+    aux04  = funcToIntegrate_04  .* funcWeight_04;
+    aux05  = funcToIntegrate_05  .* funcWeight_05;
+    aux06  = funcToIntegrate_06  .* funcWeight_06;
+    aux07  = funcToIntegrate_07  .* funcWeight_07;
+    aux08  = funcToIntegrate_08  .* funcWeight_08;
+    aux09  = funcToIntegrate_09  .* funcWeight_09;
+    aux10  = funcToIntegrate_10  .* funcWeight_10;
+    aux11  = funcToIntegrate_11  .* funcWeight_11;
+    aux12  = funcToIntegrate_12  .* funcWeight_12;
+    aux13  = funcToIntegrate_13  .* funcWeight_13;
+    aux14  = funcToIntegrate_14  .* funcWeight_14;
+    aux15  = funcToIntegrate_15  .* funcWeight_15;
+    aux16  = funcToIntegrate_16  .* funcWeight_16;
+    aux17  = funcToIntegrate_17  .* funcWeight_17;
+    aux18  = funcToIntegrate_18  .* funcWeight_18;
+    aux19  = funcToIntegrate_19  .* funcWeight_19;
+    aux20  = funcToIntegrate_20  .* funcWeight_20;
+    aux21  = funcToIntegrate_21  .* funcWeight_21;
+    aux22  = funcToIntegrate_22  .* funcWeight_22;
+    aux23  = funcToIntegrate_23  .* funcWeight_23;
+    aux24  = funcToIntegrate_24  .* funcWeight_24;
+    aux25  = funcToIntegrate_25  .* funcWeight_25;
+    aux26  = funcToIntegrate_26  .* funcWeight_26;
+    aux27  = funcToIntegrate_27  .* funcWeight_27;
+    aux28  = funcToIntegrate_28  .* funcWeight_28;
+    aux29  = funcToIntegrate_29  .* funcWeight_29;
+    aux30  = funcToIntegrate_30  .* funcWeight_30;
+    aux31  = funcToIntegrate_31  .* funcWeight_31;
+    aux32  = funcToIntegrate_32  .* funcWeight_32;
+    aux33  = funcToIntegrate_33  .* funcWeight_33;
+    aux34  = funcToIntegrate_34  .* funcWeight_34;
+    aux35  = funcToIntegrate_35  .* funcWeight_35;
+    aux36  = funcToIntegrate_36  .* funcWeight_36;
+    
+    auxVec01  = sum(sum(aux01));
+    auxVec02  = sum(sum(aux02));
+    auxVec03  = sum(sum(aux03));
+    auxVec04  = sum(sum(aux04));
+    auxVec05  = sum(sum(aux05));
+    auxVec06  = sum(sum(aux06));
+    auxVec07  = sum(sum(aux07));
+    auxVec08  = sum(sum(aux08));
+    auxVec09  = sum(sum(aux09));
+    auxVec10  = sum(sum(aux10));
+    auxVec11  = sum(sum(aux11));
+    auxVec12  = sum(sum(aux12));
+    auxVec13  = sum(sum(aux13));
+    auxVec14  = sum(sum(aux14));
+    auxVec15  = sum(sum(aux15));
+    auxVec16  = sum(sum(aux16));
+    auxVec17  = sum(sum(aux17));
+    auxVec18  = sum(sum(aux18));
+    auxVec19  = sum(sum(aux19));
+    auxVec20  = sum(sum(aux20));
+    auxVec21  = sum(sum(aux21));
+    auxVec22  = sum(sum(aux22));
+    auxVec23  = sum(sum(aux23));
+    auxVec24  = sum(sum(aux24));
+    auxVec25  = sum(sum(aux25));
+    auxVec26  = sum(sum(aux26));
+    auxVec27  = sum(sum(aux27));
+    auxVec28  = sum(sum(aux28));
+    auxVec29  = sum(sum(aux29));
+    auxVec30  = sum(sum(aux30));
+    auxVec31  = sum(sum(aux31));
+    auxVec32  = sum(sum(aux32));
+    auxVec33  = sum(sum(aux33));
+    auxVec34  = sum(sum(aux34));
+    auxVec35  = sum(sum(aux35));
+    auxVec36  = sum(sum(aux36));
+    
+    r00 = auxVec06 + auxVec07 + auxVec09 + auxVec10 + auxVec12 + auxVec13 + ...
+          auxVec14 + auxVec15 + auxVec20 + auxVec21 + auxVec26 + auxVec27 + ...
+          auxVec31 + auxVec32 + auxVec33 + auxVec34 + auxVec35 + auxVec36;
+    r10 = auxVec03 + auxVec05 + auxVec17 + auxVec19 + auxVec23 + auxVec25 + auxVec28 + auxVec29 + auxVec30;
+    r01 = auxVec02 + auxVec04 + auxVec16 + auxVec18 + auxVec22 + auxVec24;
+    r11 = auxVec01 + auxVec08 + auxVec11;
     
     auxx1(:) = r00(1,1,:);
     auxx2(:) = r01(1,1,:);
@@ -6725,6 +6811,151 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     r01 = auxx2;
     r10 = auxx3;
     r11 = auxx4;
+    
+    
+%     Psi11 = jacFunc.Psi1_dx .* jacFunc.Psi1_dx + ...
+%             jacFunc.Psi1_dy .* jacFunc.Psi1_dy + ...
+%             jacFunc.Psi1_dz .* jacFunc.Psi1_dz;
+%     Psi12 = jacFunc.Psi1_dx .* jacFunc.Psi2_dx + ...
+%             jacFunc.Psi1_dy .* jacFunc.Psi2_dy + ...
+%             jacFunc.Psi1_dz .* jacFunc.Psi2_dz;
+%     Psi13 = jacFunc.Psi1_dx .* jacFunc.Psi3_dx + ...
+%             jacFunc.Psi1_dy .* jacFunc.Psi3_dy + ...
+%             jacFunc.Psi1_dz .* jacFunc.Psi3_dz;
+%         
+%     Psi21 = jacFunc.Psi2_dx .* jacFunc.Psi1_dx + ...
+%             jacFunc.Psi2_dy .* jacFunc.Psi1_dy + ...
+%             jacFunc.Psi2_dz .* jacFunc.Psi1_dz;    
+%     Psi22 = jacFunc.Psi2_dx .* jacFunc.Psi2_dx + ...
+%             jacFunc.Psi2_dy .* jacFunc.Psi2_dy + ...
+%             jacFunc.Psi2_dz .* jacFunc.Psi2_dz;
+%     Psi23 = jacFunc.Psi2_dx .* jacFunc.Psi3_dx + ...
+%             jacFunc.Psi2_dy .* jacFunc.Psi3_dy + ...
+%             jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
+%     
+%     Psi31 = jacFunc.Psi3_dx .* jacFunc.Psi1_dx + ...
+%             jacFunc.Psi3_dy .* jacFunc.Psi1_dy + ...
+%             jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
+%     Psi32 = jacFunc.Psi3_dx .* jacFunc.Psi2_dx + ...
+%             jacFunc.Psi3_dy .* jacFunc.Psi2_dy + ...
+%             jacFunc.Psi3_dz .* jacFunc.Psi2_dz;
+%     Psi33 = jacFunc.Psi3_dx .* jacFunc.Psi3_dx + ...
+%             jacFunc.Psi3_dy .* jacFunc.Psi3_dy + ...
+%             jacFunc.Psi3_dz .* jacFunc.Psi3_dz;
+%     
+%     BetaPsi1 = Computed.beta1_c .* jacFunc.Psi1_dx + ...
+%                Computed.beta2_c .* jacFunc.Psi1_dy + ...
+%                Computed.beta3_c .* jacFunc.Psi1_dz;
+%     BetaPsi2 = Computed.beta1_c .* jacFunc.Psi2_dx + ...
+%                Computed.beta2_c .* jacFunc.Psi2_dy + ...
+%                Computed.beta3_c .* jacFunc.Psi2_dz;
+%     BetaPsi3 = Computed.beta1_c .* jacFunc.Psi3_dx + ...
+%                Computed.beta2_c .* jacFunc.Psi3_dy + ...
+%                Computed.beta3_c .* jacFunc.Psi3_dz;
+% 
+%     funcToIntegrate_1  = jacFunc.evalDetJac .* Computed.mu_c .* Psi11;
+%     funcToIntegrate_2  = jacFunc.evalDetJac .* Computed.mu_c .* Psi12;
+%     funcToIntegrate_3  = jacFunc.evalDetJac .* Computed.mu_c .* Psi13;
+%     funcToIntegrate_4  = jacFunc.evalDetJac .* Computed.mu_c .* Psi21;
+%     funcToIntegrate_5  = jacFunc.evalDetJac .* Computed.mu_c .* Psi22;
+%     funcToIntegrate_6  = jacFunc.evalDetJac .* Computed.mu_c .* Psi23;
+%     funcToIntegrate_7  = jacFunc.evalDetJac .* Computed.mu_c .* Psi31;
+%     funcToIntegrate_8  = jacFunc.evalDetJac .* Computed.mu_c .* Psi32;
+%     funcToIntegrate_9  = jacFunc.evalDetJac .* Computed.mu_c .* Psi33;
+%     funcToIntegrate_10 = jacFunc.evalDetJac .* BetaPsi1;
+%     funcToIntegrate_11 = jacFunc.evalDetJac .* BetaPsi2;
+%     funcToIntegrate_12 = jacFunc.evalDetJac .* BetaPsi3;
+%     
+%     funcWeight_1  = mb_k  .* mb_i  .* weightMat;
+%     funcWeight_2  = mb_k  .* mb_yi .* weightMat;
+%     funcWeight_3  = mb_k  .* mb_zi .* weightMat;
+%     funcWeight_4  = mb_yk .* mb_i  .* weightMat;
+%     funcWeight_5  = mb_yk .* mb_yi .* weightMat;
+%     funcWeight_6  = mb_yk .* mb_zi .* weightMat;
+%     funcWeight_7  = mb_zk .* mb_i  .* weightMat;
+%     funcWeight_8  = mb_zk .* mb_yi .* weightMat;
+%     funcWeight_9  = mb_zk .* mb_zi .* weightMat;
+%     funcWeight_10 = mb_k  .* mb_i  .* weightMat;
+%     funcWeight_11 = mb_yk .* mb_i  .* weightMat;
+%     funcWeight_12 = mb_zk .* mb_i  .* weightMat;
+% 
+%     aux1  = funcToIntegrate_1  .* funcWeight_1;
+%     aux2  = funcToIntegrate_2  .* funcWeight_2;
+%     aux3  = funcToIntegrate_3  .* funcWeight_3;
+%     aux4  = funcToIntegrate_4  .* funcWeight_4;
+%     aux5  = funcToIntegrate_5  .* funcWeight_5;
+%     aux6  = funcToIntegrate_6  .* funcWeight_6;
+%     aux7  = funcToIntegrate_7  .* funcWeight_7;
+%     aux8  = funcToIntegrate_8  .* funcWeight_8;
+%     aux9  = funcToIntegrate_9  .* funcWeight_9;
+%     aux10 = funcToIntegrate_10 .* funcWeight_10;
+%     aux11 = funcToIntegrate_11 .* funcWeight_11;
+%     aux12 = funcToIntegrate_12 .* funcWeight_12;
+% 
+%     auxVec1  = sum(sum(aux1));
+%     auxVec2  = sum(sum(aux2));
+%     auxVec3  = sum(sum(aux3));
+%     auxVec4  = sum(sum(aux4));
+%     auxVec5  = sum(sum(aux5));
+%     auxVec6  = sum(sum(aux6));
+%     auxVec7  = sum(sum(aux7));
+%     auxVec8  = sum(sum(aux8));
+%     auxVec9  = sum(sum(aux9));
+%     auxVec10 = sum(sum(aux10));
+%     auxVec11 = sum(sum(aux11));
+%     auxVec12 = sum(sum(aux12));
+%     
+%     r00 = auxVec5 + auxVec6 + auxVec8 + auxVec9 + auxVec11 + auxVec12;
+%     r10 = auxVec2 + auxVec3 + auxVec10;
+%     r01 = auxVec4 + auxVec7;
+%     r11 = auxVec1;
+%     
+%     auxx1(:) = r00(1,1,:);
+%     auxx2(:) = r01(1,1,:);
+%     auxx3(:) = r10(1,1,:);
+%     auxx4(:) = r11(1,1,:);
+%     r00 = auxx1;
+%     r01 = auxx2;
+%     r10 = auxx3;
+%     r11 = auxx4;
+    
+    %%% DEBUG %%%
+    
+    if (imb == 1 && kmb == 1)
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_01(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_02(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_03(:,:,1))
+       
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_04(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_05(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_06(:,:,1))
+    
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_07(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_09(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_10(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_11(:,:,1))
+        
+        figure
+        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_12(:,:,1))
+        
+    end
     
     %% ASSEMBLE OF STIFFNESS MATRIX AND RHS VECTOR
     

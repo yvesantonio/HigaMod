@@ -780,23 +780,23 @@ classdef SolverHandler
                 %                  	       SOLUTION PLOT                          %
                 %-----------------------------------------------------------------%
 
-                [errL2,errH1] = plot_solution_IGA_scatter( ...
-                obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
-                obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
-
-                errorNormH1 = errL2;
-                errorNormL2 = errH1;
-                
-                disp('Finished PLOT OPERATION / ERROR with EXACT SOLUTION')
-            
-%                 [errL2,errH1] = computeErrorIGA_scatter( ...
+%                 [errL2,errH1] = plot_solution_IGA_scatter( ...
 %                 obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
 %                 obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
-%              
-%                 disp('Finished ERROR with FREEFEM++ SOLUTION')
 % 
-%                 errorNormH1 = errH1;
-%                 errorNormL2 = errL2;
+%                 errorNormH1 = errL2;
+%                 errorNormL2 = errH1;
+%                 
+%                 disp('Finished PLOT OPERATION / ERROR with EXACT SOLUTION')
+            
+                [errL2,errH1] = computeErrorIGA_scatter( ...
+                obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
+                obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
+             
+                disp('Finished ERROR with FREEFEM++ SOLUTION')
+
+                errorNormH1 = errH1;
+                errorNormL2 = errL2;
 
                 disp('Finished Method SOLVER IGA')
 

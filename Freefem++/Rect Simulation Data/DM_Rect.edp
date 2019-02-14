@@ -1,8 +1,8 @@
 // Define the parameters of the mesh
 
-int N=500;
+int N=100;
 
-real maxHor=2;
+real maxHor=3;
 real minHor=0;
 real maxVer=1;
 real minVer=0;
@@ -30,15 +30,15 @@ func real dform(real x)
 
 // Create the boundary of the mesh
 
-real x1 = 0;
-real x2 = 2;
-real x3 = 2;
-real x4 = 0;
+real x1 = minHor;
+real x2 = maxHor;
+real x3 = maxHor;
+real x4 = minHor;
 
-real y1 = 0;
-real y2 = 0;
-real y3 = 1;
-real y4 = 1;
+real y1 = minVer;
+real y2 = minVer;
+real y3 = maxVer;
+real y4 = maxVer;
 
 border aa(t=0,1) {x = x1 + t * ( x2 - x1 ); y = y1 + t * ( y2 - y1 ); label=1;}
 border bb(t=0,1) {x = x2 + t * ( x3 - x2 ); y = y2 + t * ( y3 - y2 ); label=2;}
@@ -59,9 +59,10 @@ real chi=1.0;
 real mu=1;
 real beta1=0;
 real beta2=0;
-real sigma=0;
+real sigma=1;
 
-func force = mu * (sin(x*pi/maxHor)*sin(y*pi/maxVer)*(pi/maxHor)^2 + sin(x*pi/maxHor)*sin(y*pi/maxVer)*(pi/maxVer)^2);
+// func force = mu * (sin(x*pi/maxHor)*sin(y*pi/maxVer)*(pi/maxHor)^2 + sin(x*pi/maxHor)*sin(y*pi/maxVer)*(pi/maxVer)^2);
+func force = 1;
 
 fespace Vh(Th,P1);
 Vh w,u,v,ux,uy;
@@ -74,13 +75,15 @@ problem DirDir(u,v)=
 		+ int2d(Th)   ( beta1*dx(u)*v )						// Advection in x direction
 		+ int2d(Th)   ( beta2*dy(u)*v )						// Advection in y direction
 		+ int2d(Th)   ( sigma*u*v     )						// Reaction
-		- int2d(Th)   ( force*v       )						// Force term
-		+ on(1,u=0)
-    + on(2,u=0)
-		+ on(3,u=0)
-		+ on(4,u=0);									// Dirichlet su lato up.
+		- int2d(Th)   ( force*v       );						// Force term
+		//+ on(1,u=0)
+    //+ on(2,u=0)
+		//+ on(3,u=0);
+		//+ on(4,u=0);									// Dirichlet su lato up.
 
 DirDir;
+
+plot(u, value = true, wait = true);
 
 // DEBUG
 cout << "-----------------" << endl;
@@ -90,23 +93,12 @@ cout << "-----------------" << endl;
 // Compute the mass matrix
 
 varf bid ( u, v ) = int2d ( Th ) ( u * v );
-										// + on(1,u=0)
-										// + on(2,u=0)
-										// + on(3,u=0)
-										// + on(4,u=0);
 
 matrix M = bid ( Vh, Vh );
 
 // Compute the stiffness matrix
 
-varf bilinearForm(u,v) = 	int2d(Th)     ( mu*( dx(u)*dx(v) + dy(u)*dy(v) ) )  // Laplacian operator
-													+ int2d(Th)   ( beta1*dx(u)*v )						// Advection in x direction
-													+ int2d(Th)   ( beta2*dy(u)*v )						// Advection in y direction
-													+ int2d(Th)   ( sigma*u*v     );						// Reaction
-													// + on(1,u=0)
-											 		// + on(2,u=0)
-												 	// + on(3,u=0)
-												 	// + on(4,u=0);
+varf bilinearForm(u,v) = 	int2d(Th) ( dx(u)*dx(v) + dy(u)*dy(v) );
 
 matrix A = bilinearForm(Vh, Vh );
 

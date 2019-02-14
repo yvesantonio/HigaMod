@@ -2,7 +2,16 @@ function [errL2,errH1] = computeErrorIGA_scatter(size_mb,a_ril,b_ril,cutx,...
                                                  hx, u,bc_up,bc_down,Coeff_forma,...
                                                  caso,p,k,space,geometry,map)
 
-        % SETTING THE NUMBER OF NODES AND INTERVALS
+    % IMPORT CLASSES
+            
+    import Core.AssemblerADRHandler
+    import Core.BoundaryConditionHandler
+    import Core.IntegrateHandler
+    import Core.EvaluationHandler
+    import Core.BasisHandler
+    import Core.SolverHandler
+                
+    % SETTING THE NUMBER OF NODES AND INTERVALS
 
     ne = round((cutx(2)-cutx(1))/hx);   % Number of Intervals
 
@@ -11,32 +20,46 @@ function [errL2,errH1] = computeErrorIGA_scatter(size_mb,a_ril,b_ril,cutx,...
 
     % SETTING THE NUMBER OF MODALS IN THE Y DIRECTION
 
-    M = 2000;
+    M = 1000;
 
     % CREATION OF THE MESH CONTAINING THE POINTS IN THE Y DIRECTION
     % USED TO EVALUATE THE MODAL BASIS
 
-    evalNodesY = linspace(0,1,M);
+%     augVerNodes = linspace(0,1,M);
 
-    y_elements = length(evalNodesY);
+    % Vertical direction
+            
+    obj_gaussLegendre_2 = IntegrateHandler();
+    obj_gaussLegendre_2.numbQuadNodes = M;
+    [~, verGLNodes, verWeights] = gaussLegendre(obj_gaussLegendre_2); 
+    
+    objVertQuadRule = IntegrateHandler();
+
+    objVertQuadRule.leftBoundInterval = 0;
+    objVertQuadRule.rightBoundInterval = 1;
+    objVertQuadRule.inputNodes = verGLNodes;
+    objVertQuadRule.inputWeights = verWeights;
+
+    [augVerNodes, augVerWeights] = quadratureRule(objVertQuadRule);
 
     % INITIALIZATION OF THE SOLUTION MATRICES
 
-    sol   = zeros(nnx,y_elements);
-    sol_x = zeros(nnx,y_elements);
-    sol_y = zeros(nnx,y_elements);
+    sol   = zeros(nnx,M);
+    sol_x = zeros(nnx,M);
+    sol_y = zeros(nnx,M);
 
     import Core.BasisHandler
 
     obj_newModalBasis = BasisHandler();
 
     obj_newModalBasis.dimModalBasis         = size_mb;
-    obj_newModalBasis.evalNodesY            = evalNodesY;
+    obj_newModalBasis.evalNodesY            = augVerNodes;
+    obj_newModalBasis.evalWeightsY          = augVerWeights;
     obj_newModalBasis.labelUpBoundCond      = bc_up{1};
     obj_newModalBasis.labelDownBoundCond    = bc_down{1};
     obj_newModalBasis.coeffForm             = Coeff_forma;
 
-    [coeffModalBase,coeffModalBaseDer] = newModalBasis(obj_newModalBasis);
+    [coeffModalBase,coeffModalBaseDer] = newModalBasisLegendre(obj_newModalBasis);
 
     %---------------------------------------------------------------------%
     % Note:
@@ -114,7 +137,7 @@ function [errL2,errH1] = computeErrorIGA_scatter(size_mb,a_ril,b_ril,cutx,...
 
             end
 
-        sol(h,k) = sol(h,k)+ a_ril(1) * evalNodesY(k) + b_ril(1);
+        sol(h,k) = sol(h,k)+ a_ril(1) * augVerNodes(k) + b_ril(1);
 
         end
 
@@ -127,8 +150,8 @@ function [errL2,errH1] = computeErrorIGA_scatter(size_mb,a_ril,b_ril,cutx,...
     
     disp('Finished EXTRACTING THE HIGAMOD SOLUTION');
 
-    X = mapOut(evalNodesX,evalNodesY,map,1);
-    Y = mapOut(evalNodesX,evalNodesY,map,2);
+    X = mapOut(evalNodesX,augVerNodes,map,1);
+    Y = mapOut(evalNodesX,augVerNodes,map,2);
  
     %---------------------------------------------------------------------%
     % Interpolate and vizualize the freefem++ solution

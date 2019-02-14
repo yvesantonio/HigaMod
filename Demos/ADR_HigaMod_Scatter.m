@@ -81,7 +81,7 @@
     domainLimit_inX      = [minHor,maxHor];  
     domainLimit_inY      = [minVer,maxVer];
     
-    numbModes       = 5;
+    numbModes       = 15;
     nd              = length(numbModes); 
     stepHorMesh     = (maxHor-minHor)*0.05*ones(size(numbModes));
     numbElements    = round((maxHor-minHor)/stepHorMesh);
@@ -134,46 +134,17 @@
         dato_down={0};
     end
     
-    % INFLOW AND OUTFLOW BOUNDARY CONDITIONS
-    % Note: The current version of the code works only for constant
-    % boundary conditions in inflow and outflow;
-    
-    % SELECT THE SIDES
-    
-    dirSides = [1 2];
-    neuSides = [];
-    robSides = [];
-    
-    % DEFINE DIRICHLET AND NEUMANN BOUNDARY CONDITIONS
-    
-    dir  = @(x,side) (side == 1) * 0 + (side == 2) * 0;
-    neu  = @(x,side) (side == 1) * 0 + (side == 2) * 1;
-    rob.value  = @(x,side) (side == 1) * 0 + (side == 2) * 1;
-    rob.mu     = 1.0;
-    rob.chi    = 1.0;
-    
-    % CREATE DATA STRUCTURE
-    
-    igaBoundCond.dirSides   = dirSides;
-    igaBoundCond.neuSides   = neuSides;
-    igaBoundCond.robSides   = robSides;
-    igaBoundCond.dir  = @(x,side) dir(x,side);
-    igaBoundCond.neu  = @(x,side) neu(x,side);
-    igaBoundCond.rob.value  = @(x,side) rob.value;
-    igaBoundCond.rob.mu     = rob.mu;
-    igaBoundCond.rob.chi    = rob.chi;
-    
     %%%%%%%%%%%%%%%%%
     % CHANGE BC HERE!
     %%%%%%%%%%%%%%%%%
     
     igaBoundCond.BC_UP_TAG     = 'dir';
     igaBoundCond.BC_DOWN_TAG   = 'dir';
-    igaBoundCond.BC_INF_TAG   = 'dir';
+    igaBoundCond.BC_INF_TAG   = 'neu';
     igaBoundCond.BC_OUT_TAG  = 'neu';
     igaBoundCond.BC_UP_DATA    = 0;
     igaBoundCond.BC_DOWN_DATA  = 0;
-    igaBoundCond.BC_INF_DATA  = @(rho) 0 + 1 * rho + 1 * -rho.^2;
+    igaBoundCond.BC_INF_DATA  = @(rho) 0 + 0 * rho + 0 * -rho.^2;
     igaBoundCond.BC_OUT_DATA = @(rho) 0 + 0 * rho + 0 * rho.^2;
 
     %% Physical domain
@@ -533,7 +504,7 @@
     
     % Vertical direction
     
-    numbVerNodes = 32;
+    numbVerNodes = numbModes * 7;
 
     %% Coefficients of the bilinear form
     %-------------------------------------------------------------------------%
