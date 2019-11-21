@@ -75,8 +75,6 @@ classdef BasisHandler
                       
         evalLegendreNodes;       % Point in which the Base Functions will be Evaluated.
                                  % They often coincide with the Quadrature Nodes
-                                 
-        evalWeightsY;
         
     end
     
@@ -524,68 +522,68 @@ classdef BasisHandler
             
             %% Method 'newModalBasisLegendre'
             
-            function [coeffModalBase,coeffModalBaseDer] = newModalBasisLegendre(obj)
+            function [coeffModalBaseLegendre,coeffModalBaseLegendreDer] = newModalBasisLegendre(obj)
 
-                %% IMPORT CLASSES
-            
-                import Core.AssemblerADRHandler
-                import Core.BoundaryConditionHandler
-                import Core.IntegrateHandler
-                import Core.EvaluationHandler
-                import Core.BasisHandler
-                import Core.SolverHandler
+                %%
+                % newModalBasisLegendre    - This function evaluates the modal basis 
+                %                            and their derivatives at the nodes. In 
+                %                            this case the we consider the functions 
+                %                            of the modal basis Standard Legendre.
+                %
+                % The inputs are:
+                %%
+                %   (1)  dimLegendreBase    : Number of Functions in the Base (Dirichlet). If we
+                %                             consider the Robin Case, the number of functions
+                %                             goes to 'm+1' 
+                %   (2)  evalLegendreNodes  : Point in which the Base Functions will be Evaluated.
+                %                             They often coincide with the Quadrature Nodes
+                %   
+                % The outputs are:
+                %%
+                %   (1) coeffModalBaseLegendre    : Matrix Containing the Base Functions (Columns)
+                %                                   Evaluated at the Nodes (Rows)
+                %   (2) coeffModalBaseLegendreDer : Matrix Conatining the Derivative of the Base
+                %                                   Functions (Columns)
+                %                                   Evaluated at the Nodes (Rows) 
                 
-                evalNodes   = obj.evalNodesY * 2.0 - 1.0;
-                wghts       = obj.evalWeightsY;
-                
-                xEval  = linspace(-1,1,1000);
-                fEval  = legendre(obj.dimModalBasis,xEval,'norm');                        
-                aux    = diff(fEval');
-                dfEval = aux';
+                evalNodesLeg = obj.evalLegendreNodes - 0.5;
 
                 if(strcmp(obj.labelUpBoundCond,'rob') && strcmp(obj.labelDownBoundCond,'rob'))
 
-                    coeffModalBase    = zeros( length(evalNodes), obj.dimModalBasis);
-                    coeffModalBaseDer = zeros( length(evalNodes), obj.dimModalBasis);
+                    coeffModalBaseLegendre = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
 
                     obj_polyLegendre = IntegrateHandler();
-                    obj_polyLegendre.degreePolyLegendre = obj.dimModalBasis;
+                    obj_polyLegendre.degreePolyLegendre = obj.dimLegendreBase;
                     [P,Pd] = polyLegendre(obj_polyLegendre);
 
                     % Loop on the Base Functions
 
-                    for n = 1:obj.dimModalBasis
+                    for n = 1:obj.dimLegendreBase
 
                         % Loop on the Section
 
-                        coeffModalBase(:,n) = polyval(P{n},evalNodes);
-                        coeffModalBaseDer(:,n) = polyval(Pd{n},evalNodes);
+                        coeffModalBaseLegendre(:,n) = polyval(P{n},evalNodesLeg);
+                        coeffModalBaseLegendreDer(:,n) = polyval(Pd{n},evalNodesLeg);
 
                     end
 
                 elseif(strcmp(obj.labelUpBoundCond,'dir') && strcmp(obj.labelDownBoundCond,'dir'))
-                    
-                    coeffModalBase    = zeros( length(evalNodes), obj.dimModalBasis);
-                    coeffModalBaseDer = zeros( length(evalNodes), obj.dimModalBasis);
 
-                    obj_polyLegendre = IntegrateHandler();
-                    obj_polyLegendre.degreePolyLegendre = obj.dimModalBasis;
-                    [P,Pd] = polyLegendre(obj_polyLegendre);
+                    coeffModalBaseLegendre   = zeros( length(evalNodesLeg), obj.dimLegendreBase);
+                    coeffModalBaseLegendreDer = zeros( length(evalNodesLeg), obj.dimLegendreBase);
 
                     % Loop on the Base Functions
 
-                    for n = 1:obj.dimModalBasis
+                    for n = 1:obj.dimLegendreBase
 
                         % Loop on the Section
 
-                        auxf  = -obj.evalNodesY.^2 + obj.evalNodesY;
-                        auxdf = -2 * obj.evalNodesY + 1;
-                        norm  = sqrt(sum(auxf.^2 .* wghts));
-                        aux1  = polyval(P{n},evalNodes) .* auxf;
-                        aux2  = polyval(Pd{n},evalNodes) .* auxf + polyval(P{n},evalNodes) .* auxdf;
-
-                        coeffModalBase(:,n) = aux1;
-                        coeffModalBaseDer(:,n) = aux2;
+                        for i = 1:length(evalNodesLeg)
+                            coeffModalBaseLegendre  ( i, n ) = evalNodesLeg(i).^(n-1)*(1 - evalNodesLeg(i).^2);
+                            coeffModalBaseLegendreDer( i, n ) = (n-1) * evalNodesLeg(i).^(n-2) * (1 - evalNodesLeg(i).^2) ...
+                                            + evalNodesLeg(i).^(n-1) * (-2 * evalNodesLeg(i));
+                        end
 
                     end
 
@@ -785,7 +783,6 @@ classdef BasisHandler
                     coeffsDer1(:,:,(kk-1)*m+1:kk*m) = aux2;
                     coeffsDer2(:,:,(kk-1)*m+1:kk*m) = aux3;
                 end
-                
             end
             
             %% Method 'newModalBasisLegendre3D'
@@ -813,71 +810,84 @@ classdef BasisHandler
                 %   (2) coeffModalBaseLegendreDer : Matrix Conatining the Derivative of the Base
                 %                                   Functions (Columns)
                 %                                   Evaluated at the Nodes (Rows) 
+
+                evalNodes = obj.evalLegendreNodes * 2 - 1;
+                obj.evalLegendreNodes = evalNodes;
                 
-                %% IMPORT CLASSES
-            
-                import Core.AssemblerADRHandler
-                import Core.BoundaryConditionHandler
-                import Core.IntegrateHandler
-                import Core.EvaluationHandler
-                import Core.BasisHandler
-                import Core.SolverHandler
+%                 if(strcmp(obj.labelUpBoundCond,'rob') && strcmp(obj.labelDownBoundCond,'rob'))
+% 
+%                     coeffModalBaseLegendre = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
+%                     coeffModalBaseLegendreDer = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
+% 
+%                     obj_polyLegendre = IntegrateHandler();
+%                     obj_polyLegendre.degreePolyLegendre = obj.dimLegendreBase;
+%                     [P,Pd] = polyLegendre(obj_polyLegendre);
+% 
+%                     % Loop on the Base Functions
+% 
+%                     for m = 1:obj.dimLegendreBase
+% 
+%                         % Loop on the Section
+% 
+%                         coeffModalBaseLegendre(:,m) = polyval(P{m},obj.evalLegendreNodes);
+%                         coeffModalBaseLegendreDer(:,m) = polyval(Pd{m},obj.evalLegendreNodes);
+% 
+%                     end
+% 
+%                 elseif(strcmp(obj.labelUpBoundCond,'dir') && strcmp(obj.labelDownBoundCond,'dir'))
+% 
+%                     coeffModalBaseLegendre   = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
+%                     coeffModalBaseLegendreDer = zeros( length(obj.evalLegendreNodes), obj.dimLegendreBase);
+% 
+%                     % Loop on the Base Functions
+%                     
+%                     for m = 1:obj.dimLegendreBase
+% 
+%                         % Loop on the Section
+%                         
+%                         syms f(x)
+%                         f(x) = legendreP(m,x);
+%                         df = diff(f,x);
+%                         
+%                         coeffModalBaseLegendre(:,m) = f(obj.evalLegendreNodes);
+%                         coeffModalBaseLegendreDer(:,m) = df(obj.evalLegendreNodes);
+% 
+%                     end
+%                 end
+
+%                 syms f(y,z,modBasisJ,modBasisK)
+%                 f(y,z,modBasisJ,modBasisK) = legendreP(modBasisJ,y) .* legendreP(modBasisK,z);
+%                 dfy = diff(f,y);
+%                 dfz = diff(f,z);
                 
-                %% COMPUTE 1D LEGENDRE POLYNOMIALS
-
-                evalNodes = obj.evalNodesY * 2 - 1;
-                wghts     = obj.evalWeightsY;
-                
-                obj_polyLegendre = IntegrateHandler();
-                obj_polyLegendre.degreePolyLegendre = obj.dimModalBasis;
-                [P,Pd] = polyLegendre(obj_polyLegendre);
-
-                % Loop on the Base Functions
-
-                for n = 1:obj.dimModalBasis
-
-                    % Loop on the Section
-                    
-                    aux1 = polyval(P{n},evalNodes) .* (obj.evalNodesY.^2 - obj.evalNodesY);
-                    aux2 = polyval(Pd{n},evalNodes).* (obj.evalNodesY.^2 - obj.evalNodesY) + polyval(P{n},evalNodes) .* (2 * obj.evalNodesY - 1);
-
-                    coeffModalBase(:,n) = aux1 ./ sqrt(sum(aux1.^2 .* wghts));
-                    coeffModalBaseDer(:,n) = aux2 ./ sqrt(sum(aux2.^2 .* wghts));
-
-                end
-                
-                %% COMPUTE MODAL BASIS AND DERIVATIVES
+                [Y,Z] = meshgrid(evalNodes,evalNodes);
                 
                 N = length(evalNodes);
-                m = obj.dimModalBasis;
+                m = obj.dimLegendreBase;
                 
                 coeffs = zeros(N,N,m^2);
                 coeffsDer1 = zeros(N,N,m^2);
                 coeffsDer2 = zeros(N,N,m^2);
                 
-                % wghtMat = kron(wghts,wghts');
-                
                 for kk = 1:m
                     for ll = 1:m
-                        for ii = 1:N
-                            for jj = 1:N
-                                aux1(ii,jj,ll) = coeffModalBase(ii,kk) * coeffModalBase(jj,ll);
-                                aux2(ii,jj,ll) = coeffModalBaseDer(ii,kk) * coeffModalBase(jj,ll);
-                                aux3(ii,jj,ll) = coeffModalBase(ii,kk) * coeffModalBaseDer(jj,ll);
-                            end
-                        end
                         
-                        % auxx = aux1(:,:,ll);
-                        % l2 = sqrt(sum(sum(auxx.^2 .* wghtMat)));
-                        % 
-                        % disp(['Modal base ',num2str(ll),' L2 norm : ',num2str(l2)])
+                        syms f(y,z)
+                        f(y,z) = legendreP(kk,y) .* legendreP(ll,z);
+                        dfy = diff(f,y);
+                        dfz = diff(f,z);
                         
+                        aux1(:,:,ll) = f(Y,Z);
+                        aux2(:,:,ll) = dfy(Y,Z);
+                        aux3(:,:,ll) = dfz(Y,Z);
                     end
                     coeffs(:,:,(kk-1)*m+1:kk*m) = aux1;
                     coeffsDer1(:,:,(kk-1)*m+1:kk*m) = aux2;
                     coeffsDer2(:,:,(kk-1)*m+1:kk*m) = aux3;
                 end
-         
+                
+                
+                
             end
             
             %% Method 'newModalBasisCheb3D'
@@ -1219,200 +1229,5 @@ classdef BasisHandler
 
                 end
             end
-            
-            %% Method 'newModalBasisStokes3D'
-            
-            function [coeffs,coeffsDer1,coeffsDer2] = newModalBasisStokes3D(obj)
-
-                %%
-                % newModalBasis   - This function evaluates the modal basis and their
-                %                   derivatives at the nodes 'yq', solving the problem
-                %                   of SL.
-                %
-                % The inputs are:
-                %%
-                %   (1)  dimModalBasis         : Dimension of the Modal Basis
-                %   (2)  evalNodesY            : Nodes to Evaluate the Modal Basis and their
-                %                                Derivatives
-                %   (3)  labelUpBoundCond      : Contains the Label Identifying the Nature of
-                %                                the Boundary Conditions on the Upper Limit of
-                %                                the Domain
-                %   (4)  labelDownBoundCond    : Contains the Label Identifying the Nature of
-                %                                the Boundary Conditions on the Lower Limit of
-                %                                the Domain
-                %   (5)  coeffForm             : Data Strusture Containing All the @-Functions
-                %                                and the Constants Relative to the Bilinear Form
-                %
-                % The outputs are:
-                %%
-                %   (1) coeffModalBase         : Coefficients of the Modal Basis at the Nodes
-                %   (2) coeffModalBaseDer      : Coefficients of the Derivative of the Modal
-                %                                Basis at the Nodes
-
-                %% IMPORT CLASSES
-            
-                import Core.AssemblerADRHandler
-                import Core.BoundaryConditionHandler
-                import Core.IntegrateHandler
-                import Core.EvaluationHandler
-                import Core.BasisHandler
-                import Core.SolverHandler
-            
-                %% EVALUATION OF PROBLEM COEFFICIENTS 
-                
-                sigma = obj.coeffForm.coeffrobin;
-                muval = obj.coeffForm.coeffrobin;
-
-                %% INITIALIZATION OF THE COEFFICIENTS OF THE NEW BASIS 
-                % Basis
-
-                coeffModalBase   = zeros( length(obj.evalNodesY), obj.dimModalBasis);
-                coeffModalBaseDer = zeros( length(obj.evalNodesY), obj.dimModalBasis);
-
-                % Initialization of the Vector Containing the Eigenvalues of the New
-                % Basis
-
-                lambda = zeros(obj.dimModalBasis,1);
-
-                %% COMPUTE EIGENVALUES OF THE NEW BASIS
-
-                %---------------------------------------------------------------------%
-                % Note:
-                % The eigenvalues of the new basis are computed considering the
-                % different possible cases fot the boundary conditions in the Upper 
-                % and Lower limit of the domain.
-                %---------------------------------------------------------------------%    
-
-                switch [obj.labelUpBoundCond,obj.labelDownBoundCond]
-
-                    case 'dirdir'   % Dirichlet Dirichlet
-
-                        for i = 1:obj.dimModalBasis
-                            lambda(i) = i * pi;
-                        end
-
-                        B = @(lambda) 0;
-
-                    case 'dirrob'   % Dirichlet Robin
-
-                        stlv  = @(lmb)  tan(lmb) + muval*lmb/sigma;
-                        B     = @(lmb) -tan(lmb);
-                        
-                        obj_computeEigenvalues_1 = IntegrateHandler();
-                        
-                        obj_computeEigenvalues_1.funcStourmLiou = stlv;
-                        obj_computeEigenvalues_1.numbEigenvalues = obj.dimModalBasis;
-                        obj_computeEigenvalues_1.labelUpBoundCond = obj.labelUpBoundCond;
-                        obj_computeEigenvalues_1.labelDownBoundCond = obj.labelDownBoundCond;
-                        obj_computeEigenvalues_1.coeffForm = obj.coeffForm;
-
-                        lambda = computeEigenvalues(obj_computeEigenvalues_1);
-
-                    case 'robrob'   % Robin Robin
-
-                        stlv  = @(lmb) 2*muval*lmb + tan(lmb).*(sigma - muval.^2*lmb.^2/sigma);
-                        B     = @(lmb) muval*lmb/sigma;
-
-                        obj_computeEigenvalues_2 = IntegrateHandler();
-                        
-                        obj_computeEigenvalues_2.funcStourmLiou = stlv;
-                        obj_computeEigenvalues_2.numbEigenvalues = obj.dimModalBasis;
-                        obj_computeEigenvalues_2.labelUpBoundCond = obj.labelUpBoundCond;
-                        obj_computeEigenvalues_2.labelDownBoundCond = obj.labelDownBoundCond;
-                        obj_computeEigenvalues_2.coeffForm = obj.coeffForm;
-
-                        lambda = computeEigenvalues(obj_computeEigenvalues_2);
-                        
-                    case 'robdir'   % Robin Dirichlet
-
-                        stlv  = @(lmb) muval*lmb/sigma + tan(lmb);
-                        B     = @(lmb) 0;
-
-                        obj_computeEigenvalues_3 = IntegrateHandler();
-                        
-                        obj_computeEigenvalues_3.funcStourmLiou = stlv;
-                        obj_computeEigenvalues_3.numbEigenvalues = obj.dimModalBasis;
-                        obj_computeEigenvalues_3.labelUpBoundCond = obj.labelUpBoundCond;
-                        obj_computeEigenvalues_3.labelDownBoundCond = obj.labelDownBoundCond;
-                        obj_computeEigenvalues_3.coeffForm = obj.coeffForm;
-
-                        lambda = computeEigenvalues(obj_computeEigenvalues_3);
-
-                    case 'neuneu'
-
-                        for i = 1:obj.dimModalBasis
-                            lambda(i) = (i-1) * pi;
-                        end
-
-                        B = @(lmb) 1;
-
-                    otherwise
-                        disp('In newModalBasis: Boundary Conditions Not Recognized or Not Yet Available')
-                        
-                end
-                
-                % Evaluation of the Coefficient in the New Basis
-
-                %---------------------------------------------------------------------%
-                % Note:
-                % The coeffients at the new basis are also computed considering the
-                % different possible cases fot the boundary conditions in the Upper 
-                % and Lower limit of the domain.
-                %---------------------------------------------------------------------%
-
-                switch [obj.labelUpBoundCond,obj.labelDownBoundCond]
-
-                    case {'dirdir','dirrob','robrob','robdir'}
-
-                        for n = 1 : obj.dimModalBasis
-                            b         = B( lambda(n) );
-                            L2norm    = sqrt( ( 1 + b^2 )/2 + ( b^2 - 1 )*sin( 2*lambda(n) )/( 4*lambda(n) ) + b*( sin( lambda(n) ) )^2/lambda(n) );
-
-                            % Normalization for the Coefficient A
-
-                            for i = 1 : length(obj.evalNodesY)
-                                coeffModalBase( i, n) = sin( lambda(n) * obj.evalNodesY(i) )/L2norm + b * cos( lambda(n)*obj.evalNodesY(i) )/L2norm;
-                                coeffModalBaseDer( i, n) = lambda(n)*cos( lambda(n)*obj.evalNodesY(i) )/L2norm - b * lambda(n) * sin( lambda(n)*obj.evalNodesY(i) )/L2norm;
-                            end
-
-                        end
-
-                    case 'neuneu'
-
-                        coeffModalBase  ( :, 1) = ones ( length(obj.evalNodesY), 1 );
-                        coeffModalBaseDer( :, 1) = zeros( length(obj.evalNodesY), 1 );
-
-                        for n = 2 : obj.dimModalBasis
-                            for i = 1 : length(obj.evalNodesY)
-                                coeffModalBase  ( i, n) =             sqrt(2)*cos( lambda(n)*obj.evalNodesY(i) );
-                                coeffModalBaseDer( i, n) = - lambda(n)*sqrt(2)*sin( lambda(n)*obj.evalNodesY(i) );
-                            end
-                        end
-                end
-                
-                %% COMPUTE TENSOR PRODUCT
-                
-                N = length(obj.evalNodesY);
-                m = obj.dimModalBasis;
-                
-                coeffs = zeros(N,N,m^2);
-                coeffsDer1 = zeros(N,N,m^2);
-                coeffsDer2 = zeros(N,N,m^2);
-                for kk = 1:m
-                    for ll = 1:m
-                        for ii = 1:N
-                            for jj = 1:N
-                                aux1(ii,jj,ll) = coeffModalBase(ii,kk) * coeffModalBase(jj,ll);
-                                aux2(ii,jj,ll) = coeffModalBaseDer(ii,kk) * coeffModalBase(jj,ll);
-                                aux3(ii,jj,ll) = coeffModalBase(ii,kk) * coeffModalBaseDer(jj,ll);
-                            end
-                        end
-                    end
-                    coeffs(:,:,(kk-1)*m+1:kk*m) = aux1;
-                    coeffsDer1(:,:,(kk-1)*m+1:kk*m) = aux2;
-                    coeffsDer2(:,:,(kk-1)*m+1:kk*m) = aux3;
-                end
-                
-            end            
     end
 end

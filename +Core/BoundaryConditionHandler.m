@@ -178,12 +178,11 @@ classdef BoundaryConditionHandler
             
                 obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
                 obj_newModalBasis.evalNodesY = verGLNodes;
-                obj_newModalBasis.evalWeightsY = verWeights;
                 obj_newModalBasis.labelUpBoundCond = 'dir';
                 obj_newModalBasis.labelDownBoundCond = 'dir';
                 obj_newModalBasis.coeffForm = obj.coefficientForm;
 
-                [refModalBasis, ~] = newModalBasisLegendre(obj_newModalBasis);
+                [refModalBasis, ~] = newModalBasis(obj_newModalBasis);
                 
                 %% COMPUTE PROJECTION
                 
@@ -207,55 +206,6 @@ classdef BoundaryConditionHandler
                 
             end
             
-            %% Method 'computeFourierCoeff3D'
-            
-            function [infStruct,outStruct] = computeFourierCoeff3D(obj)
-                
-                %% IMPORT CLASSES
-            
-                import Core.AssemblerADRHandler
-                import Core.BoundaryConditionHandler
-                import Core.IntegrateHandler
-                import Core.EvaluationHandler
-                import Core.BasisHandler
-                import Core.SolverHandler
-                
-                %% IMPORT FEATURES
-
-                infBC = obj.infBoundCond;
-                outBC = obj.outBoundCond;
-                nodes = obj.augVerNodes;
-                wghts = obj.augVerWeights;
-                modBasis = obj.modalBasis;
-                
-                weightMat = wghts * wghts';
-                [X,Y]   = meshgrid(nodes,nodes);
-                
-                %% COMPUTE PROJECTION
-                
-                valueInfBC = infBC(X,Y);
-                valueOutBC = outBC(X,Y);
-                
-                infStruct = [];
-                outStruct = [];
-                
-                for ii = 1:size(modBasis,3)
-                    
-                    auxInf = sum(sum(valueInfBC .* modBasis(:,:,ii) .* weightMat));
-                    auxOut = sum(sum(valueOutBC .* modBasis(:,:,ii) .* weightMat));
-                    
-                    infStruct(ii) = auxInf;
-                    outStruct(ii) = auxOut;                                                                                                                         
-                    
-                end
-                
-                aux1 = infStruct;
-                aux2 = outStruct;
-                infStruct = fliplr(aux1);
-                outStruct = fliplr(aux2);                
-                
-            end
-            
             %% Method 'buildBoundCond'
             
             function [uAug] = buildBoundCond(obj)
@@ -264,7 +214,7 @@ classdef BoundaryConditionHandler
                 BC_r    = obj.bcStruct.bcOutTag;
                 nx      = obj.bcStruct.numbControlPts;
                 size_mb = obj.bcStruct.dimModalBasis;
-                uAug    = zeros(size_mb * nx, 1);
+                uAug    = zeros(size_mb * nx);
                 
                 if (strcmp(BC_l,'dir') && strcmp(BC_r,'dir'))
     
@@ -1292,7 +1242,7 @@ classdef BoundaryConditionHandler
             
             %% Method 'computeFourierCoeffStokes3D'
             
-            function [bcDataStruct] = computeFourierCoeffStokes3D(obj)
+            function [infStruct,outStruct] = computeFourierCoeffStokes3D(obj)
                 
                 %% IMPORT CLASSES
             
@@ -1305,122 +1255,45 @@ classdef BoundaryConditionHandler
                 
                 %% IMPORT FEATURES
                 
-                infBCUx    = obj.boundaryStruct.bcInfDataUx;
-                outBCUx    = obj.boundaryStruct.bcOutDataUx;
-                infBCUy    = obj.boundaryStruct.bcInfDataUy;
-                outBCUy    = obj.boundaryStruct.bcOutDataUy;
-                infBCUz    = obj.boundaryStruct.bcInfDataUz;
-                outBCUz    = obj.boundaryStruct.bcOutDataUz;
+                infBC    = obj.boundaryStruct.bc_inf_data;
+                outBC    = obj.boundaryStruct.bc_out_data;
+                nodes    = obj.boundaryStruct.augVerNodes;
+                wghts    = obj.boundaryStruct.augVerWeights;
+                modBasis = obj.boundaryStruct.modalBasis;
                 
-                modBasisUx = obj.boundaryStruct.modalBasisUx;
-                modBasisUy = obj.boundaryStruct.modalBasisUy;
-                modBasisUz = obj.boundaryStruct.modalBasisUz;
+                %% COMPUTE PROJECTION
                 
-                nodesUx     = obj.boundaryStruct.augVerNodesUx;
-                wghtsUx     = obj.boundaryStruct.augVerWeightsUx;
-                weightMatUx = wghtsUx * wghtsUx';
-                [XUx,YUx]   = meshgrid(nodesUx,nodesUx);
+                weightMat = wghts * wghts';
+                [X,Y] = meshgrid(nodes,nodes);
                 
-                nodesUy     = obj.boundaryStruct.augVerNodesUy;
-                wghtsUy     = obj.boundaryStruct.augVerWeightsUy;
-                weightMatUy = wghtsUy * wghtsUy';
-                [XUy,YUy]   = meshgrid(nodesUy,nodesUy);
+                valueInfBC = infBC(X,Y);
+                valueOutBC = outBC(X,Y);
                 
-                nodesUz     = obj.boundaryStruct.augVerNodesUz;
-                wghtsUz     = obj.boundaryStruct.augVerWeightsUz;
-                weightMatUz = wghtsUz * wghtsUz';
-                [XUz,YUz]   = meshgrid(nodesUz,nodesUz);
+                infStruct = [];
+                outStruct = [];
                 
-                %% COMPUTE PROJECTION Ux
-                
-                valueInfBCUx = infBCUx(XUx,YUx);
-                valueOutBCUx = outBCUx(XUx,YUx);
-                
-                infStructUx = [];
-                outStructUx = [];
-                
-                for ii = 1:size(modBasisUx,3)
+                for ii = 1:size(modBasis,3)
                     
-                    auxInfUx = sum(sum(valueInfBCUx .* modBasisUx(:,:,ii) .* weightMatUx));
-                    auxOutUx = sum(sum(valueOutBCUx .* modBasisUx(:,:,ii) .* weightMatUx));
+                    auxInf = sum(sum(valueInfBC .* modBasis(:,:,ii) .* weightMat));
+                    auxOut = sum(sum(valueOutBC .* modBasis(:,:,ii) .* weightMat));
                     
-                    infStructUx(ii) = auxInfUx;
-                    outStructUx(ii) = auxOutUx;                                                                                                                         
+                    infStruct(ii) = auxInf;
+                    outStruct(ii) = auxOut;                                                                                                                         
                     
                 end
-                
-                bcDataStruct.infStructUx = infStructUx;
-                bcDataStruct.outStructUx = outStructUx;
-                
-                %% COMPUTE PROJECTION Uy
-                
-                valueInfBCUy = infBCUy(XUy,YUy);
-                valueOutBCUy = outBCUy(XUy,YUy);
-                
-                infStructUy = [];
-                outStructUy = [];
-                
-                for ii = 1:size(modBasisUy,3)
-                    
-                    auxInfUy = sum(sum(valueInfBCUy .* modBasisUy(:,:,ii) .* weightMatUy));
-                    auxOutUy = sum(sum(valueOutBCUy .* modBasisUy(:,:,ii) .* weightMatUy));
-                    
-                    infStructUy(ii) = auxInfUy;
-                    outStructUy(ii) = auxOutUy;                                                                                                                         
-                    
-                end
-                
-                bcDataStruct.infStructUy = infStructUy;
-                bcDataStruct.outStructUy = outStructUy;
-                
-                %% COMPUTE PROJECTION Uz
-                
-                valueInfBCUz = infBCUz(XUz,YUz);
-                valueOutBCUz = outBCUz(XUz,YUz);
-                
-                infStructUz = [];
-                outStructUz = [];
-                
-                for ii = 1:size(modBasisUz,3)
-                    
-                    auxInfUz = sum(sum(valueInfBCUz .* modBasisUz(:,:,ii) .* weightMatUz));
-                    auxOutUz = sum(sum(valueOutBCUz .* modBasisUz(:,:,ii) .* weightMatUz));
-                    
-                    infStructUz(ii) = auxInfUz;
-                    outStructUz(ii) = auxOutUz;                                                                                                                         
-                    
-                end
-                
-                bcDataStruct.infStructUz = infStructUz;
-                bcDataStruct.outStructUz = outStructUz;
                 
             end
             
-            %% Method 'imposeBoundaryStokes3D'
+            %% Method 'imposeBoundaryStokes'
             
-            function [probDataStruct] = imposeBoundaryStokes3D(obj)
+            function [A,B,P,f] = imposeBoundaryStokes3D(obj)
                 
-                bcInfTagUx  = obj.boundaryStruct.bcInfTagUx;
-                bcOutTagUx  = obj.boundaryStruct.bcOutTagUx;
-                bcInfTagUy  = obj.boundaryStruct.bcInfTagUy;
-                bcOutTagUy  = obj.boundaryStruct.bcOutTagUy;
-                bcInfTagUz  = obj.boundaryStruct.bcInfTagUz;
-                bcOutTagUz  = obj.boundaryStruct.bcOutTagUz;
-                
-                numbModesUx   = obj.boundaryStruct.numbModesUx;
-                numbCtrlPtsUx = obj.boundaryStruct.numbCtrlPtsUx;
-                numbModesUy   = obj.boundaryStruct.numbModesUy;
-                numbCtrlPtsUy = obj.boundaryStruct.numbCtrlPtsUy;
-                numbModesUz   = obj.boundaryStruct.numbModesUz;
-                numbCtrlPtsUz = obj.boundaryStruct.numbCtrlPtsUz;
-                
-                projInfBCUx = obj.boundaryStruct.projInfBCUx;
-                projOutBCUx = obj.boundaryStruct.projOutBCUx;
-                projInfBCUy = obj.boundaryStruct.projInfBCUy;
-                projOutBCUy = obj.boundaryStruct.projOutBCUy;
-                projInfBCUz = obj.boundaryStruct.projInfBCUz;
-                projOutBCUz = obj.boundaryStruct.projOutBCUz;
-                
+                bc_inf_tag  = obj.boundaryStruct.bc_inf_tag;
+                bc_out_tag  = obj.boundaryStruct.bc_out_tag;
+                numbModes   = obj.boundaryStruct.numbModes;
+                numbCtrlPts = obj.boundaryStruct.numbCtrlPts;
+                projInfBC   = obj.boundaryStruct.projInfBC;
+                projOutBC   = obj.boundaryStruct.projOutBC;
                 Axx         = obj.boundaryStruct.Axx;
                 Ayy         = obj.boundaryStruct.Ayy;
                 Azz         = obj.boundaryStruct.Azz;
@@ -1451,488 +1324,105 @@ classdef BoundaryConditionHandler
                 
                 % (1) DIRICHLET - DIRICHLET
                 
-                if (strcmp(bcInfTagUx,'dir') && strcmp(bcOutTagUx,'dir'))
+                if (strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'dir'))
 
                     for imb = 1 : numbModesUx
                         
-                        % VELOCITY COMPONENT IN X
+                        % VELOCITY IN X
                         
                         Axx((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Axx((imb - 1) * numbCtrlPtsUx + 1 , :)));
                         Axx(imb * numbCtrlPtsUx , :) = zeros(size(Axx(imb * numbCtrlPtsUx , :)));
                         
-                        Axx((imb - 1) * numbCtrlPtsUx + 1 , (imb - 1) * numbCtrlPtsUx + 1) = delta;
-                        Axx(imb * numbCtrlPtsUx , imb * numbCtrlPtsUx) = delta;
+                        % COUPLING IN Y
                         
-                        % VELOCITY COUPLING IN Y
+                        Bxy((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(Bxy((imb - 1) * numbCtrlPts + 1 , :)));
+                        Bxy(imb * numbCtrlPts , :) = zeros(size(Bxy(imb * numbCtrlPts , :)));
                         
-                        Bxy((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Bxy((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        Bxy(imb * numbCtrlPtsUx , :) = zeros(size(Bxy(imb * numbCtrlPtsUx , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
+                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
                         
-                        % VELOCITY COUPLING IN Z
+                        A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
+                        A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
                         
-                        Bxz((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Bxz((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        Bxz(imb * numbCtrlPtsUx , :) = zeros(size(Bxz(imb * numbCtrlPtsUx , :)));
-                        
-                        % PRESSURE COMPONENT IN X
-                        
-                        Px((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Px((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        Px(imb * numbCtrlPtsUx , :) = zeros(size(Px(imb * numbCtrlPtsUx , :)));
-                        
-                        % FORCING COMPONENT IN X
-                        
-                        Fx((imb - 1) * numbCtrlPtsUx + 1) = delta * projInfBCUx(imb);
-                        Fx(imb * numbCtrlPtsUx) = delta * projOutBCUx(imb);
+                        f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        f(imb * numbCtrlPts) = delta * projOutBC(imb);
 
                     end
                     
                 % (2) DIRICHLET - NEUMANN
 
-                elseif ( strcmp(bcInfTagUx,'dir') && strcmp(bcOutTagUx,'neu') )
+                elseif ( strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'neu') )
                     
-                    for imb = 1 : numbModesUx
+                    for imb = 1 : numbModes
                         
-                        % VELOCITY COMPONENT IN X
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
                         
-                        Axx((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Axx((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        Axx((imb - 1) * numbCtrlPtsUx + 1 , (imb - 1) * numbCtrlPtsUx + 1) = delta;
+                        A((imb - 1) * numbCtrlPts + 1 , (imb - 1) * numbCtrlPts + 1) = delta;
                         
-                        % VELOCITY COUPLING IN Y
-                        
-                        Bxy((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Bxy((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        
-                        % VELOCITY COUPLING IN Z
-                        
-                        Bxz((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Bxz((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        
-                        % PRESSURE COMPONENT IN X
-                        
-                        Px((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Px((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        
-                        % FORCING COMPONENT IN X
-                        
-                        Fx((imb - 1) * numbCtrlPtsUx + 1) = delta * projInfBCUx(imb);
-                        Fx(imb * numbCtrlPtsUx) = Fx(imb * numbCtrlPtsUx) + projOutBCUx(imb);
+                        f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
                         
                     end
 
                 % (3) NEUMANN - DIRICHLET
                 
-                elseif ( strcmp(bcInfTagUx,'neu') && strcmp(bcOutTagUx,'dir') )
+                elseif ( strcmp(bc_inf_tag,'neu') && strcmp(bc_out_tag,'dir') )
 
-                    for imb = 1 : numbModesUx
+                    for imb = 1 : numbModes
                         
-                        % VELOCITY COMPONENT IN X
+                        A(imb * numbCtrlPts , :) = zeros(size(A(imb * numbCtrlPts , :)));
+                        B(imb * numbCtrlPts , :) = zeros(size(B(imb * numbCtrlPts , :)));
+                        P(imb * numbCtrlPts , :) = zeros(size(P(imb * numbCtrlPts , :)));
                         
-                        Axx(imb * numbCtrlPtsUx , :) = zeros(size(Axx(imb * numbCtrlPtsUx , :)));
-                        Axx(imb * numbCtrlPtsUx , imb * numbCtrlPtsUx) = delta;
-
-                        % VELOCITY COUPLING IN Y
+                        A(imb * numbCtrlPts , imb * numbCtrlPts) = delta;
                         
-                        Bxy(imb * numbCtrlPtsUx , :) = zeros(size(Bxy(imb * numbCtrlPtsUx , :)));
-                        
-                        % VELOCITY COUPLING IN Z
-                        
-                        Bxz(imb * numbCtrlPtsUx , :) = zeros(size(Bxz(imb * numbCtrlPtsUx , :)));
-                        
-                        % PRESSURE COMPONENT IN X
-                        
-                        Px(imb * numbCtrlPtsUx , :) = zeros(size(Px(imb * numbCtrlPtsUx , :)));
-                        
-                        % FORCING COMPONENT IN X
-                        
-                        Fx((imb - 1) * numbCtrlPtsUx + 1) = Fx((imb - 1) * numbCtrlPtsUx + 1) + projInfBCUx(imb);
-                        Fx(imb * numbCtrlPtsUx) = delta * projOutBCUx(imb);
+                        f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        f(imb * numbCtrlPts) = delta * projOutBC(imb);
                         
                     end
                     
                 % (4) ROBIN - ROBIAN & ROBIN - NEUMANN
                     
-                elseif ( strcmp(bcInfTagUx,'rob') && (strcmp(bcOutTagUx,'rob') || (strcmp(bcOutTagUx,'neu') ) ) )
+                elseif ( strcmp(bc_inf_tag,'rob') && (strcmp(bc_out_tag,'rob') || (strcmp(bc_out_tag,'neu') ) ) ) %robrob e robneu condividono lo stesso codice.
 
-                    for imb = 1 : numbModesUx
+                    for imb = 1 : numbModes
                         
-                        % FORCING COMPONENT IN X
-                        
-                        Fx((imb - 1) * numbCtrlPtsUx + 1) = Fx((imb - 1) * numbCtrlPtsUx + 1) + projInfBCUx(imb);
-                        Fx(imb * numbCtrlPtsUx) = Fx(imb * numbCtrlPtsUx) + projOutBCUx(imb);
+                        f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
                         
                     end
                     
                 % (5) NEUMANN - NEUMANN
                     
-                elseif ( strcmp(bcInfTagUx,'neu') && (strcmp(bcOutTagUx,'neu') ) )
+                elseif ( strcmp(bc_inf_tag,'neu') && (strcmp(bc_out_tag,'neu') ) )
 
-                    for imb = 1 : numbModesUx
+                    for imb = 1 : numbModes
                         
-                        % FORCING COMPONENT IN X
-                        
-                        Fx((imb - 1) * numbCtrlPtsUx + 1) = Fx((imb - 1) * numbCtrlPtsUx + 1) + projInfBCUx(imb);
-                        Fx(imb * numbCtrlPtsUx) = Fx(imb * numbCtrlPtsUx) + projOutBCUx(imb);
+                        f((imb - 1) * numbCtrlPts + 1) = f((imb - 1) * numbCtrlPts + 1) + projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
                         
                     end
                     
                 % DIRICHLET - ROBIN
                     
-                elseif ( strcmp(bcInfTagUx,'dir') && strcmp(bcOutTagUx,'rob') )
-                    
-                    for imb = 1 : numbModesUx
+                elseif ( strcmp(bc_inf_tag,'dir') && strcmp(bc_out_tag,'rob') )
+
+                    for imb = 1 : numbModes
                         
-                        % VELOCITY COMPONENT IN X
+                        A((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(A((imb - 1) * numbCtrlPts + 1 , :)));
+                        B((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(B((imb - 1) * numbCtrlPts + 1 , :)));
+                        P((imb - 1) * numbCtrlPts + 1 , :) = zeros(size(P((imb - 1) * numbCtrlPts + 1 , :)));
                         
-                        Axx((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Axx((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        Axx((imb - 1) * numbCtrlPtsUx + 1 , (imb - 1) * numbCtrlPtsUx + 1) = delta;
+                        A((imb - 1) * numbCtrlPts + 1 , (jmb - 1) * numbCtrlPts + 1) = delta;
                         
-                        % VELOCITY COUPLING IN Y
-                        
-                        Bxy((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Bxy((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        
-                        % VELOCITY COUPLING IN Z
-                        
-                        Bxz((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Bxz((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        
-                        % PRESSURE COMPONENT IN X
-                        
-                        Px((imb - 1) * numbCtrlPtsUx + 1 , :) = zeros(size(Px((imb - 1) * numbCtrlPtsUx + 1 , :)));
-                        
-                        % FORCING COMPONENT IN X
-                        
-                        Fx((imb - 1) * numbCtrlPtsUx + 1) = delta * projInfBCUx(imb);
-                        Fx(imb * numbCtrlPtsUx) = Fx(imb * numbCtrlPtsUx) + projOutBCUx(imb);
+                        f((imb - 1) * numbCtrlPts + 1) = delta * projInfBC(imb);
+                        f(imb * numbCtrlPts) = f(imb * numbCtrlPts) + projOutBC(imb);
                         
                     end
-                
                 end
                 
-                %% IMPOSE VELOCITY PROFILE ALONG Y DIRECTION
-                
-                % (1) DIRICHLET - DIRICHLET
-                
-                if (strcmp(bcInfTagUy,'dir') && strcmp(bcOutTagUy,'dir'))
-
-                    for imb = 1 : numbModesUy
-                        
-                        % VELOCITY COMPONENT IN Y
-                        
-                        Ayy((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Ayy((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        Ayy(imb * numbCtrlPtsUy , :) = zeros(size(Ayy(imb * numbCtrlPtsUy , :)));
-                        
-                        Ayy((imb - 1) * numbCtrlPtsUy + 1 , (imb - 1) * numbCtrlPtsUy + 1) = delta;
-                        Ayy(imb * numbCtrlPtsUy , imb * numbCtrlPtsUy) = delta;
-                        
-                        % VELOCITY COUPLING IN X
-                        
-                        Byx((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Byx((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        Byx(imb * numbCtrlPtsUy , :) = zeros(size(Byx(imb * numbCtrlPtsUy , :)));
-                        
-                        % VELOCITY COUPLING IN Z
-                        
-                        Byz((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Byz((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        Byz(imb * numbCtrlPtsUy , :) = zeros(size(Byz(imb * numbCtrlPtsUy , :)));
-                        
-                        % PRESSURE COMPONENT IN Y
-                        
-                        Py((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Py((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        Py(imb * numbCtrlPtsUy , :) = zeros(size(Py(imb * numbCtrlPtsUy , :)));
-                        
-                        % FORCING COMPONENT IN Y
-                        
-                        Fy((imb - 1) * numbCtrlPtsUy + 1) = delta * projInfBCUy(imb);
-                        Fy(imb * numbCtrlPtsUy) = delta * projOutBCUy(imb);
-
-                    end
-                    
-                % (2) DIRICHLET - NEUMANN
-
-                elseif ( strcmp(bcInfTagUy,'dir') && strcmp(bcOutTagUy,'neu') )
-                    
-                    for imb = 1 : numbModesUy
-                        
-                        % VELOCITY COMPONENT IN Y
-                        
-                        Ayy((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Ayy((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        Ayy((imb - 1) * numbCtrlPtsUy + 1 , (imb - 1) * numbCtrlPtsUy + 1) = delta;
-                        
-                        % VELOCITY COUPLING IN X
-                        
-                        Byx((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Byx((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        
-                        % VELOCITY COUPLING IN Z
-                        
-                        Byz((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Byz((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        
-                        % PRESSURE COMPONENT IN Y
-                        
-                        Py((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Py((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        
-                        % FORCING COMPONENT IN Y
-                        
-                        Fy((imb - 1) * numbCtrlPtsUy + 1) = delta * projInfBCUy(imb);
-                        Fy(imb * numbCtrlPtsUy) = Fy(imb * numbCtrlPtsUy) + projOutBCUy(imb);
-                        
-                    end
-
-                % (3) NEUMANN - DIRICHLET
-                
-                elseif ( strcmp(bcInfTagUy,'neu') && strcmp(bcOutTagUy,'dir') )
-
-                    for imb = 1 : numbModesUy
-                        
-                        % VELOCITY COMPONENT IN Y
-                        
-                        Ayy(imb * numbCtrlPtsUy , :) = zeros(size(Ayy(imb * numbCtrlPtsUy , :)));
-                        Ayy(imb * numbCtrlPtsUy , imb * numbCtrlPtsUy) = delta;
-
-                        % VELOCITY COUPLING IN X
-                        
-                        Byx(imb * numbCtrlPtsUy , :) = zeros(size(Byx(imb * numbCtrlPtsUy , :)));
-                        
-                        % VELOCITY COUPLING IN Z
-                        
-                        Byz(imb * numbCtrlPtsUy , :) = zeros(size(Byz(imb * numbCtrlPtsUy , :)));
-                        
-                        % PRESSURE COMPONENT IN Y
-                        
-                        Py(imb * numbCtrlPtsUy , :) = zeros(size(Py(imb * numbCtrlPtsUy , :)));
-                        
-                        % FORCING COMPONENT IN Y
-                        
-                        Fy((imb - 1) * numbCtrlPtsUy + 1) = Fy((imb - 1) * numbCtrlPtsUy + 1) + projInfBCUy(imb);
-                        Fy(imb * numbCtrlPtsUy) = delta * projOutBCUy(imb);
-                        
-                    end
-                    
-                % (4) ROBIN - ROBIAN & ROBIN - NEUMANN
-                    
-                elseif ( strcmp(bcInfTagUy,'rob') && (strcmp(bcOutTagUy,'rob') || (strcmp(bcOutTagUy,'neu') ) ) )
-
-                    for imb = 1 : numbModesUy
-                        
-                        % FORCING COMPONENT IN Y
-                        
-                        Fy((imb - 1) * numbCtrlPtsUy + 1) = Fy((imb - 1) * numbCtrlPtsUy + 1) + projInfBCUy(imb);
-                        Fy(imb * numbCtrlPtsUy) = Fy(imb * numbCtrlPtsUy) + projOutBCUy(imb);
-                        
-                    end
-                    
-                % (5) NEUMANN - NEUMANN
-                    
-                elseif ( strcmp(bcInfTagUy,'neu') && (strcmp(bcOutTagUy,'neu') ) )
-
-                    for imb = 1 : numbModesUy
-                        
-                        % FORCING COMPONENT IN Y
-                        
-                        Fy((imb - 1) * numbCtrlPtsUy + 1) = Fy((imb - 1) * numbCtrlPtsUy + 1) + projInfBCUy(imb);
-                        Fy(imb * numbCtrlPtsUy) = Fy(imb * numbCtrlPtsUy) + projOutBCUy(imb);
-                        
-                    end
-                    
-                % DIRICHLET - ROBIN
-                    
-                elseif ( strcmp(bcInfTagUy,'dir') && strcmp(bcOutTagUy,'rob') )
-                    
-                    for imb = 1 : numbModesUy
-                        
-                        % VELOCITY COMPONENT IN Y
-                        
-                        Ayy((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Ayy((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        Ayy((imb - 1) * numbCtrlPtsUy + 1 , (imb - 1) * numbCtrlPtsUy + 1) = delta;
-                        
-                        % VELOCITY COUPLING IN X
-                        
-                        Byx((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Byx((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        
-                        % VELOCITY COUPLING IN Z
-                        
-                        Byz((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Byz((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        
-                        % PRESSURE COMPONENT IN Y
-                        
-                        Py((imb - 1) * numbCtrlPtsUy + 1 , :) = zeros(size(Py((imb - 1) * numbCtrlPtsUy + 1 , :)));
-                        
-                        % FORCING COMPONENT IN Y
-                        
-                        Fy((imb - 1) * numbCtrlPtsUy + 1) = delta * projInfBCUy(imb);
-                        Fy(imb * numbCtrlPtsUy) = Fy(imb * numbCtrlPtsUy) + projOutBCUy(imb);
-                        
-                    end
-                
-                end
-                
-                %% IMPOSE VELOCITY PROFILE ALONG Z DIRECTION
-                
-                % (1) DIRICHLET - DIRICHLET
-                
-                if (strcmp(bcInfTagUz,'dir') && strcmp(bcOutTagUz,'dir'))
-
-                    for imb = 1 : numbModesUz
-                        
-                        % VELOCITY COMPONENT IN Z
-                        
-                        Azz((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Azz((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        Azz(imb * numbCtrlPtsUz , :) = zeros(size(Azz(imb * numbCtrlPtsUz , :)));
-                        
-                        Azz((imb - 1) * numbCtrlPtsUz + 1 , (imb - 1) * numbCtrlPtsUz + 1) = delta;
-                        Azz(imb * numbCtrlPtsUz , imb * numbCtrlPtsUz) = delta;
-                        
-                        % VELOCITY COUPLING IN X
-                        
-                        Bzx((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Bzx((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        Bzx(imb * numbCtrlPtsUz , :) = zeros(size(Bzx(imb * numbCtrlPtsUz , :)));
-                        
-                        % VELOCITY COUPLING IN Y
-                        
-                        Bzy((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Bzy((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        Bzy(imb * numbCtrlPtsUz , :) = zeros(size(Bzy(imb * numbCtrlPtsUz , :)));
-                        
-                        % PRESSURE COMPONENT IN Z
-                        
-                        Pz((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Pz((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        Pz(imb * numbCtrlPtsUz , :) = zeros(size(Pz(imb * numbCtrlPtsUz , :)));
-                        
-                        % FORCING COMPONENT IN Z
-                        
-                        Fz((imb - 1) * numbCtrlPtsUz + 1) = delta * projInfBCUz(imb);
-                        Fz(imb * numbCtrlPtsUz) = delta * projOutBCUz(imb);
-
-                    end
-                    
-                % (2) DIRICHLET - NEUMANN
-
-                elseif ( strcmp(bcInfTagUz,'dir') && strcmp(bcOutTagUz,'neu') )
-                    
-                    for imb = 1 : numbModesUz
-                        
-                        % VELOCITY COMPONENT IN Z
-                        
-                        Azz((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Azz((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        Azz((imb - 1) * numbCtrlPtsUz + 1 , (imb - 1) * numbCtrlPtsUz + 1) = delta;
-                        
-                        % VELOCITY COUPLING IN X
-                        
-                        Bzx((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Bzx((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        
-                        % VELOCITY COUPLING IN Y
-                        
-                        Bzx((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Bzx((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        
-                        % PRESSURE COMPONENT IN Z
-                        
-                        Pz((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Pz((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        
-                        % FORCING COMPONENT IN Z
-                        
-                        Fz((imb - 1) * numbCtrlPtsUz + 1) = delta * projInfBCUz(imb);
-                        Fz(imb * numbCtrlPtsUz) = Fz(imb * numbCtrlPtsUz) + projOutBCUz(imb);
-                        
-                    end
-
-                % (3) NEUMANN - DIRICHLET
-                
-                elseif ( strcmp(bcInfTagUz,'neu') && strcmp(bcOutTagUz,'dir') )
-
-                    for imb = 1 : numbModesUz
-                        
-                        % VELOCITY COMPONENT IN Z
-                        
-                        Azz(imb * numbCtrlPtsUz , :) = zeros(size(Azz(imb * numbCtrlPtsUz , :)));
-                        Azz(imb * numbCtrlPtsUz , imb * numbCtrlPtsUz) = delta;
-
-                        % VELOCITY COUPLING IN X
-                        
-                        Bzx(imb * numbCtrlPtsUz , :) = zeros(size(Bzx(imb * numbCtrlPtsUz , :)));
-                        
-                        % VELOCITY COUPLING IN Y
-                        
-                        Bzx(imb * numbCtrlPtsUz , :) = zeros(size(Bzx(imb * numbCtrlPtsUz , :)));
-                        
-                        % PRESSURE COMPONENT IN Z
-                        
-                        Pz(imb * numbCtrlPtsUz , :) = zeros(size(Pz(imb * numbCtrlPtsUz , :)));
-                        
-                        % FORCING COMPONENT IN Z
-                        
-                        Fz((imb - 1) * numbCtrlPtsUz + 1) = Fz((imb - 1) * numbCtrlPtsUz + 1) + projInfBCUz(imb);
-                        Fz(imb * numbCtrlPtsUz) = delta * projOutBCUz(imb);
-                        
-                    end
-                    
-                % (4) ROBIN - ROBIAN & ROBIN - NEUMANN
-                    
-                elseif ( strcmp(bcInfTagUz,'rob') && (strcmp(bcOutTagUz,'rob') || (strcmp(bcOutTagUz,'neu') ) ) )
-
-                    for imb = 1 : numbModesUz
-                        
-                        % FORCING COMPONENT IN Z
-                        
-                        Fz((imb - 1) * numbCtrlPtsUz + 1) = Fz((imb - 1) * numbCtrlPtsUz + 1) + projInfBCUz(imb);
-                        Fz(imb * numbCtrlPtsUz) = Fz(imb * numbCtrlPtsUz) + projOutBCUz(imb);
-                        
-                    end
-                    
-                % (5) NEUMANN - NEUMANN
-                    
-                elseif ( strcmp(bcInfTagUz,'neu') && (strcmp(bcOutTagUz,'neu') ) )
-
-                    for imb = 1 : numbModesUz
-                        
-                        % FORCING COMPONENT IN Z
-                        
-                        Fz((imb - 1) * numbCtrlPtsUz + 1) = Fz((imb - 1) * numbCtrlPtsUz + 1) + projInfBCUz(imb);
-                        Fz(imb * numbCtrlPtsUz) = Fz(imb * numbCtrlPtsUz) + projOutBCUz(imb);
-                        
-                    end
-                    
-                % DIRICHLET - ROBIN
-                    
-                elseif ( strcmp(bcInfTagUz,'dir') && strcmp(bcOutTagUz,'rob') )
-                    
-                    for imb = 1 : numbModesUz
-                        
-                        % VELOCITY COMPONENT IN Z
-                        
-                        Azz((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Azz((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        Azz((imb - 1) * numbCtrlPtsUz + 1 , (imb - 1) * numbCtrlPtsUz + 1) = delta;
-                        
-                        % VELOCITY COUPLING IN X
-                        
-                        Bzx((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Bzx((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        
-                        % VELOCITY COUPLING IN Y
-                        
-                        Bzx((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Bzx((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        
-                        % PRESSURE COMPONENT IN Z
-                        
-                        Pz((imb - 1) * numbCtrlPtsUz + 1 , :) = zeros(size(Pz((imb - 1) * numbCtrlPtsUz + 1 , :)));
-                        
-                        % FORCING COMPONENT IN Z
-                        
-                        Fz((imb - 1) * numbCtrlPtsUz + 1) = delta * projInfBCUz(imb);
-                        Fz(imb * numbCtrlPtsUz) = Fz(imb * numbCtrlPtsUz) + projOutBCUz(imb);
-                        
-                    end
-                
-                end
-                
-                %% EXPORT UPDATE DATA STRUCTURES
-                
-                probDataStruct.Axx = Axx;
-                probDataStruct.Ayy = Ayy;
-                probDataStruct.Azz = Azz;
-                probDataStruct.Bxy = Bxy;
-                probDataStruct.Bxz = Bxz;
-                probDataStruct.Byz = Byz;
-                probDataStruct.Byx = Byx;
-                probDataStruct.Bzx = Bzx;
-                probDataStruct.Bzy = Bzy;
-                probDataStruct.Px  = Px;
-                probDataStruct.Py  = Py;
-                probDataStruct.Pz  = Pz;
-                probDataStruct.Fx  = Fx;
-                probDataStruct.Fy  = Fy;
-                probDataStruct.Fz  = Fz;
-                  
             end
     end
 end

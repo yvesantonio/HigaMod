@@ -125,6 +125,10 @@ classdef AssemblerADRHandler
         timeDomain
         
         igaBoundCond
+        
+        currTimeSol
+        
+        assemblerStruct
 
     end
     
@@ -1240,27 +1244,17 @@ classdef AssemblerADRHandler
             % Set variables to use a Legendre Modal Base
             
             obj_newModalBasis.dimLegendreBase = obj.dimModalBasis;
-            obj_newModalBasis.evalLegendreNodes = augVerNodes;
+            obj_newModalBasis.evalLegendreNodes = verGLNodes;
             
             % Set variables to use a Educated Modal Basis
             
             obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
-            obj_newModalBasis.evalNodesY = augVerNodes;
-            obj_newModalBasis.evalWeightsY = augVerWeights;
+            obj_newModalBasis.evalNodesY = verGLNodes;
             obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomain;
             obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
             obj_newModalBasis.coeffForm = obj.coefficientForm;
 
-            [modalBasis, modalBasisDer] = newModalBasisLegendre(obj_newModalBasis);
-            
-            % DEBUG
-            
-            figure
-            
-            for ii = 1:obj.dimModalBasis 
-                plot(verGLNodes, modalBasis(:,ii));
-                hold on;
-            end
+            [modalBasis, modalBasisDer] = newModalBasis(obj_newModalBasis);
             
             %% MEMORY ALLOCATION FOR SYSTEM MATRICES
 
@@ -1877,7 +1871,7 @@ classdef AssemblerADRHandler
             
             %% Method 'buildIGAScatterTransient'
             
-            function [A,M,b,modalBasis,liftCoeffA,liftCoeffB,space,refDomain1D] = buildSystemIGAScatterTransient(obj)
+            function [AA,MM,bb,sTS,modalBasis,space,refDomain1D,bcStruct] = buildSystemIGAScatterTransient(obj)
                                                          
             %%
             % buildSystemIGA - This function computes the assembled matrices
@@ -2266,10 +2260,9 @@ classdef AssemblerADRHandler
             for imb = 1:obj.dimModalBasis
                 for kmb = 1:obj.dimModalBasis
 
-                    [Amb,Mmb,bmb,liftCoeffA,liftCoeffB] = assemblerIGAScatterTransient( imb, kmb, ...
+                    [Amb,Mmb,bmb] = assemblerIGAScatterTransient( imb, kmb, ...
                                             augVerWeights,modalBasis(:,imb),modalBasisDer(:,imb),modalBasis(:,kmb),...
-                                            modalBasisDer(:,kmb),geoData,Computed,lifting,aLift,bLift,msh,space,jacFunc,...
-                                            spaceFunc,obj.dirCondFuncStruct.igaBoundCond);
+                                            modalBasisDer(:,kmb),geoData,Computed,msh,space,jacFunc,spaceFunc);
 
                     % Assignment of the Block Matrix Just Assembled
 
@@ -2283,6 +2276,1103 @@ classdef AssemblerADRHandler
                 % Assignment of the Block Vector Just Assembled
                 b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb;
             end
+            
+            %% IMPOSE BOUNDARY CONDITIONS
+            
+            %-------------------------------------------------------------%
+            % Compute the lifting contribution in the force vector due to
+            % the non homogeneous Dirichlet boundary conditions in the
+            % lower and upper boundary.
+            %-------------------------------------------------------------%
+            
+            BC_l = obj.igaBoundCond.BC_INF_TAG;
+            BC_r = obj.igaBoundCond.BC_OUT_TAG;
+            infBoundCond = obj.igaBoundCond.BC_INF_DATA;
+            outBoundCond = obj.igaBoundCond.BC_OUT_DATA;
+            
+            obj_bcCoeff = BoundaryConditionHandler();
+    
+            obj_bcCoeff.infBoundCond  = infBoundCond;
+            obj_bcCoeff.outBoundCond  = outBoundCond;
+            obj_bcCoeff.augVerNodes   = augVerNodes;
+            obj_bcCoeff.augVerWeights = augVerWeights;
+            obj_bcCoeff.modalBasis = modalBasis;
+            obj_bcCoeff.dimModalBasis = obj.dimModalBasis;
+            obj_bcCoeff.coefficientForm = obj.coefficientForm;
+
+            [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
+            
+            bcStruct.bcInfTag = BC_l;
+            bcStruct.bcOutTag = BC_r;
+            bcStruct.infStruct = infStruct;
+            bcStruct.outStruct = outStruct;
+            bcStruct.numbControlPts = numbControlPts;
+            bcStruct.dimModalBasis = obj.dimModalBasis;
+            
+            [AA,MM,bb,sTS] = impose_boundary_transient(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,M,b,numbControlPts,obj.currTimeSol);
+
+            end
+            
+            %% Method 'buildTransientStruct'
+            
+            function [assemblerStruct] = buildTransientStruct(obj)
+                                                         
+            %%
+            % buildSystemIGA - This function computes the assembled matrices
+            %                    relative to the variational problem considering 
+            %                    IGA modal basis.
+            %
+            % Note:
+            % All of the following inputs are encapsulated in the
+            % object properties.
+            %
+            % The inputs are:
+            %%
+            %   (1)  dimModalBasis              : Dimension of the Modal Basis
+            %   (2)  leftBDomain_inX            : Left Limit of the Domain in the X Direction
+            %   (3)  rightBDomain_inX           : Right Limit of the Domain in the X Direction
+            %   (4)  stepMeshX                  : Vector Containing the Step of the Finite
+            %                                     Element Mesh
+            %   (5)  label_upBoundDomain        : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Upper Limit of
+            %                                     the Domain
+            %   (6)  label_downBoundDomain      : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Lower Limit of
+            %                                     the Domain
+            %   (7)  localdata_upBDomain        : Contains the Values of the Boundary Conditions
+            %                                     on the Upper Limir of the Domain
+            %   (8) localdata_downBDomain       : Contains the Values of the Boundary Conditions
+            %                                     on the Lower Limir of the Domain
+            %   (9) domainPosition              : Current domain used in the domain decomposition
+            %                                     Computations
+            %   (10) coefficientForm            : Data Strusture Containing All the @-Functions
+            %                                     and the Constants Relative to the Bilinear Form
+            %   (11) dirCondFuncStruct          : Data Structure Containing All the @-Functions
+            %                                     for the Dirichlet Conditions at the Inflow and
+            %                                     for the Exciting Force
+            %   (12) geometricInfo              : Data Structure Containing All the
+            %                                     Geometric Information regarding the
+            %                                     Domain. The current version of the code
+            %                                     works only for the specific condition of:
+            %                                     (L = 1, a = 0, psi_x = 0)
+            %   (13) robinCondStruct            : Data Structure Containing the Two Values of the
+            %                                     Coefficients (R, L) for the Robin Condition Used
+            %                                     in the Domain Decomposition
+            %   (14) numbDimMBEachDomain        : Number of Elements in the Vector Containing the
+            %                                     Dimensions of the Modal Basis in Each Domain
+            %   (15) couplingCond_DD            : Contains the Label Adressing the Coupling Condition
+            %                                     of the Problem
+            %   (16) physicMesh_inX             : Vector Containing the Physical Mesh in the X
+            %                                     Direction
+            %   (17) physicMesh_inY             : Vector Containing the Physical Mesh in the Y
+            %                                     Direction
+            %   (18) jacAtQuadNodes             : Data Sturcture Used to Save the Value of the
+            %                                     Jacobians Computed in the Quadratures Nodes 
+            %   (19) degreePolySplineBasis      : Degree of the Polynomial B-Spline Basis
+            %   (20) continuityParameter        : Degree of Continuity of the Basis 'C^(p-k)'
+            %   (21) domainProfile              : Symbolic Function Defining the Profile of the
+            %                                     Simulation Domain
+            %   (22) domainProfileDer           : Symbolic Function Defining the Derivative of
+            %                                     the Profile of the Simulation Domain
+            % 
+            % The outputs are:
+            %%
+            %   (1) A                   : Final Assembled Block Matrix Using IGA Basis
+            %   (2) b                   : Final Assembled Block Vector Using IGA Basis
+            %   (3) modalBasis          : Modal Basis Obtained
+            %   (3) liftCoeffA          : First Offset Adjustment Coefficient
+            %   (4) liftCoeffB          : Second Offset Adjustment Coefficient
+            %   (5) intNodesGaussLeg    : Gauss-Legendre Integration Nodes
+            %   (6) intNodesWeights     : Weights of the Gauss-Legendre Integration Nodes
+            
+                %% IMPORT CLASSES
+
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+
+                %% NUMBER OF NODES IN THE QUADRATURE FORMULA
+                %-------------------------------------------------------------%
+                % The values of 'nqnx' and 'nqny' does not change during the
+                % computation of the Gauss-Legendre Integration Points.
+                % Attention, if you increase the number of nodes in the
+                % discretization, it is necessary to refine the quadrature
+                % rule.
+                %-------------------------------------------------------------%
+
+                % Horizontal direction
+
+                numbHorNodes = obj.numbHorQuadNodes;
+                assemblerStruct.numbHorNodes = numbHorNodes;
+
+                % Vertical Direction
+
+                numbVerNodes = obj.numbVerQuadNodes;
+                assemblerStruct.numbVerNodes = numbVerNodes;
+
+                %% NUMBER OF KNOTS - IDOGEOMETRIC ANALYSIS
+                %-------------------------------------------------------------%
+                % Total number of knots used to divide the spline curve in the
+                % isogeometric analysis.
+                %-------------------------------------------------------------%
+
+                numbKnots  = round((obj.rightBDomain_inX-obj.leftBDomain_inX)/obj.stepMeshX);
+                assemblerStruct.numbKnots = numbKnots;
+
+                %% NUMBER OF CONTROL POINTS - ISOGEOMETRIC ANALYSIS
+                %-------------------------------------------------------------%
+                % Total number of control points used in the isogeometric
+                % approach. Note that this number is equal to the dimension of
+                % the basis used to define the Spline curve and that the
+                % formula used bellow corresponds to use a straight line as
+                % reference supporting fiber.
+                %-------------------------------------------------------------%
+
+                numbControlPts = numbKnots*(obj.degreePolySplineBasis - obj.continuityParameter) + 1 + obj.continuityParameter;
+                assemblerStruct.numbControlPts = numbControlPts;
+
+                %% GAUSS-LEGENDRE INTEGRATION NODES
+                %-------------------------------------------------------------%
+                % The following method reveives the number of integration nodes
+                % in the horizontal and vertical direction and retruns the
+                % respective Gauss-Legendre nodes and weigths for the
+                % integration interval [0,1].   
+                %
+                % Mesh FEM in X: Equispaced Nodes                            
+                %  (1) horGLNodes  : Vector of the Standard Nodes on the X 
+                %                    Direction
+                %  (2) horGLWeights : Vector of the Standard Weights on the X 
+                %                     Direction
+                %
+                % Mesh FEM in Y: Equispaced Nodes                              
+                %  (1) verGLNodes  : Vector of the Standard Nodes on the Y 
+                %                    Direction  
+                %  (2) verGLWeights : Vector of the Standard Weights on the Y 
+                %                     Direction
+                %-------------------------------------------------------------%
+
+                % Vertical direction
+
+                obj_gaussLegendre_2 = IntegrateHandler();
+                obj_gaussLegendre_2.numbQuadNodes = numbVerNodes;
+                [~, verGLNodes, verWeights] = gaussLegendre(obj_gaussLegendre_2);   
+
+                assemblerStruct.verGLNodes = verGLNodes;
+                assemblerStruct.verWeights = verWeights;
+
+                %% EXTRACT GEOMETRIC INFORMATION
+
+                geometry  = obj.geometricInfo.geometry;
+                map       = @(x,y) obj.geometricInfo.map(x,y);
+                Jac       = @(x,y) obj.geometricInfo.Jac(x,y);
+                Hes       = @(x,y) obj.geometricInfo.Hes(x,y);
+
+                assemblerStruct.geometry = geometry;
+                assemblerStruct.map      = map;
+                assemblerStruct.Jac      = Jac;
+                assemblerStruct.Hes      = Hes;
+
+                %% COMPUTE REFERENCE KNOT AND CONTROL POINTS
+                % Note: Create the knots and control points of the reference
+                % supporting fiber where the coupled 1D problems will be
+                % solved.
+
+                refDomain1D = geo_load(nrbline ([0 0], [1 0]));
+
+                nsub = numbKnots;
+                degree = obj.degreePolySplineBasis;
+                regularity = obj.continuityParameter;
+
+                [knots, zeta] = kntrefine (refDomain1D.nurbs.knots, nsub-1, degree, regularity);
+
+                assemblerStruct.refDomain1D = refDomain1D;
+                assemblerStruct.nsub = nsub;
+                assemblerStruct.degree = degree;
+                assemblerStruct.regularity = regularity;
+                assemblerStruct.knots = knots;
+                assemblerStruct.zeta = zeta;
+
+                %% GENERATE ISOGEOMETRIC MESH FUNCTION
+                % Note: Use the number of quadrature nodes to generate the
+                % quadrature rule using the gauss nodes. Then, use this
+                % information with the computed knots and control points to
+                % generate the isogeometric mesh of the centreline.
+
+                rule     = msh_gauss_nodes (numbHorNodes);
+                [qn, qw] = msh_set_quad_nodes (zeta, rule);
+                msh      = msh_cartesian (zeta, qn, qw, refDomain1D);
+
+                assemblerStruct.rule = rule;
+                assemblerStruct.qn   = qn;
+                assemblerStruct.qw   = qw;
+                assemblerStruct.msh  = msh;
+
+                %% CONSTRUCT THE ISOGEOMETRIC FUNCTIONAL SPACE
+                % Note: Construct the functional space used to discretize the
+                % problem along the centreline and perform the isogeometric
+                % analysis. 
+                % Here, we also evaluate the functional spaces in the specific
+                % element. This will be used in the assembling loop to compute
+                % the operators using the basis functions.
+
+                space    = sp_bspline (knots, degree, msh);
+
+                numbKnots = msh.nel_dir;
+
+                for iel = 1:numbKnots
+
+                    msh_col = msh_evaluate_col (msh, iel);
+
+                    %---------------------------------------------------------%
+                    % Evaluated space to compute the operators
+                    %---------------------------------------------------------%
+
+                    gradFunc = sp_evaluate_col (space, msh_col, 'value', false, 'gradient', true);
+                    shapFunc = sp_evaluate_col (space, msh_col);
+
+                    %---------------------------------------------------------%
+                    % Store the spaces in the cell matrix
+                    %---------------------------------------------------------%
+
+                    spaceFunc{iel,1} = shapFunc;
+                    spaceFunc{iel,2} = gradFunc;
+                    spaceFunc{iel,3} = msh_col;
+
+                end
+
+                assemblerStruct.space     = space;
+                assemblerStruct.numbKnots = numbKnots;
+                assemblerStruct.spaceFunc = spaceFunc;
+
+                %% AUGMENTED HORIZONTAL POINTS 
+                % Note: The FOR loop runs over the knots in the centerline ans
+                % compute the required quadrature nodes. The quadrature nodes
+                % will be necessary to evaluate the bilinear coefficients and
+                % the forcing component.
+
+                horEvalNodes = zeros(numbKnots * numbHorNodes,1);
+
+                for iel = 1:numbKnots
+
+                    msh_col = msh_evaluate_col (msh, iel);
+
+                    localNodes = reshape (msh_col.geo_map(1,:,:), msh_col.nqn, msh_col.nel);  
+                    horEvalNodes((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes) = localNodes;  
+
+                end
+
+                assemblerStruct.horEvalNodes = horEvalNodes;
+
+                %% AUGMENTED VERTICAL POINTS
+                % Note: Since we are using the full map from the physical
+                % domain to the reference domain, then the whole modal analysis
+                % has to be performed in the vertical direction in the interval
+                % [0,1];
+
+                objVertQuadRule = IntegrateHandler();
+
+                objVertQuadRule.leftBoundInterval = 0;
+                objVertQuadRule.rightBoundInterval = 1;
+                objVertQuadRule.inputNodes = verGLNodes;
+                objVertQuadRule.inputWeights = verWeights;
+
+                [augVerNodes, augVerWeights] = quadratureRule(objVertQuadRule);
+
+                assemblerStruct.augVerNodes = augVerNodes;
+                assemblerStruct.augVerWeights = augVerWeights;
+
+                %% COMPUTATION OF THE MODAL BASIS IN THE Y DIRECTION
+                %-------------------------------------------------------------%
+                % The next method takes the coefficients of the bilinear form,
+                % the dimension of the modal basis (assigned in the demo) and
+                % the vertical evaluation points and computes the coefficients
+                % of the modal basis when evaluated in the points of the
+                % transverse fiber.
+                %-------------------------------------------------------------%
+
+                obj_newModalBasis = BasisHandler();
+
+                obj_newModalBasis.dimModalBasis      = obj.dimModalBasis;
+                obj_newModalBasis.evalNodesY         = verGLNodes;
+                obj_newModalBasis.labelUpBoundCond   = obj.label_upBoundDomain;
+                obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
+                obj_newModalBasis.coeffForm          = obj.coefficientForm;
+
+                [modalBasis, modalBasisDer] = newModalBasis(obj_newModalBasis);
+
+                assemblerStruct.modalBasis          = modalBasis;
+                assemblerStruct.modalBasisDer       = modalBasisDer;
+                assemblerStruct.dimModalBasis       = obj.dimModalBasis;
+                assemblerStruct.labelUpBoundCond    = obj.label_upBoundDomain;
+                assemblerStruct.labelDownBoundCond  = obj.label_downBoundDomain;
+                
+                %% EVALUATION OF THE GEOMETRIC PROPERTIES OF THE DOMAIN
+                %-------------------------------------------------------------%
+                % We use the horizontal mesh created previously to evaluate the
+                % thickness and the vertical coordinate of the centerline of
+                % the channel.
+                %-------------------------------------------------------------%
+
+                verEvalNodes = augVerNodes;
+
+                X = mapOut(horEvalNodes,verEvalNodes,map,1);
+                Y = mapOut(horEvalNodes,verEvalNodes,map,2);
+
+                geoData.X = X;
+                geoData.Y = Y;
+                geoData.horNodes = horEvalNodes;
+                geoData.verNodes = verEvalNodes;
+
+                assemblerStruct.geoData = geoData;
+
+                %% EVALUATION OF THE GEOMETRY PROPERTIES
+                % Note: Since there is a transformation from the physical domain to the
+                % physical domain, we must compute the map contribution used in the
+                % computation of the coefficients and the Jacobian contribution to be
+                % inserted in the integral (quadrature formula).
+
+                evalJac     = jacOut(horEvalNodes,verEvalNodes,Jac);
+                evalDetJac  = detJac(horEvalNodes,verEvalNodes,Jac);
+
+                Phi1_dx = invJac(1,1,evalJac);
+                Phi1_dy = invJac(1,2,evalJac);
+                Phi2_dx = invJac(2,1,evalJac);
+                Phi2_dy = invJac(2,2,evalJac);
+
+                jacFunc.evalJac     = evalJac;
+                jacFunc.evalDetJac  = evalDetJac;
+                jacFunc.Phi1_dx     = Phi1_dx;
+                jacFunc.Phi1_dy     = Phi1_dy;
+                jacFunc.Phi2_dx     = Phi2_dx;
+                jacFunc.Phi2_dy     = Phi2_dy;
+
+                assemblerStruct.jacFunc = jacFunc;
+                
+                %% BOUNDARY CONDITIONS PROPERTIES
+                
+                assemblerStruct.igaBoundCond = obj.dirCondFuncStruct.igaBoundCond;
+                
+                %% MODEL PROPERTIES
+                
+                assemblerStruct.coefficientForm   = obj.coefficientForm;
+                assemblerStruct.dirCondFuncStruct = obj.dirCondFuncStruct;
+                
+                %% GENERATION OF PLOTTING STRUCTURE
+                
+                assemblerStruct.plotResolutionX = 100;
+                assemblerStruct.plotResolutionY = 100;
+
+            end
+            
+            %% Method 'buildTransientSystem'
+            
+            function [AA,MM,bb,sTS,bcStruct] = buildTransientSystem(obj)
+                                                         
+            %%
+            % buildSystemIGA - This function computes the assembled matrices
+            %                    relative to the variational problem considering 
+            %                    IGA modal basis.
+            %
+            % Note:
+            % All of the following inputs are encapsulated in the
+            % object properties.
+            %
+            % The inputs are:
+            %%
+            %   (1)  dimModalBasis              : Dimension of the Modal Basis
+            %   (2)  leftBDomain_inX            : Left Limit of the Domain in the X Direction
+            %   (3)  rightBDomain_inX           : Right Limit of the Domain in the X Direction
+            %   (4)  stepMeshX                  : Vector Containing the Step of the Finite
+            %                                     Element Mesh
+            %   (5)  label_upBoundDomain        : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Upper Limit of
+            %                                     the Domain
+            %   (6)  label_downBoundDomain      : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Lower Limit of
+            %                                     the Domain
+            %   (7)  localdata_upBDomain        : Contains the Values of the Boundary Conditions
+            %                                     on the Upper Limir of the Domain
+            %   (8) localdata_downBDomain       : Contains the Values of the Boundary Conditions
+            %                                     on the Lower Limir of the Domain
+            %   (9) domainPosition              : Current domain used in the domain decomposition
+            %                                     Computations
+            %   (10) coefficientForm            : Data Strusture Containing All the @-Functions
+            %                                     and the Constants Relative to the Bilinear Form
+            %   (11) dirCondFuncStruct          : Data Structure Containing All the @-Functions
+            %                                     for the Dirichlet Conditions at the Inflow and
+            %                                     for the Exciting Force
+            %   (12) geometricInfo              : Data Structure Containing All the
+            %                                     Geometric Information regarding the
+            %                                     Domain. The current version of the code
+            %                                     works only for the specific condition of:
+            %                                     (L = 1, a = 0, psi_x = 0)
+            %   (13) robinCondStruct            : Data Structure Containing the Two Values of the
+            %                                     Coefficients (R, L) for the Robin Condition Used
+            %                                     in the Domain Decomposition
+            %   (14) numbDimMBEachDomain        : Number of Elements in the Vector Containing the
+            %                                     Dimensions of the Modal Basis in Each Domain
+            %   (15) couplingCond_DD            : Contains the Label Adressing the Coupling Condition
+            %                                     of the Problem
+            %   (16) physicMesh_inX             : Vector Containing the Physical Mesh in the X
+            %                                     Direction
+            %   (17) physicMesh_inY             : Vector Containing the Physical Mesh in the Y
+            %                                     Direction
+            %   (18) jacAtQuadNodes             : Data Sturcture Used to Save the Value of the
+            %                                     Jacobians Computed in the Quadratures Nodes 
+            %   (19) degreePolySplineBasis      : Degree of the Polynomial B-Spline Basis
+            %   (20) continuityParameter        : Degree of Continuity of the Basis 'C^(p-k)'
+            %   (21) domainProfile              : Symbolic Function Defining the Profile of the
+            %                                     Simulation Domain
+            %   (22) domainProfileDer           : Symbolic Function Defining the Derivative of
+            %                                     the Profile of the Simulation Domain
+            % 
+            % The outputs are:
+            %%
+            %   (1) A                   : Final Assembled Block Matrix Using IGA Basis
+            %   (2) b                   : Final Assembled Block Vector Using IGA Basis
+            %   (3) modalBasis          : Modal Basis Obtained
+            %   (3) liftCoeffA          : First Offset Adjustment Coefficient
+            %   (4) liftCoeffB          : Second Offset Adjustment Coefficient
+            %   (5) intNodesGaussLeg    : Gauss-Legendre Integration Nodes
+            %   (6) intNodesWeights     : Weights of the Gauss-Legendre Integration Nodes
+            
+                %% IMPORT CLASSES
+
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+
+                %% NUMBER OF NODES IN THE QUADRATURE FORMULA
+                %-------------------------------------------------------------%
+                % The values of 'nqnx' and 'nqny' does not change during the
+                % computation of the Gauss-Legendre Integration Points.
+                % Attention, if you increase the number of nodes in the
+                % discretization, it is necessary to refine the quadrature
+                % rule.
+                %-------------------------------------------------------------%
+
+                % Horizontal direction
+
+                numbHorNodes = obj.assemblerStruct.numbHorNodes;
+
+                % Vertical Direction
+
+                numbVerNodes = obj.assemblerStruct.numbVerNodes;
+
+                %% NUMBER OF KNOTS - IDOGEOMETRIC ANALYSIS
+                %-------------------------------------------------------------%
+                % Total number of knots used to divide the spline curve in the
+                % isogeometric analysis.
+                %-------------------------------------------------------------%
+
+                numbKnots  = obj.assemblerStruct.numbKnots;
+
+                %% NUMBER OF CONTROL POINTS - ISOGEOMETRIC ANALYSIS
+                %-------------------------------------------------------------%
+                % Total number of control points used in the isogeometric
+                % approach. Note that this number is equal to the dimension of
+                % the basis used to define the Spline curve and that the
+                % formula used bellow corresponds to use a straight line as
+                % reference supporting fiber.
+                %-------------------------------------------------------------%
+
+                numbControlPts = obj.assemblerStruct.numbControlPts;
+
+                %% GAUSS-LEGENDRE INTEGRATION NODES
+                %-------------------------------------------------------------%
+                % The following method reveives the number of integration nodes
+                % in the horizontal and vertical direction and retruns the
+                % respective Gauss-Legendre nodes and weigths for the
+                % integration interval [0,1].   
+                %
+                % Mesh FEM in X: Equispaced Nodes                            
+                %  (1) horGLNodes  : Vector of the Standard Nodes on the X 
+                %                    Direction
+                %  (2) horGLWeights : Vector of the Standard Weights on the X 
+                %                     Direction
+                %
+                % Mesh FEM in Y: Equispaced Nodes                              
+                %  (1) verGLNodes  : Vector of the Standard Nodes on the Y 
+                %                    Direction  
+                %  (2) verGLWeights : Vector of the Standard Weights on the Y 
+                %                     Direction
+                %-------------------------------------------------------------%
+
+                verGLNodes = obj.assemblerStruct.verGLNodes;
+                verWeights = obj.assemblerStruct.verWeights;
+
+                %% EXTRACT GEOMETRIC INFORMATION
+
+                geometry  = obj.assemblerStruct.geometry;
+                map       = obj.assemblerStruct.map;
+                Jac       = obj.assemblerStruct.Jac;
+                Hes       = obj.assemblerStruct.Hes;
+
+                %% COMPUTE REFERENCE KNOT AND CONTROL POINTS
+                % Note: Create the knots and control points of the reference
+                % supporting fiber where the coupled 1D problems will be
+                % solved.
+
+                refDomain1D = obj.assemblerStruct.refDomain1D;
+                nsub        = obj.assemblerStruct.nsub;
+                degree      = obj.assemblerStruct.degree;
+                regularity  = obj.assemblerStruct.regularity;
+                knots       = obj.assemblerStruct.knots;
+                zeta        = obj.assemblerStruct.zeta;
+
+                %% GENERATE ISOGEOMETRIC MESH FUNCTION
+                % Note: Use the number of quadrature nodes to generate the
+                % quadrature rule using the gauss nodes. Then, use this
+                % information with the computed knots and control points to
+                % generate the isogeometric mesh of the centreline.
+
+                rule = obj.assemblerStruct.rule;
+                qn   = obj.assemblerStruct.qn;
+                qw   = obj.assemblerStruct.qw;
+                msh  = obj.assemblerStruct.msh;
+
+                %% CONSTRUCT THE ISOGEOMETRIC FUNCTIONAL SPACE
+                % Note: Construct the functional space used to discretize the
+                % problem along the centreline and perform the isogeometric
+                % analysis. 
+                % Here, we also evaluate the functional spaces in the specific
+                % element. This will be used in the assembling loop to compute
+                % the operators using the basis functions.
+
+                space     = obj.assemblerStruct.space;
+                numbKnots = obj.assemblerStruct.numbKnots;
+                spaceFunc = obj.assemblerStruct.spaceFunc;
+
+                %% AUGMENTED HORIZONTAL POINTS 
+                % Note: The FOR loop runs over the knots in the centerline ans
+                % compute the required quadrature nodes. The quadrature nodes
+                % will be necessary to evaluate the bilinear coefficients and
+                % the forcing component.
+
+                horEvalNodes = obj.assemblerStruct.horEvalNodes;
+
+                %% AUGMENTED VERTICAL POINTS
+                % Note: Since we are using the full map from the physical
+                % domain to the reference domain, then the whole modal analysis
+                % has to be performed in the vertical direction in the interval
+                % [0,1];
+                
+                augVerNodes   = obj.assemblerStruct.augVerNodes;
+                augVerWeights = obj.assemblerStruct.augVerWeights;
+
+                %% COMPUTATION OF THE MODAL BASIS IN THE Y DIRECTION
+                %-------------------------------------------------------------%
+                % The next method takes the coefficients of the bilinear form,
+                % the dimension of the modal basis (assigned in the demo) and
+                % the vertical evaluation points and computes the coefficients
+                % of the modal basis when evaluated in the points of the
+                % transverse fiber.
+                %-------------------------------------------------------------%
+                
+                modalBasis    = obj.assemblerStruct.modalBasis;
+                modalBasisDer = obj.assemblerStruct.modalBasisDer;
+                dimModBasis   = obj.assemblerStruct.dimModalBasis;
+
+                %% MEMORY ALLOCATION FOR SYSTEM MATRICES
+
+                A = sparse( numbControlPts * dimModBasis, numbControlPts * dimModBasis );
+                M = sparse( numbControlPts * dimModBasis, numbControlPts * dimModBasis );
+                b = zeros ( numbControlPts * dimModBasis, 1);
+
+                %% EVALUATION OF THE GEOMETRIC PROPERTIES OF THE DOMAIN
+                %-------------------------------------------------------------%
+                % We use the horizontal mesh created previously to evaluate the
+                % thickness and the vertical coordinate of the centerline of
+                % the channel.
+                %-------------------------------------------------------------%
+
+                geoData = obj.assemblerStruct.geoData;
+                X       = obj.assemblerStruct.geoData.X;
+                Y       = obj.assemblerStruct.geoData.Y;
+                
+                %% EVALUATION OF THE GEOMETRY PROPERTIES
+                % Note: Since there is a transformation from the physical domain to the
+                % physical domain, we must compute the map contribution used in the
+                % computation of the coefficients and the Jacobian contribution to be
+                % inserted in the integral (quadrature formula).
+
+                jacFunc = obj.assemblerStruct.jacFunc;
+                
+                %% EVALUATION OF TIME PROPERTIES
+                
+                time = obj.assemblerStruct.time;
+
+                %% EVALUATION OF THE BILINEAR COEFFICIENTS OF THE DOMAIN
+                %-------------------------------------------------------------%
+                % We need to evaluate all the coefficients of the bilinear form
+                % in the quadrature nodes along the vertical direction to
+                % perform the first integral (along the transverse fiber) to
+                % obtain a the coefficients of the 1D coupled problem. The
+                % result will be coefficients as a function of 'x'.
+                %-------------------------------------------------------------%
+
+
+                % DIFFUSION
+
+                evalMu    = obj.assemblerStruct.coefficientForm.mu(X,Y,time);
+
+                % ADVECTION
+
+                evalBeta1 = obj.assemblerStruct.coefficientForm.beta1(X,Y,time);
+                evalBeta2 = obj.assemblerStruct.coefficientForm.beta2(X,Y,time);
+
+                % REACTION
+
+                evalSigma = obj.assemblerStruct.coefficientForm.sigma(X,Y,time);
+
+                % MASS
+
+                evalMass = ones(size(X));
+
+                %% EVALUATION OF THE EXCITING FORCE 
+                %-------------------------------------------------------------%
+                % Finally, we use the horizontal and vertical meshes to
+                % evaluate the exciting force acting on the system in the whole
+                % domain.
+                %-------------------------------------------------------------%
+
+                evalForce = obj.assemblerStruct.dirCondFuncStruct.force(X,Y,time);
+
+                %-------------------------------------------------------------%
+                % Note: All of the coefficients of the bilinear form and the
+                % exciting term evaluated in the domain, as well as the mesh of
+                % vertical coordinates are stored in a data structure called
+                % "Computed" to be treated in the assembler function.
+                %-------------------------------------------------------------%
+                
+                boundCond = obj.assemblerStruct.igaBoundCond;
+
+                Computed = struct('mass_c',evalMass,'mu_c',evalMu,'beta1_c',evalBeta1,'beta2_c',evalBeta2,'sigma_c',evalSigma,'force_c',evalForce);
+
+                % Debug
+                %-------------------------------------------------------------%
+                %[~,~] = contourf(horEvalNodes,verEvalNodes,evalForce',20);    
+                %colormap(jet); title('Force in Assembler!')
+                %-------------------------------------------------------------%
+
+                %% ASSEMBLING LOOP
+                %-------------------------------------------------------------%
+                % The assembling loop creates each one of the submatrices
+                % correponding to the microstructure of the linear system. The
+                % loop is repeated m^2 times to complete the macrostructure of
+                % the system.
+                %-------------------------------------------------------------%
+
+                for imb = 1:dimModBasis
+                    for kmb = 1:dimModBasis
+
+                        [Amb,Mmb,bmb] = assemblerIGAScatterTransient(imb,kmb,augVerWeights,modalBasis(:,imb),modalBasisDer(:,imb),modalBasis(:,kmb),...
+                                                                     modalBasisDer(:,kmb),geoData,Computed,msh,space,jacFunc,spaceFunc);
+
+                        % Assignment of the Block Matrix Just Assembled
+
+                        A(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Amb;
+                        M(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Mmb;
+
+                    end
+
+                    % Assignment of the Block Vector Just Assembled
+                    b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb;
+                end
+
+                %% IMPOSE BOUNDARY CONDITIONS
+
+                %-------------------------------------------------------------%
+                % Compute the lifting contribution in the force vector due to
+                % the non homogeneous Dirichlet boundary conditions in the
+                % lower and upper boundary.
+                %-------------------------------------------------------------%
+
+                BC_l         = boundCond.BC_INF_TAG;
+                BC_r         = boundCond.BC_OUT_TAG;
+                infBoundCond = boundCond.BC_INF_DATA;
+                outBoundCond = boundCond.BC_OUT_DATA;
+
+                obj_bcCoeff = BoundaryConditionHandler();
+
+                obj_bcCoeff.infBoundCond    = infBoundCond;
+                obj_bcCoeff.outBoundCond    = outBoundCond;
+                obj_bcCoeff.augVerNodes     = augVerNodes;
+                obj_bcCoeff.augVerWeights   = augVerWeights;
+                obj_bcCoeff.modalBasis      = modalBasis;
+                obj_bcCoeff.dimModalBasis   = dimModBasis;
+                obj_bcCoeff.coefficientForm = obj.assemblerStruct.coefficientForm;
+
+                [infStruct,outStruct] = computeFourierCoeff(obj_bcCoeff);
+
+                bcStruct.bcInfTag       = BC_l;
+                bcStruct.bcOutTag       = BC_r;
+                bcStruct.infStruct      = infStruct;
+                bcStruct.outStruct      = outStruct;
+                bcStruct.numbControlPts = numbControlPts;
+                bcStruct.dimModalBasis  = dimModBasis;
+
+                [AA,MM,bb,sTS] = impose_boundary_transient(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,M,b,numbControlPts,obj.assemblerStruct.currTimeSol);
+
+            end
+            
+            %% Method 'buildConvergenceStruct'
+            
+            function [convStruct] = buildConvergenceStruct(obj)
+                                                         
+            %%
+            % buildSystemIGA - This function computes the assembled matrices
+            %                    relative to the variational problem considering 
+            %                    IGA modal basis.
+            %
+            % Note:
+            % All of the following inputs are encapsulated in the
+            % object properties.
+            %
+            % The inputs are:
+            %%
+            %   (1)  dimModalBasis              : Dimension of the Modal Basis
+            %   (2)  leftBDomain_inX            : Left Limit of the Domain in the X Direction
+            %   (3)  rightBDomain_inX           : Right Limit of the Domain in the X Direction
+            %   (4)  stepMeshX                  : Vector Containing the Step of the Finite
+            %                                     Element Mesh
+            %   (5)  label_upBoundDomain        : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Upper Limit of
+            %                                     the Domain
+            %   (6)  label_downBoundDomain      : Contains the Label Identifying the Nature of
+            %                                     the Boundary Conditions on the Lower Limit of
+            %                                     the Domain
+            %   (7)  localdata_upBDomain        : Contains the Values of the Boundary Conditions
+            %                                     on the Upper Limir of the Domain
+            %   (8) localdata_downBDomain       : Contains the Values of the Boundary Conditions
+            %                                     on the Lower Limir of the Domain
+            %   (9) domainPosition              : Current domain used in the domain decomposition
+            %                                     Computations
+            %   (10) coefficientForm            : Data Strusture Containing All the @-Functions
+            %                                     and the Constants Relative to the Bilinear Form
+            %   (11) dirCondFuncStruct          : Data Structure Containing All the @-Functions
+            %                                     for the Dirichlet Conditions at the Inflow and
+            %                                     for the Exciting Force
+            %   (12) geometricInfo              : Data Structure Containing All the
+            %                                     Geometric Information regarding the
+            %                                     Domain. The current version of the code
+            %                                     works only for the specific condition of:
+            %                                     (L = 1, a = 0, psi_x = 0)
+            %   (13) robinCondStruct            : Data Structure Containing the Two Values of the
+            %                                     Coefficients (R, L) for the Robin Condition Used
+            %                                     in the Domain Decomposition
+            %   (14) numbDimMBEachDomain        : Number of Elements in the Vector Containing the
+            %                                     Dimensions of the Modal Basis in Each Domain
+            %   (15) couplingCond_DD            : Contains the Label Adressing the Coupling Condition
+            %                                     of the Problem
+            %   (16) physicMesh_inX             : Vector Containing the Physical Mesh in the X
+            %                                     Direction
+            %   (17) physicMesh_inY             : Vector Containing the Physical Mesh in the Y
+            %                                     Direction
+            %   (18) jacAtQuadNodes             : Data Sturcture Used to Save the Value of the
+            %                                     Jacobians Computed in the Quadratures Nodes 
+            %   (19) degreePolySplineBasis      : Degree of the Polynomial B-Spline Basis
+            %   (20) continuityParameter        : Degree of Continuity of the Basis 'C^(p-k)'
+            %   (21) domainProfile              : Symbolic Function Defining the Profile of the
+            %                                     Simulation Domain
+            %   (22) domainProfileDer           : Symbolic Function Defining the Derivative of
+            %                                     the Profile of the Simulation Domain
+            % 
+            % The outputs are:
+            %%
+            %   (1) A                   : Final Assembled Block Matrix Using IGA Basis
+            %   (2) b                   : Final Assembled Block Vector Using IGA Basis
+            %   (3) modalBasis          : Modal Basis Obtained
+            %   (3) liftCoeffA          : First Offset Adjustment Coefficient
+            %   (4) liftCoeffB          : Second Offset Adjustment Coefficient
+            %   (5) intNodesGaussLeg    : Gauss-Legendre Integration Nodes
+            %   (6) intNodesWeights     : Weights of the Gauss-Legendre Integration Nodes
+            
+                %% IMPORT CLASSES
+
+                import Core.AssemblerADRHandler
+                import Core.BoundaryConditionHandler
+                import Core.IntegrateHandler
+                import Core.EvaluationHandler
+                import Core.BasisHandler
+                import Core.SolverHandler
+
+                %% NUMBER OF NODES IN THE QUADRATURE FORMULA
+                %-------------------------------------------------------------%
+                % The values of 'nqnx' and 'nqny' does not change during the
+                % computation of the Gauss-Legendre Integration Points.
+                % Attention, if you increase the number of nodes in the
+                % discretization, it is necessary to refine the quadrature
+                % rule.
+                %-------------------------------------------------------------%
+
+                % Horizontal direction
+
+                numbHorNodes = obj.numbHorQuadNodes;
+                assemblerStruct.numbHorNodes = numbHorNodes;
+
+                % Vertical Direction
+
+                numbVerNodes = obj.numbVerQuadNodes;
+                assemblerStruct.numbVerNodes = numbVerNodes;
+
+                %% NUMBER OF KNOTS - IDOGEOMETRIC ANALYSIS
+                %-------------------------------------------------------------%
+                % Total number of knots used to divide the spline curve in the
+                % isogeometric analysis.
+                %-------------------------------------------------------------%
+
+                numbKnots  = round((obj.rightBDomain_inX-obj.leftBDomain_inX)/obj.stepMeshX);
+                assemblerStruct.numbKnots = numbKnots;
+
+                %% NUMBER OF CONTROL POINTS - ISOGEOMETRIC ANALYSIS
+                %-------------------------------------------------------------%
+                % Total number of control points used in the isogeometric
+                % approach. Note that this number is equal to the dimension of
+                % the basis used to define the Spline curve and that the
+                % formula used bellow corresponds to use a straight line as
+                % reference supporting fiber.
+                %-------------------------------------------------------------%
+
+                numbControlPts = numbKnots*(obj.degreePolySplineBasis - obj.continuityParameter) + 1 + obj.continuityParameter;
+                assemblerStruct.numbControlPts = numbControlPts;
+
+                %% GAUSS-LEGENDRE INTEGRATION NODES
+                %-------------------------------------------------------------%
+                % The following method reveives the number of integration nodes
+                % in the horizontal and vertical direction and retruns the
+                % respective Gauss-Legendre nodes and weigths for the
+                % integration interval [0,1].   
+                %
+                % Mesh FEM in X: Equispaced Nodes                            
+                %  (1) horGLNodes  : Vector of the Standard Nodes on the X 
+                %                    Direction
+                %  (2) horGLWeights : Vector of the Standard Weights on the X 
+                %                     Direction
+                %
+                % Mesh FEM in Y: Equispaced Nodes                              
+                %  (1) verGLNodes  : Vector of the Standard Nodes on the Y 
+                %                    Direction  
+                %  (2) verGLWeights : Vector of the Standard Weights on the Y 
+                %                     Direction
+                %-------------------------------------------------------------%
+
+                % Vertical direction
+
+                obj_gaussLegendre_2 = IntegrateHandler();
+                obj_gaussLegendre_2.numbQuadNodes = numbVerNodes;
+                [~, verGLNodes, verWeights] = gaussLegendre(obj_gaussLegendre_2);   
+
+                assemblerStruct.verGLNodes = verGLNodes;
+                assemblerStruct.verWeights = verWeights;
+
+                %% EXTRACT GEOMETRIC INFORMATION
+
+                geometry  = obj.geometricInfo.geometry;
+                map       = @(x,y) obj.geometricInfo.map(x,y);
+                Jac       = @(x,y) obj.geometricInfo.Jac(x,y);
+                Hes       = @(x,y) obj.geometricInfo.Hes(x,y);
+
+                assemblerStruct.geometry = geometry;
+                assemblerStruct.map      = map;
+                assemblerStruct.Jac      = Jac;
+                assemblerStruct.Hes      = Hes;
+
+                %% COMPUTE REFERENCE KNOT AND CONTROL POINTS
+                % Note: Create the knots and control points of the reference
+                % supporting fiber where the coupled 1D problems will be
+                % solved.
+
+                refDomain1D = geo_load(nrbline ([0 0], [1 0]));
+
+                nsub = numbKnots;
+                degree = obj.degreePolySplineBasis;
+                regularity = obj.continuityParameter;
+
+                [knots, zeta] = kntrefine (refDomain1D.nurbs.knots, nsub-1, degree, regularity);
+
+                assemblerStruct.refDomain1D = refDomain1D;
+                assemblerStruct.nsub = nsub;
+                assemblerStruct.degree = degree;
+                assemblerStruct.regularity = regularity;
+                assemblerStruct.knots = knots;
+                assemblerStruct.zeta = zeta;
+
+                %% GENERATE ISOGEOMETRIC MESH FUNCTION
+                % Note: Use the number of quadrature nodes to generate the
+                % quadrature rule using the gauss nodes. Then, use this
+                % information with the computed knots and control points to
+                % generate the isogeometric mesh of the centreline.
+
+                rule     = msh_gauss_nodes (numbHorNodes);
+                [qn, qw] = msh_set_quad_nodes (zeta, rule);
+                msh      = msh_cartesian (zeta, qn, qw, refDomain1D);
+
+                assemblerStruct.rule = rule;
+                assemblerStruct.qn   = qn;
+                assemblerStruct.qw   = qw;
+                assemblerStruct.msh  = msh;
+
+                %% CONSTRUCT THE ISOGEOMETRIC FUNCTIONAL SPACE
+                % Note: Construct the functional space used to discretize the
+                % problem along the centreline and perform the isogeometric
+                % analysis. 
+                % Here, we also evaluate the functional spaces in the specific
+                % element. This will be used in the assembling loop to compute
+                % the operators using the basis functions.
+
+                space    = sp_bspline (knots, degree, msh);
+
+                numbKnots = msh.nel_dir;
+
+                for iel = 1:numbKnots
+
+                    msh_col = msh_evaluate_col (msh, iel);
+
+                    %---------------------------------------------------------%
+                    % Evaluated space to compute the operators
+                    %---------------------------------------------------------%
+
+                    gradFunc = sp_evaluate_col (space, msh_col, 'value', false, 'gradient', true);
+                    shapFunc = sp_evaluate_col (space, msh_col);
+
+                    %---------------------------------------------------------%
+                    % Store the spaces in the cell matrix
+                    %---------------------------------------------------------%
+
+                    spaceFunc{iel,1} = shapFunc;
+                    spaceFunc{iel,2} = gradFunc;
+                    spaceFunc{iel,3} = msh_col;
+
+                end
+
+                assemblerStruct.space     = space;
+                assemblerStruct.numbKnots = numbKnots;
+                assemblerStruct.spaceFunc = spaceFunc;
+
+                %% AUGMENTED HORIZONTAL POINTS 
+                % Note: The FOR loop runs over the knots in the centerline ans
+                % compute the required quadrature nodes. The quadrature nodes
+                % will be necessary to evaluate the bilinear coefficients and
+                % the forcing component.
+
+                horEvalNodes = zeros(numbKnots * numbHorNodes,1);
+
+                for iel = 1:numbKnots
+
+                    msh_col = msh_evaluate_col (msh, iel);
+
+                    localNodes = reshape (msh_col.geo_map(1,:,:), msh_col.nqn, msh_col.nel);  
+                    horEvalNodes((iel - 1)*numbHorNodes + 1 : iel*numbHorNodes) = localNodes;  
+
+                end
+
+                assemblerStruct.horEvalNodes = horEvalNodes;
+
+                %% AUGMENTED VERTICAL POINTS
+                % Note: Since we are using the full map from the physical
+                % domain to the reference domain, then the whole modal analysis
+                % has to be performed in the vertical direction in the interval
+                % [0,1];
+
+                objVertQuadRule = IntegrateHandler();
+
+                objVertQuadRule.leftBoundInterval = 0;
+                objVertQuadRule.rightBoundInterval = 1;
+                objVertQuadRule.inputNodes = verGLNodes;
+                objVertQuadRule.inputWeights = verWeights;
+
+                [augVerNodes, augVerWeights] = quadratureRule(objVertQuadRule);
+
+                assemblerStruct.augVerNodes = augVerNodes;
+                assemblerStruct.augVerWeights = augVerWeights;
+
+                %% COMPUTATION OF THE MODAL BASIS IN THE Y DIRECTION
+                %-------------------------------------------------------------%
+                % The next method takes the coefficients of the bilinear form,
+                % the dimension of the modal basis (assigned in the demo) and
+                % the vertical evaluation points and computes the coefficients
+                % of the modal basis when evaluated in the points of the
+                % transverse fiber.
+                %-------------------------------------------------------------%
+
+                obj_newModalBasis = BasisHandler();
+
+                obj_newModalBasis.dimModalBasis      = obj.dimModalBasis;
+                obj_newModalBasis.evalNodesY         = verGLNodes;
+                obj_newModalBasis.labelUpBoundCond   = obj.label_upBoundDomain;
+                obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
+                obj_newModalBasis.coeffForm          = obj.coefficientForm;
+
+                [modalBasis, modalBasisDer] = newModalBasis(obj_newModalBasis);
+
+                assemblerStruct.modalBasis          = modalBasis;
+                assemblerStruct.modalBasisDer       = modalBasisDer;
+                assemblerStruct.dimModalBasis       = obj.dimModalBasis;
+                assemblerStruct.labelUpBoundCond    = obj.label_upBoundDomain;
+                assemblerStruct.labelDownBoundCond  = obj.label_downBoundDomain;
+                
+                %% EVALUATION OF THE GEOMETRIC PROPERTIES OF THE DOMAIN
+                %-------------------------------------------------------------%
+                % We use the horizontal mesh created previously to evaluate the
+                % thickness and the vertical coordinate of the centerline of
+                % the channel.
+                %-------------------------------------------------------------%
+
+                verEvalNodes = augVerNodes;
+
+                X = mapOut(horEvalNodes,verEvalNodes,map,1);
+                Y = mapOut(horEvalNodes,verEvalNodes,map,2);
+
+                geoData.X = X;
+                geoData.Y = Y;
+                geoData.horNodes = horEvalNodes;
+                geoData.verNodes = verEvalNodes;
+
+                assemblerStruct.geoData = geoData;
+
+                %% EVALUATION OF THE GEOMETRY PROPERTIES
+                % Note: Since there is a transformation from the physical domain to the
+                % physical domain, we must compute the map contribution used in the
+                % computation of the coefficients and the Jacobian contribution to be
+                % inserted in the integral (quadrature formula).
+
+                evalJac     = jacOut(horEvalNodes,verEvalNodes,Jac);
+                evalDetJac  = detJac(horEvalNodes,verEvalNodes,Jac);
+
+                Phi1_dx = invJac(1,1,evalJac);
+                Phi1_dy = invJac(1,2,evalJac);
+                Phi2_dx = invJac(2,1,evalJac);
+                Phi2_dy = invJac(2,2,evalJac);
+
+                jacFunc.evalJac     = evalJac;
+                jacFunc.evalDetJac  = evalDetJac;
+                jacFunc.Phi1_dx     = Phi1_dx;
+                jacFunc.Phi1_dy     = Phi1_dy;
+                jacFunc.Phi2_dx     = Phi2_dx;
+                jacFunc.Phi2_dy     = Phi2_dy;
+
+                assemblerStruct.jacFunc = jacFunc;
+                
+                %% BOUNDARY CONDITIONS PROPERTIES
+                
+                assemblerStruct.igaBoundCond = obj.dirCondFuncStruct.igaBoundCond;
+                
+                %% MODEL PROPERTIES
+                
+                assemblerStruct.coefficientForm   = obj.coefficientForm;
+                assemblerStruct.dirCondFuncStruct = obj.dirCondFuncStruct;
+                
+                %% GENERATION OF PLOTTING STRUCTURE
+                
+                assemblerStruct.plotResolutionX = 100;
+                assemblerStruct.plotResolutionY = 100;
 
             end
             
@@ -2974,8 +4064,7 @@ classdef AssemblerADRHandler
             obj_newModalBasis = BasisHandler();
             
             obj_newModalBasis.dimModalBasis = obj.dimModalBasis;
-            obj_newModalBasis.evalNodesY = augVerNodes;
-            obj_newModalBasis.evalWeightsY = augVerWeights;
+            obj_newModalBasis.evalNodesY = verGLNodes;
             obj_newModalBasis.labelUpBoundCond = obj.label_upBoundDomain;
             obj_newModalBasis.labelDownBoundCond = obj.label_downBoundDomain;
             obj_newModalBasis.coeffForm = obj.coefficientForm;
@@ -2987,21 +4076,19 @@ classdef AssemblerADRHandler
             modalBasisStruct.modalBasisDer2 = modalBasisDer2;
             modalBasisStruct.numbModes = obj.dimModalBasis;
 
-%             % DEBUG
-%             
-%             x = augVerNodes;
-%             y = augVerNodes;
-%             [X,Y] = meshgrid(x,y);
-%             
-%             figure;
-%             for ii = 1:obj.dimModalBasis^2
-%                 subplot(obj.dimModalBasis,obj.dimModalBasis,ii)
-%                 surf(X,Y,modalBasis(:,:,ii));
-%                 az = 45;
-%                 el = 30;
-%                 view(az, el);
-%             end
+            x = verGLNodes;
+            y = verGLNodes;
+            [X,Y] = meshgrid(x,y);
             
+            figure;
+            for ii = 1:obj.dimModalBasis^2
+                subplot(obj.dimModalBasis,obj.dimModalBasis,ii)
+                surf(X,Y,modalBasis(:,:,ii));
+                az = 45;
+                el = 30;
+                view(az, el);
+            end
+
             disp('Finished COMPUTATION OF THE MODAL BASIS IN TRANSVERSE DOMAIN')
             
             %% MEMORY ALLOCATION FOR SYSTEM MATRICES
@@ -3151,7 +4238,7 @@ classdef AssemblerADRHandler
                     [Amb,bmb,liftCoeffA,liftCoeffB] = assemblerIGAScatter3D( imb, kmb, ...
                                             augVerWeights,modalBasis(:,:,imb),modalBasisDer1(:,:,imb),modalBasisDer2(:,:,imb),modalBasis(:,:,kmb),...
                                             modalBasisDer1(:,:,kmb),modalBasisDer2(:,:,kmb),geoData,Computed,lifting,aLift,bLift,msh,space,jacFunc,...
-                                            spaceFunc,X,Y);
+                                            spaceFunc);
 
                     % Assignment of the Block Matrix Just Assembled
 
@@ -5727,7 +6814,6 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter(imb,kmb,augVerWeights,mb_i,mb
 
     end
 
-    
     Al       = Local_11 + Local_10 + Local_01 + Local_00;
     bl       = rhs;
 
@@ -5916,8 +7002,8 @@ end
 
 %% Method 'assemblerIGAScatterTransient'
             
-function [Al,Ml,bl,aLift,bLift] = assemblerIGAScatterTransient(imb,kmb,augVerWeights,mb_i,mb_yi,mb_k,mb_yk,geoData,...
-                                Computed,lifting,aLift,bLift,msh,space,jacFunc,spaceFunc,BoundCond)
+function [Al,Ml,bl] = assemblerIGAScatterTransient(imb,kmb,augVerWeights,mb_i,mb_yi,mb_k,mb_yk,geoData,...
+                                Computed,msh,space,jacFunc,spaceFunc)
 
     %% IMPORT CLASS
     
@@ -5936,10 +7022,7 @@ function [Al,Ml,bl,aLift,bLift] = assemblerIGAScatterTransient(imb,kmb,augVerWei
     % mesh.
     %---------------------------------------------------------------------%
     
-    funcToIntegrale = (Computed.force_c - ...
-                      (aLift).* Computed.beta2_c - ...
-                      Computed.sigma_c .* lifting) .* ...
-                      jacFunc.evalDetJac;
+    funcToIntegrale = Computed.force_c .* jacFunc.evalDetJac;
                                 
     funcWeight = mb_i .* augVerWeights;
     
@@ -6035,60 +7118,60 @@ function [Al,Ml,bl,aLift,bLift] = assemblerIGAScatterTransient(imb,kmb,augVerWei
     Al = Local_11 + Local_10 + Local_01 + Local_00;
     bl = rhs;
 
-    %% IMPOSITION OF DIRICHLET BOUNDARY CONDITION
-    %---------------------------------------------------------------------%
-    % This step is necessary to guarantee that the resulting linear system
-    % is not singular.
-    %---------------------------------------------------------------------%
-    
+%     % IMPOSITION OF DIRICHLET BOUNDARY CONDITION
+%     ---------------------------------------------------------------------%
+%     This step is necessary to guarantee that the resulting linear system
+%     is not singular.
+%     ---------------------------------------------------------------------%
+%     
 %     [Al,bl] = imposeBoundIGA(Al,bl,BoundCond,space,msh,coeff,geoData,spaceFunc,imb,kmb);
-
-        % IMPLEMENT MODIFICATIONS IN THE STIFFNESS MATRIX
-        
-        if (imb == kmb)
-            AModified = Al;
-            AModified(1,:) = 0;
-            AModified(1,1) = 1e10;
-            AModified(end,:) = 0;
-            AModified(end,end) = 1e10;
-        else
-            AModified = Al;
-            AModified(1,:) = 0;
-            AModified(end,:) = 0;
-        end
-        
-        Al = AModified;
-        
-        % IMPLEMENT MODIFICATIONS IN THE FORCING TERM
-        
-        if (imb == kmb)
-            bModified = bl;
-            bModified(1) = 0;
-            bModified(end) = 0;
-        else
-            bModified = bl;
-        end   
-        
-        bl = bModified;
-    
-    % NEUMANN BOUNDARY CONDITIONS
-    % Note: Modify the orinial stiffness matrix and right-handside term to
-    % include the Neumann boundary condtions, if any.
-    
-    if(imb == kmb)
-        for iside = BoundCond.neuSides
-            
-            if (iside == 1)
-              x = msh.breaks{1}(1);
-            else
-              x = msh.breaks{1}(end);
-            end
-            
-            sp_side = space.boundary(iside);
-            bl(sp_side.dofs) = bl(sp_side.dofs) + BoundCond.neu(x,iside);
-            
-        end
-    end  
+% 
+%         IMPLEMENT MODIFICATIONS IN THE STIFFNESS MATRIX
+%         
+%         if (imb == kmb)
+%             AModified = Al;
+%             AModified(1,:) = 0;
+%             AModified(1,1) = 1e10;
+%             AModified(end,:) = 0;
+%             AModified(end,end) = 1e10;
+%         else
+%             AModified = Al;
+%             AModified(1,:) = 0;
+%             AModified(end,:) = 0;
+%         end
+%         
+%         Al = AModified;
+%         
+%         IMPLEMENT MODIFICATIONS IN THE FORCING TERM
+%         
+%         if (imb == kmb)
+%             bModified = bl;
+%             bModified(1) = 0;
+%             bModified(end) = 0;
+%         else
+%             bModified = bl;
+%         end   
+%         
+%         bl = bModified;
+%     
+%     NEUMANN BOUNDARY CONDITIONS
+%     Note: Modify the orinial stiffness matrix and right-handside term to
+%     include the Neumann boundary condtions, if any.
+%     
+%     if(imb == kmb)
+%         for iside = BoundCond.neuSides
+%             
+%             if (iside == 1)
+%               x = msh.breaks{1}(1);
+%             else
+%               x = msh.breaks{1}(end);
+%             end
+%             
+%             sp_side = space.boundary(iside);
+%             bl(sp_side.dofs) = bl(sp_side.dofs) + BoundCond.neu(x,iside);
+%             
+%         end
+%     end  
     
 end
 
@@ -6575,7 +7658,7 @@ end
 %% Method 'assemblerIGAScatter3D'
             
 function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,mb_yi,mb_zi,mb_k,mb_yk,mb_zk,geoData,...
-                                Computed,lifting,aLift,bLift,msh,space,jacFunc,spaceFunc,X,Y)
+                                Computed,lifting,aLift,bLift,msh,space,jacFunc,spaceFunc,BoundCond)
 
     %% IMPORT CLASS
     
@@ -6598,17 +7681,12 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     %                   (aLift).* Computed.beta2_c - ...
     %                   Computed.sigma_c .* lifting) .* ...
     %                   jacFunc.evalDetJac;
-    
+
     funcToIntegrate = jacFunc.evalDetJac .* Computed.force_c;
     
     weightMat = augVerWeights * augVerWeights';
     funcWeight = mb_i .* weightMat;
 
-    % DEBUG
-    
-    disp(size(funcToIntegrate))
-    disp(size(funcWeight))
-    
     aux = funcToIntegrate .* funcWeight;
     auxx = sum(sum(aux));
     forceVec(:) = auxx(1,1,:);
@@ -6620,188 +7698,99 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     % the parts to be assembled.
     %---------------------------------------------------------------------%
     
-    % FUNCTIONS TO INTEGRATE
+    Psi11 = jacFunc.Psi1_dx.^2 + jacFunc.Psi1_dy.^2 + jacFunc.Psi1_dz.^2;
+    Psi22 = jacFunc.Psi2_dx.^2 + jacFunc.Psi2_dy.^2 + jacFunc.Psi2_dz.^2;
+    Psi33 = jacFunc.Psi3_dx.^2 + jacFunc.Psi3_dy.^2 + jacFunc.Psi3_dz.^2;
     
-    funcToIntegrate_01 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dz .* jacFunc.Psi1_dz;
-    funcToIntegrate_02 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi1_dz;
-    funcToIntegrate_03 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi1_dz;
+    Psi12 = jacFunc.Psi1_dx .* jacFunc.Psi2_dx + ...
+            jacFunc.Psi1_dy .* jacFunc.Psi2_dy + ...
+            jacFunc.Psi1_dz .* jacFunc.Psi2_dz;
+    Psi21 = jacFunc.Psi2_dx .* jacFunc.Psi1_dx + ...
+            jacFunc.Psi2_dy .* jacFunc.Psi1_dy + ...
+            jacFunc.Psi2_dz .* jacFunc.Psi1_dz;
+    Psi13 = jacFunc.Psi1_dx .* jacFunc.Psi3_dx + ...
+            jacFunc.Psi1_dy .* jacFunc.Psi3_dy + ...
+            jacFunc.Psi1_dz .* jacFunc.Psi3_dz;
+    Psi31 = jacFunc.Psi3_dx .* jacFunc.Psi1_dx + ...
+            jacFunc.Psi3_dy .* jacFunc.Psi1_dy + ...
+            jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
+    Psi23 = jacFunc.Psi2_dx .* jacFunc.Psi3_dx + ...
+            jacFunc.Psi2_dy .* jacFunc.Psi3_dy + ...
+            jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
+    Psi32 = jacFunc.Psi3_dx .* jacFunc.Psi2_dx + ...
+            jacFunc.Psi3_dy .* jacFunc.Psi2_dy + ...
+            jacFunc.Psi3_dz .* jacFunc.Psi2_dz;
     
-    funcToIntegrate_04 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
-    funcToIntegrate_05 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
-    funcToIntegrate_06 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi2_dz;
+    BetaPsi1 = Computed.beta1_c .* jacFunc.Psi1_dx + ...
+               Computed.beta2_c .* jacFunc.Psi1_dy + ...
+               Computed.beta3_c .* jacFunc.Psi1_dz;
+    BetaPsi2 = Computed.beta1_c .* jacFunc.Psi2_dx + ...
+               Computed.beta2_c .* jacFunc.Psi2_dy + ...
+               Computed.beta3_c .* jacFunc.Psi2_dz;
+    BetaPsi3 = Computed.beta1_c .* jacFunc.Psi3_dx + ...
+               Computed.beta2_c .* jacFunc.Psi3_dy + ...
+               Computed.beta3_c .* jacFunc.Psi3_dz;
+
+    funcToIntegrate_1  = jacFunc.evalDetJac .* Computed.mu_c .* Psi11;
+    funcToIntegrate_2  = jacFunc.evalDetJac .* Computed.mu_c .* Psi12;
+    funcToIntegrate_3  = jacFunc.evalDetJac .* Computed.mu_c .* Psi13;
+    funcToIntegrate_4  = jacFunc.evalDetJac .* Computed.mu_c .* Psi21;
+    funcToIntegrate_5  = jacFunc.evalDetJac .* Computed.mu_c .* Psi22;
+    funcToIntegrate_6  = jacFunc.evalDetJac .* Computed.mu_c .* Psi23;
+    funcToIntegrate_7  = jacFunc.evalDetJac .* Computed.mu_c .* Psi31;
+    funcToIntegrate_8  = jacFunc.evalDetJac .* Computed.mu_c .* Psi32;
+    funcToIntegrate_9  = jacFunc.evalDetJac .* Computed.mu_c .* Psi33;
+    funcToIntegrate_10 = jacFunc.evalDetJac .* BetaPsi1;
+    funcToIntegrate_11 = jacFunc.evalDetJac .* BetaPsi2;
+    funcToIntegrate_12 = jacFunc.evalDetJac .* BetaPsi3;
     
-    funcToIntegrate_07 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dz .* jacFunc.Psi3_dz;
-    funcToIntegrate_08 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi1_dy;
-    funcToIntegrate_09 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dy .* jacFunc.Psi2_dy;
+    % DEBUG
     
-    funcToIntegrate_10 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dy .* jacFunc.Psi3_dy;
-    funcToIntegrate_11 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi1_dx;
-    funcToIntegrate_12 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dx .* jacFunc.Psi2_dx;
     
-    funcToIntegrate_13 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi3_dx .* jacFunc.Psi3_dx;
-    funcToIntegrate_14 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
-    funcToIntegrate_15 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
     
-    funcToIntegrate_16 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi2_dy;
-    funcToIntegrate_17 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi2_dy;
-    funcToIntegrate_18 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi3_dy;
+    funcWeight_1  = mb_k  .* mb_i  .* weightMat;
+    funcWeight_2  = mb_k  .* mb_yi .* weightMat;
+    funcWeight_3  = mb_k  .* mb_zi .* weightMat;
+    funcWeight_4  = mb_yk .* mb_i  .* weightMat;
+    funcWeight_5  = mb_yk .* mb_yi .* weightMat;
+    funcWeight_6  = mb_yk .* mb_zi .* weightMat;
+    funcWeight_7  = mb_zk .* mb_i  .* weightMat;
+    funcWeight_8  = mb_zk .* mb_yi .* weightMat;
+    funcWeight_9  = mb_zk .* mb_zi .* weightMat;
+    funcWeight_10 = mb_k  .* mb_i  .* weightMat;
+    funcWeight_11 = mb_yk .* mb_i  .* weightMat;
+    funcWeight_12 = mb_zk .* mb_i  .* weightMat;
+
+    aux1  = funcToIntegrate_1  .* funcWeight_1;
+    aux2  = funcToIntegrate_2  .* funcWeight_2;
+    aux3  = funcToIntegrate_3  .* funcWeight_3;
+    aux4  = funcToIntegrate_4  .* funcWeight_4;
+    aux5  = funcToIntegrate_5  .* funcWeight_5;
+    aux6  = funcToIntegrate_6  .* funcWeight_6;
+    aux7  = funcToIntegrate_7  .* funcWeight_7;
+    aux8  = funcToIntegrate_8  .* funcWeight_8;
+    aux9  = funcToIntegrate_9  .* funcWeight_9;
+    aux10 = funcToIntegrate_10 .* funcWeight_10;
+    aux11 = funcToIntegrate_11 .* funcWeight_11;
+    aux12 = funcToIntegrate_12 .* funcWeight_12;
+
+    auxVec1  = sum(sum(aux1));
+    auxVec2  = sum(sum(aux2));
+    auxVec3  = sum(sum(aux3));
+    auxVec4  = sum(sum(aux4));
+    auxVec5  = sum(sum(aux5));
+    auxVec6  = sum(sum(aux6));
+    auxVec7  = sum(sum(aux7));
+    auxVec8  = sum(sum(aux8));
+    auxVec9  = sum(sum(aux9));
+    auxVec10 = sum(sum(aux10));
+    auxVec11 = sum(sum(aux11));
+    auxVec12 = sum(sum(aux12));
     
-    funcToIntegrate_19 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dy .* jacFunc.Psi3_dy;
-    funcToIntegrate_20 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dy .* jacFunc.Psi3_dy;
-    funcToIntegrate_21 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dy .* jacFunc.Psi3_dy;
-    
-    funcToIntegrate_22 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi2_dx;
-    funcToIntegrate_23 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi2_dx;
-    funcToIntegrate_24 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi3_dx;
-    
-    funcToIntegrate_25 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi1_dx .* jacFunc.Psi3_dx;
-    funcToIntegrate_26 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dx .* jacFunc.Psi3_dx;
-    funcToIntegrate_27 = jacFunc.evalDetJac .* Computed.mu_c .* jacFunc.Psi2_dx .* jacFunc.Psi3_dx;
-    
-    funcToIntegrate_28 = jacFunc.evalDetJac .* Computed.beta3_c .* jacFunc.Psi1_dx;
-    funcToIntegrate_29 = jacFunc.evalDetJac .* Computed.beta2_c .* jacFunc.Psi1_dx;
-    funcToIntegrate_30 = jacFunc.evalDetJac .* Computed.beta1_c .* jacFunc.Psi1_dx;
-    
-    funcToIntegrate_31 = jacFunc.evalDetJac .* Computed.beta3_c .* jacFunc.Psi2_dx;
-    funcToIntegrate_32 = jacFunc.evalDetJac .* Computed.beta3_c .* jacFunc.Psi3_dx;
-    funcToIntegrate_33 = jacFunc.evalDetJac .* Computed.beta2_c .* jacFunc.Psi2_dx;
-    
-    funcToIntegrate_34 = jacFunc.evalDetJac .* Computed.beta2_c .* jacFunc.Psi3_dx;
-    funcToIntegrate_35 = jacFunc.evalDetJac .* Computed.beta1_c .* jacFunc.Psi2_dx;
-    funcToIntegrate_36 = jacFunc.evalDetJac .* Computed.beta1_c .* jacFunc.Psi3_dx;
-    
-    % INTEGRATION WEIGHTS
-    
-    funcWeight_01  = mb_k  .* mb_i  .* weightMat;
-    funcWeight_02  = mb_yk .* mb_i  .* weightMat;
-    funcWeight_03  = mb_k  .* mb_yi .* weightMat;
-    
-    funcWeight_04  = mb_zk .* mb_i  .* weightMat;
-    funcWeight_05  = mb_k  .* mb_zi .* weightMat;
-    funcWeight_06  = mb_yk .* mb_yi .* weightMat;
-    
-    funcWeight_07  = mb_zk .* mb_zi .* weightMat;
-    funcWeight_08  = mb_k  .* mb_i  .* weightMat;
-    funcWeight_09  = mb_yk .* mb_yi .* weightMat;
-    
-    funcWeight_10  = mb_zk .* mb_zi .* weightMat;
-    funcWeight_11  = mb_k  .* mb_i  .* weightMat;
-    funcWeight_12  = mb_yk .* mb_yi .* weightMat;
-    
-    funcWeight_13  = mb_zk .* mb_zi .* weightMat;
-    funcWeight_14  = mb_yk .* mb_zi .* weightMat;
-    funcWeight_15  = mb_zk .* mb_yi .* weightMat;
-    
-    funcWeight_16  = mb_yk .* mb_i  .* weightMat;
-    funcWeight_17  = mb_k  .* mb_yi .* weightMat;
-    funcWeight_18  = mb_zk .* mb_i  .* weightMat;
-    
-    funcWeight_19  = mb_k  .* mb_zi .* weightMat;
-    funcWeight_20  = mb_yk .* mb_zi .* weightMat;
-    funcWeight_21  = mb_zk .* mb_yi .* weightMat;
-    
-    funcWeight_22  = mb_yk .* mb_i  .* weightMat;
-    funcWeight_23  = mb_k  .* mb_yi .* weightMat;
-    funcWeight_24  = mb_zk .* mb_i  .* weightMat;
-    
-    funcWeight_25  = mb_k  .* mb_zi .* weightMat;
-    funcWeight_26  = mb_yk .* mb_zi .* weightMat;
-    funcWeight_27  = mb_zk .* mb_yi .* weightMat;
-    
-    funcWeight_28  = mb_k  .* mb_i  .* weightMat;
-    funcWeight_29  = mb_k  .* mb_i  .* weightMat;
-    funcWeight_30  = mb_k  .* mb_i  .* weightMat;
-    
-    funcWeight_31  = mb_yk .* mb_i  .* weightMat;
-    funcWeight_32  = mb_zk .* mb_i  .* weightMat;
-    funcWeight_33  = mb_yk .* mb_i  .* weightMat;
-    
-    funcWeight_34  = mb_zk .* mb_i  .* weightMat;
-    funcWeight_35  = mb_yk .* mb_i  .* weightMat;
-    funcWeight_36  = mb_zk .* mb_i  .* weightMat;
-    
-    % APPLICATION OF THE QUADRATURE RULE
-    
-    aux01  = funcToIntegrate_01  .* funcWeight_01;
-    aux02  = funcToIntegrate_02  .* funcWeight_02;
-    aux03  = funcToIntegrate_03  .* funcWeight_03;
-    aux04  = funcToIntegrate_04  .* funcWeight_04;
-    aux05  = funcToIntegrate_05  .* funcWeight_05;
-    aux06  = funcToIntegrate_06  .* funcWeight_06;
-    aux07  = funcToIntegrate_07  .* funcWeight_07;
-    aux08  = funcToIntegrate_08  .* funcWeight_08;
-    aux09  = funcToIntegrate_09  .* funcWeight_09;
-    aux10  = funcToIntegrate_10  .* funcWeight_10;
-    aux11  = funcToIntegrate_11  .* funcWeight_11;
-    aux12  = funcToIntegrate_12  .* funcWeight_12;
-    aux13  = funcToIntegrate_13  .* funcWeight_13;
-    aux14  = funcToIntegrate_14  .* funcWeight_14;
-    aux15  = funcToIntegrate_15  .* funcWeight_15;
-    aux16  = funcToIntegrate_16  .* funcWeight_16;
-    aux17  = funcToIntegrate_17  .* funcWeight_17;
-    aux18  = funcToIntegrate_18  .* funcWeight_18;
-    aux19  = funcToIntegrate_19  .* funcWeight_19;
-    aux20  = funcToIntegrate_20  .* funcWeight_20;
-    aux21  = funcToIntegrate_21  .* funcWeight_21;
-    aux22  = funcToIntegrate_22  .* funcWeight_22;
-    aux23  = funcToIntegrate_23  .* funcWeight_23;
-    aux24  = funcToIntegrate_24  .* funcWeight_24;
-    aux25  = funcToIntegrate_25  .* funcWeight_25;
-    aux26  = funcToIntegrate_26  .* funcWeight_26;
-    aux27  = funcToIntegrate_27  .* funcWeight_27;
-    aux28  = funcToIntegrate_28  .* funcWeight_28;
-    aux29  = funcToIntegrate_29  .* funcWeight_29;
-    aux30  = funcToIntegrate_30  .* funcWeight_30;
-    aux31  = funcToIntegrate_31  .* funcWeight_31;
-    aux32  = funcToIntegrate_32  .* funcWeight_32;
-    aux33  = funcToIntegrate_33  .* funcWeight_33;
-    aux34  = funcToIntegrate_34  .* funcWeight_34;
-    aux35  = funcToIntegrate_35  .* funcWeight_35;
-    aux36  = funcToIntegrate_36  .* funcWeight_36;
-    
-    auxVec01  = sum(sum(aux01));
-    auxVec02  = sum(sum(aux02));
-    auxVec03  = sum(sum(aux03));
-    auxVec04  = sum(sum(aux04));
-    auxVec05  = sum(sum(aux05));
-    auxVec06  = sum(sum(aux06));
-    auxVec07  = sum(sum(aux07));
-    auxVec08  = sum(sum(aux08));
-    auxVec09  = sum(sum(aux09));
-    auxVec10  = sum(sum(aux10));
-    auxVec11  = sum(sum(aux11));
-    auxVec12  = sum(sum(aux12));
-    auxVec13  = sum(sum(aux13));
-    auxVec14  = sum(sum(aux14));
-    auxVec15  = sum(sum(aux15));
-    auxVec16  = sum(sum(aux16));
-    auxVec17  = sum(sum(aux17));
-    auxVec18  = sum(sum(aux18));
-    auxVec19  = sum(sum(aux19));
-    auxVec20  = sum(sum(aux20));
-    auxVec21  = sum(sum(aux21));
-    auxVec22  = sum(sum(aux22));
-    auxVec23  = sum(sum(aux23));
-    auxVec24  = sum(sum(aux24));
-    auxVec25  = sum(sum(aux25));
-    auxVec26  = sum(sum(aux26));
-    auxVec27  = sum(sum(aux27));
-    auxVec28  = sum(sum(aux28));
-    auxVec29  = sum(sum(aux29));
-    auxVec30  = sum(sum(aux30));
-    auxVec31  = sum(sum(aux31));
-    auxVec32  = sum(sum(aux32));
-    auxVec33  = sum(sum(aux33));
-    auxVec34  = sum(sum(aux34));
-    auxVec35  = sum(sum(aux35));
-    auxVec36  = sum(sum(aux36));
-    
-    r00 = auxVec06 + auxVec07 + auxVec09 + auxVec10 + auxVec12 + auxVec13 + ...
-          auxVec14 + auxVec15 + auxVec20 + auxVec21 + auxVec26 + auxVec27 + ...
-          auxVec31 + auxVec32 + auxVec33 + auxVec34 + auxVec35 + auxVec36;
-    r10 = auxVec03 + auxVec05 + auxVec17 + auxVec19 + auxVec23 + auxVec25 + auxVec28 + auxVec29 + auxVec30;
-    r01 = auxVec02 + auxVec04 + auxVec16 + auxVec18 + auxVec22 + auxVec24;
-    r11 = auxVec01 + auxVec08 + auxVec11;
+    r00 = auxVec5 + auxVec6 + auxVec8 + auxVec9 + auxVec11 + auxVec12;
+    r10 = auxVec2 + auxVec3 + auxVec10;
+    r01 = auxVec4 + auxVec7;
+    r11 = auxVec1;
     
     auxx1(:) = r00(1,1,:);
     auxx2(:) = r01(1,1,:);
@@ -6811,151 +7800,6 @@ function [Al,bl,aLift,bLift] = assemblerIGAScatter3D(imb,kmb,augVerWeights,mb_i,
     r01 = auxx2;
     r10 = auxx3;
     r11 = auxx4;
-    
-    
-%     Psi11 = jacFunc.Psi1_dx .* jacFunc.Psi1_dx + ...
-%             jacFunc.Psi1_dy .* jacFunc.Psi1_dy + ...
-%             jacFunc.Psi1_dz .* jacFunc.Psi1_dz;
-%     Psi12 = jacFunc.Psi1_dx .* jacFunc.Psi2_dx + ...
-%             jacFunc.Psi1_dy .* jacFunc.Psi2_dy + ...
-%             jacFunc.Psi1_dz .* jacFunc.Psi2_dz;
-%     Psi13 = jacFunc.Psi1_dx .* jacFunc.Psi3_dx + ...
-%             jacFunc.Psi1_dy .* jacFunc.Psi3_dy + ...
-%             jacFunc.Psi1_dz .* jacFunc.Psi3_dz;
-%         
-%     Psi21 = jacFunc.Psi2_dx .* jacFunc.Psi1_dx + ...
-%             jacFunc.Psi2_dy .* jacFunc.Psi1_dy + ...
-%             jacFunc.Psi2_dz .* jacFunc.Psi1_dz;    
-%     Psi22 = jacFunc.Psi2_dx .* jacFunc.Psi2_dx + ...
-%             jacFunc.Psi2_dy .* jacFunc.Psi2_dy + ...
-%             jacFunc.Psi2_dz .* jacFunc.Psi2_dz;
-%     Psi23 = jacFunc.Psi2_dx .* jacFunc.Psi3_dx + ...
-%             jacFunc.Psi2_dy .* jacFunc.Psi3_dy + ...
-%             jacFunc.Psi2_dz .* jacFunc.Psi3_dz;
-%     
-%     Psi31 = jacFunc.Psi3_dx .* jacFunc.Psi1_dx + ...
-%             jacFunc.Psi3_dy .* jacFunc.Psi1_dy + ...
-%             jacFunc.Psi3_dz .* jacFunc.Psi1_dz;
-%     Psi32 = jacFunc.Psi3_dx .* jacFunc.Psi2_dx + ...
-%             jacFunc.Psi3_dy .* jacFunc.Psi2_dy + ...
-%             jacFunc.Psi3_dz .* jacFunc.Psi2_dz;
-%     Psi33 = jacFunc.Psi3_dx .* jacFunc.Psi3_dx + ...
-%             jacFunc.Psi3_dy .* jacFunc.Psi3_dy + ...
-%             jacFunc.Psi3_dz .* jacFunc.Psi3_dz;
-%     
-%     BetaPsi1 = Computed.beta1_c .* jacFunc.Psi1_dx + ...
-%                Computed.beta2_c .* jacFunc.Psi1_dy + ...
-%                Computed.beta3_c .* jacFunc.Psi1_dz;
-%     BetaPsi2 = Computed.beta1_c .* jacFunc.Psi2_dx + ...
-%                Computed.beta2_c .* jacFunc.Psi2_dy + ...
-%                Computed.beta3_c .* jacFunc.Psi2_dz;
-%     BetaPsi3 = Computed.beta1_c .* jacFunc.Psi3_dx + ...
-%                Computed.beta2_c .* jacFunc.Psi3_dy + ...
-%                Computed.beta3_c .* jacFunc.Psi3_dz;
-% 
-%     funcToIntegrate_1  = jacFunc.evalDetJac .* Computed.mu_c .* Psi11;
-%     funcToIntegrate_2  = jacFunc.evalDetJac .* Computed.mu_c .* Psi12;
-%     funcToIntegrate_3  = jacFunc.evalDetJac .* Computed.mu_c .* Psi13;
-%     funcToIntegrate_4  = jacFunc.evalDetJac .* Computed.mu_c .* Psi21;
-%     funcToIntegrate_5  = jacFunc.evalDetJac .* Computed.mu_c .* Psi22;
-%     funcToIntegrate_6  = jacFunc.evalDetJac .* Computed.mu_c .* Psi23;
-%     funcToIntegrate_7  = jacFunc.evalDetJac .* Computed.mu_c .* Psi31;
-%     funcToIntegrate_8  = jacFunc.evalDetJac .* Computed.mu_c .* Psi32;
-%     funcToIntegrate_9  = jacFunc.evalDetJac .* Computed.mu_c .* Psi33;
-%     funcToIntegrate_10 = jacFunc.evalDetJac .* BetaPsi1;
-%     funcToIntegrate_11 = jacFunc.evalDetJac .* BetaPsi2;
-%     funcToIntegrate_12 = jacFunc.evalDetJac .* BetaPsi3;
-%     
-%     funcWeight_1  = mb_k  .* mb_i  .* weightMat;
-%     funcWeight_2  = mb_k  .* mb_yi .* weightMat;
-%     funcWeight_3  = mb_k  .* mb_zi .* weightMat;
-%     funcWeight_4  = mb_yk .* mb_i  .* weightMat;
-%     funcWeight_5  = mb_yk .* mb_yi .* weightMat;
-%     funcWeight_6  = mb_yk .* mb_zi .* weightMat;
-%     funcWeight_7  = mb_zk .* mb_i  .* weightMat;
-%     funcWeight_8  = mb_zk .* mb_yi .* weightMat;
-%     funcWeight_9  = mb_zk .* mb_zi .* weightMat;
-%     funcWeight_10 = mb_k  .* mb_i  .* weightMat;
-%     funcWeight_11 = mb_yk .* mb_i  .* weightMat;
-%     funcWeight_12 = mb_zk .* mb_i  .* weightMat;
-% 
-%     aux1  = funcToIntegrate_1  .* funcWeight_1;
-%     aux2  = funcToIntegrate_2  .* funcWeight_2;
-%     aux3  = funcToIntegrate_3  .* funcWeight_3;
-%     aux4  = funcToIntegrate_4  .* funcWeight_4;
-%     aux5  = funcToIntegrate_5  .* funcWeight_5;
-%     aux6  = funcToIntegrate_6  .* funcWeight_6;
-%     aux7  = funcToIntegrate_7  .* funcWeight_7;
-%     aux8  = funcToIntegrate_8  .* funcWeight_8;
-%     aux9  = funcToIntegrate_9  .* funcWeight_9;
-%     aux10 = funcToIntegrate_10 .* funcWeight_10;
-%     aux11 = funcToIntegrate_11 .* funcWeight_11;
-%     aux12 = funcToIntegrate_12 .* funcWeight_12;
-% 
-%     auxVec1  = sum(sum(aux1));
-%     auxVec2  = sum(sum(aux2));
-%     auxVec3  = sum(sum(aux3));
-%     auxVec4  = sum(sum(aux4));
-%     auxVec5  = sum(sum(aux5));
-%     auxVec6  = sum(sum(aux6));
-%     auxVec7  = sum(sum(aux7));
-%     auxVec8  = sum(sum(aux8));
-%     auxVec9  = sum(sum(aux9));
-%     auxVec10 = sum(sum(aux10));
-%     auxVec11 = sum(sum(aux11));
-%     auxVec12 = sum(sum(aux12));
-%     
-%     r00 = auxVec5 + auxVec6 + auxVec8 + auxVec9 + auxVec11 + auxVec12;
-%     r10 = auxVec2 + auxVec3 + auxVec10;
-%     r01 = auxVec4 + auxVec7;
-%     r11 = auxVec1;
-%     
-%     auxx1(:) = r00(1,1,:);
-%     auxx2(:) = r01(1,1,:);
-%     auxx3(:) = r10(1,1,:);
-%     auxx4(:) = r11(1,1,:);
-%     r00 = auxx1;
-%     r01 = auxx2;
-%     r10 = auxx3;
-%     r11 = auxx4;
-    
-    %%% DEBUG %%%
-    
-    if (imb == 1 && kmb == 1)
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_01(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_02(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_03(:,:,1))
-       
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_04(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_05(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_06(:,:,1))
-    
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_07(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_09(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_10(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_11(:,:,1))
-        
-        figure
-        surf(X(:,:,1),Y(:,:,1),funcToIntegrate_12(:,:,1))
-        
-    end
     
     %% ASSEMBLE OF STIFFNESS MATRIX AND RHS VECTOR
     
