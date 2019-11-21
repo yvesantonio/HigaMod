@@ -1,0 +1,250 @@
+\documentclass[11pt]{article} 
+\topmargin= -.5in \oddsidemargin=-0.0in \textwidth=6.5in
+\textheight=9.0in 
+ 
+\usepackage[italian]{babel} 
+\usepackage[dvips]{graphicx} 
+\usepackage{amsmath} 
+\usepackage{amssymb} 
+\usepackage{amsbsy} 
+\usepackage{amsfonts} 
+\usepackage{array} 
+\usepackage{verbatim}
+\usepackage{floatflt} 
+
+\newtheorem{remark}{Osservazione}[section] 
+ 
+\title{Libreria per elementi finiti isoparametrci monodimensionali}
+
+\author{Marco Restelli}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Premessa}
+
+Nella presente guida viene fissata la notazione utilizzata in tutte le
+funzioni del pacchetto EF1D. In particolare, vengono fissate tutte le
+convenzioni relative alla forma delle condizioni al contorno e alla
+forma del problema differenziale, seguendo quella che viene usualmente
+detta \emph{forma conservativa} del problema.
+
+\begin{remark}
+Si noti che, nell'usare il pacchetto EF1D, \`e fondamentale attenersi
+alle convenzioni descritte in questa guida.
+\end{remark}
+
+\section{Notazione}
+
+Sia $I$ un intervallo aperto di estremi $a$ e $b$ (con $a<b$).
+Indichiamo con $\Gamma$ la frontiera di $I$: $\Gamma = \{a\}\cup\{b\}$
+e con ${\bf n}$ il versore uscente su $\Gamma$: ${\bf n}(a)=-1$ e
+${\bf n}(b)=1$. Dato il campo ${\bf a}$, seguendo~\cite{Hughes}
+definiamo 
+\[
+\begin{array}{rcll}
+a_n & = & {\bf n}\cdot{\bf a} & {\rm (flusso\,\,normale)} \\[2mm]
+a_n^+ & = & (a_n+|a_n|)/2 & {\rm (flusso\,\,normale\,\,uscente)} \\[2mm]
+a_n^- & = & (a_n-|a_n|)/2 & {\rm (flusso\,\,normale\,\,entrante)}.
+\end{array}
+\]
+Al fine di specificare le condizioni al contorno del problema,
+introduciamo inoltre una partizione $\Gamma_g$, $\Gamma_h$ di $\Gamma$
+tale che $\Gamma = \Gamma_g \cup \Gamma_h$ e $\emptyset = \Gamma_g \cap
+\Gamma_h$. Questo permetter\`a di specificare condizioni di prima
+specie su $\Gamma_g$ e di seconda specie su $\Gamma_h$.
+
+\begin{remark}
+\`E possibile avere $\Gamma_g=\emptyset$, nel qual caso sar\`a
+$\Gamma_h=\Gamma$, o viceversa.
+\end{remark}
+
+\section{Il caso stazionario}
+Il problema di diffusione-trasporto-reazione nella formulazione
+conservativa \`e il seguente:
+\begin{equation}
+\label{eq:sistema}
+\left \{
+\begin{array}{lrl}
+\displaystyle -\frac{d}{dx} \left( \mu \frac{du}{dx} \right) + 
+\frac{d}{dx} \left( {\bf a} u \right) + \sigma u = f 
+& {\rm in} & I \\[2mm]
+\displaystyle u = g & {\rm su} & \Gamma_g\\[2mm]
+\displaystyle \left ( -\mu \frac{du}{dn} + a_n^- u \right) 
+- \gamma u = r
+& {\rm su} & \Gamma_h.
+\end{array}
+\right.
+\end{equation}
+\begin{remark}
+La forma della condizione al contorno prescritta su $\Gamma_h$
+necessita qualche commento.
+\begin{itemize}
+\item Essendo ${\bf n}$ la normale uscente rispetto a $I$,
+$\frac{du}{dn}$ rappresenta la derivata di $u$ nella direzione uscente
+rispetto all'intervallo, ovvero
+\[
+\left.\frac{du}{dn}\right|_a  =  - \left.\frac{du}{dx}\right|_a,
+\qquad
+\left.\frac{du}{dn}\right|_b  = \left.\frac{du}{dx}\right|_b.
+\]
+L'uso di $\frac{du}{dn}$ nella~(\ref{eq:sistema})$_3$ al posto di
+$\frac{du}{dx}$ \`e motivato dal fatto che, nel suo insieme, la
+quantit\`a $-\mu\frac{du}{dn}$ ha l'importante significato fisico di
+\emph{flusso diffusivo sul bordo di $I$, positivo se uscente}.
+\item Nel suo insieme, la quantit\`a $a_n u$ ha l'importante
+significato fisico di \emph{flusso convettivo sul bordo di $I$,
+positivo se uscente}. L'uso di $a_n^-$ nella~(\ref{eq:sistema})$_3$
+comporta dunque che:
+\begin{itemize}
+\item dove ${\bf a}$ \`e entrante, essendo $a_n^-=a_n$, viene
+prescritto il flusso totale diffusivo e convettivo
+\[
+-\mu\frac{du}{dn} + a_n u,
+\]
+\item dove ${\bf a}$ \`e uscente, essendo $a_n^-=0$, viene
+prescritto il solo flusso diffusivo
+\[
+-\mu\frac{du}{dn}.
+\]
+\end{itemize}
+\item La definizione del coefficiente $\gamma$ \`e tale che,
+tipicamente, si avr\`a $\gamma\geq0$.
+\end{itemize}
+\end{remark}
+
+Introducendo ora un opportuno spazio funzionale $V$, il
+problema~(\ref{eq:sistema}) pu\`o essere formulato in senso debole nel
+modo seguente: \\
+trovare $u \in V$ tale che
+\begin{equation}
+\label{debole}
+\begin{array}{l}
+\displaystyle
+\int_I \mu \frac{du}{dx} \, \frac{d\phi}{dx} \,dx -
+\int_I u \, {\bf a} \frac{d\phi}{dx} \,dx +
+\int_I \sigma u  \phi \,dx +
+ a_n^+ u \phi|_a + a_n^+ u \phi|_b +
+ \gamma u \phi|_a + \gamma u \phi|_b = \\[4mm]
+\displaystyle
+\qquad \qquad\int_I f\phi \,dx -
+ r \phi|_a -r\phi|_b \quad \qquad \qquad\forall \phi \in V
+\end{array}
+\end{equation}
+
+Definito ora lo spazio di dimensione finita $V_h \subset V$ tale che
+${\rm dim}(V_h)=N_h$, indicata con $\{\phi_i \}_{i=1}^{N_h}$ una base
+di $V_h$, e posto $u_h = \sum_{j=1}^{N_h}u_j\,\phi_j$, otteniamo il
+problema discertizzato\\
+trovare ${\bf u}\in \mathbb{R}^{N_h}$ tale che
+\begin{equation}
+\label{deboledisc}
+\begin{array}{r}
+\left[ 
+\underbrace{\int_I \mu \frac{d\phi_i}{dx} \, \frac{d\phi_j}{dx} \,dx
+           }_{{\bf K}_{ij}} \, \,
+\underbrace{-\int_I {\bf a} \frac{d\phi_i}{dx} \, \phi_j \, dx
+            + a_n^+ \phi_i \phi_j|_a + a_n^+ \phi_i \phi_j|_b 
+	   }_{{\bf C}_{ij}}\, \, 
+\underbrace{+\int_I \sigma \phi_i  \phi_j \,dx 
+           }_{{\bf S}_{ij}} \right .\\[2mm]
+\qquad \left.
+\underbrace{+ \gamma \phi_i \phi_j|_a + \gamma \phi_i \phi_j|_b
+           }_{{\bf R}_{ij}}
+\right] u_j =  
+\underbrace{\int_I f\phi_i \,dx }_{{{\bf b}_v}_{i}} \, \,
+\underbrace{- r \phi_i|_a -r \phi_i|_b}_{{\bf r}_{i}}
+\end{array}
+\qquad i = 1, \hdots, N_h.
+\end{equation}
+
+La libreria EF1D fornisce le funzioni per la costruzione delle matrci 
+${\bf K}, \, {\bf C}, \,{\bf S}$ e ${\bf R}$ e dei vettori ${\bf b}_v$ e
+${\bf r}$ nella~(\ref{deboledisc}). 
+In aggiunta alle formulazioni base, per quanto riguarda ${\bf C}$ \`e 
+possibile applicare varie tecniche di stabilizzaione numerica 
+(vedi~\cite{Quarteroni}), mentre per ${\bf S}$ \`e possibile costruire 
+la versione con condensazione ({\em lumping}).
+
+Posto ${\bf A}={\bf K} + {\bf C} + {\bf S} + {\bf R}$ e
+${\bf b}={\bf b}_v + {\bf r}$, otteniamo il sistema lineare
+\begin{equation}
+\label{sistAub}
+{\bf A}\,{\bf u} = {\bf b}
+\end{equation}
+che pu\`o essere risolto dopo l'introduzione delle eventuali condizioni
+al bordo assegnate per $\Gamma_g$.
+
+\section{Il caso non stazionario}
+
+Dato l'intervallo temporale $I_T=(0,T)$, consideriamo il problema 
+seguente:
+\begin{equation}
+\label{eq:sistema_nstaz}
+\left \{
+\begin{array}{lrl}
+\displaystyle 
+\rho \frac{\partial u}{\partial t}
+- \frac{\partial}{\partial x} 
+           \left( \mu \frac{\partial u}{\partial x} \right) + 
+  \frac{\partial}{\partial x} 
+           \left( {\bf a} u \right) + \sigma u = f & {\rm in} &
+  I\times I_T \\[2mm]
+  u = u_0 & {\rm in} & I \times \{0\} \\[2mm]
+  u = g & {\rm su} & \Gamma_g \times I_T \\[2mm]
+  \displaystyle \left ( -\mu \frac{\partial u}{\partial n} 
+                        + a_n^- u \right) - \gamma u = r
+  & {\rm su} & \Gamma_h \times I_T,
+\end{array}
+\right .
+\end{equation}
+di cui la (\ref{eq:sistema}) rappresenta il caso limite per
+$\frac{\partial u}{\partial t}=0$.
+
+Procedendo per la discretizzazione in spazio come nel caso stazionario
+e introducendo la matrice di massa
+$$
+{\bf M}_{ij}= \int_I \rho\, \phi_i \, \phi_j \,dx
+$$
+otteniamo il problema semidiscretizzato:
+\begin{equation}
+\label{sistNstaz}
+{\bf M}\,\dot{{\bf u}}(t) + {\bf A}\,{\bf u}(t) = {\bf b}(t),
+\qquad t\in I_T.
+\end{equation}
+
+L'applicazione del $\theta$--metodo (vedi~\cite{Wood})
+per la discretizzazione in tempo del problema~(\ref{sistNstaz}) conduce 
+all'equazione seguente:
+\begin{equation}
+\label{thetamet}
+\underbrace{({\bf M} + \Delta t\, \theta\, {\bf A})
+           }_{{\bf B}}{\bf u}^{n+1} =
+\underbrace{({\bf M} - \Delta t \, (1-\theta)\, {\bf A})
+           }_{{\bf Z}}{\bf u}^{n} + 
+	   \theta\,{\bf b}^{n+1} + (1-\theta){\bf b}^n
+\end{equation}
+che, nota ${\bf u}^n$, pu\`o essere risolta per ${\bf u}^{n+1}$.
+
+La libreria EF1D fornisce le funzioni per il calcolo di {\bf M}
+nelle versioni completa e con condensazione nonch\'e per la 
+costruzione della matrice di iterazione ${\bf B}^{-1}{\bf Z}$ e la 
+risoluzione della~(\ref{thetamet}).
+
+
+\begin{thebibliography}{99}
+\bibitem{Hughes}T.J.R.~Hughes, G.~Engel, L.~Mazzei, M.G.~Larson:
+{\em The Continuous Galerkin Method Is Locally Conservative},
+Journal of Computational Physics 163, 467--488 (2000)
+\bibitem{Quarteroni}A.~Quarteroni,
+{\em Modellistica Numerica per Problemi Differenziali},
+Springer Verlag
+\bibitem{Wood}W.L.~Wood,
+{\em Practical Time-stepping Schemes},
+Clarendon Press, (1990)
+\end{thebibliography}
+
+\end{document}
