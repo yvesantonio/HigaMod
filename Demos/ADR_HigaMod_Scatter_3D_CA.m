@@ -47,14 +47,17 @@
     import Core.BasisHandler
     import Core.SolverHandler
 
-MM = [ 5 ];
-HH = [ 0.05 ];  
+mVect = [ 3 4 5 6 7 8];
+hVect = [ 0.1 0.05 0.025];
+
+matErrL2 = zeros(length(mVect),length(hVect));
+matErrH1 = zeros(length(mVect),length(hVect));
     
 for ii = 1:length(MM)
     for jj = 1:length(HH)
     
     %% Simulation case   
-    caso = 3;
+    caso = 1;
     
     %-------------------------------------------------------------------------%
     % Note;
@@ -440,5 +443,60 @@ for ii = 1:length(MM)
     disp('Maximum H1 Norm Error with Matlab');
     disp(max(max(errorNormH1)));
     
+    %% Store Error Information
+            
+    matErrL2(ii,jj) = errorNormL2;
+    matErrH1(ii,jj) = errorNormH1;
+    
     end
 end
+
+%% Convergence Analysis Plot
+
+figL2 = figure;
+for kk = 1:length(hVect)
+    loglog(mVect,matErrL2(:,kk),'-o','LineWidth',3,'MarkerSize',3);
+    set(gcf, 'Color', 'w');
+    set(gca, 'FontSize', 14);
+    xlim auto
+    ylim auto
+    grid on
+    hold on
+end
+
+loglog(mVect,mVect.^-1,'--','LineWidth',2);
+loglog(mVect,mVect.^-2,'--','LineWidth',2);
+
+LegendTitles = cell(1,length(hVect));
+for kk = 1:length(hVect)
+    LegendTitles{kk} = ['h = ' num2str(hVect(kk))];
+end
+LegendTitles{kk + 1} = ['Order 1'];
+LegendTitles{kk + 2} = ['Order 2'];
+legend(LegendTitles,'Location','northeast')
+set(figL2, 'Visible', 'on')
+export_fig(sprintf(['ConvAnalysisL2']),'-pdf');
+
+figH1 = figure;
+for kk = 1:length(hVect)
+    loglog(mVect,matErrH1(:,kk),'-o','LineWidth',3,'MarkerSize',3);
+    set(gcf, 'Color', 'w');
+    set(gca, 'FontSize', 14);
+    xlim auto
+    ylim auto
+    grid on
+    hold on
+end
+
+loglog(mVect,mVect.^-1,'--','LineWidth',2);
+loglog(mVect,mVect.^-2,'--','LineWidth',2);
+
+LegendTitles = cell(1,length(hVect));
+for kk = 1:length(hVect)
+    LegendTitles{kk} = ['h = ' num2str(hVect(kk))];
+end
+LegendTitles{kk + 1} = ['Order 1'];
+LegendTitles{kk + 2} = ['Order 2'];
+legend(LegendTitles,'Location','northeast')
+set(figL2, 'Visible', 'on')
+export_fig(sprintf(['ConvAnalysisH1']),'-pdf');

@@ -33,8 +33,8 @@
 % The following script allows the solution of an Advection - Diffusion -
 % Reaction differential problem in 2D using the HIGAMod solution.
 
-%     clear all
-%     close all
+    clear all
+    close all
 
     disp('******************************************')
     disp('*           HIGAMod Simulation           *');
@@ -48,7 +48,8 @@
     import Core.SolverHandler
 
     %% Simulation case   
-    caso  = 2;      % Analysed Case
+    
+    caso  = 5;      % Analysed Case
     
     %-------------------------------------------------------------------------%
     % Note;
@@ -76,12 +77,12 @@
     % be performed inside the class 'AssemblerIGA'.
     %-------------------------------------------------------------------------%
     
-    mVect = [ 1 3 5 7 9 11 13 15];
-    hVect = [ 0.05 0.025 0.0125 0.00625 0.003125];
+    mVect = [5];
+    hVect = [0.2 0.1 0.05 0.025];
     
     matErrL2 = zeros(length(mVect),length(hVect));
     matErrH1 = zeros(length(mVect),length(hVect));
-
+    
     for ii = 1:length(mVect)
         for jj = 1:length(hVect)
 
@@ -178,12 +179,12 @@
 
             igaBoundCond.BC_UP_TAG     = 'dir';
             igaBoundCond.BC_DOWN_TAG   = 'dir';
-            igaBoundCond.BC_INF_TAG   = 'dir';
-            igaBoundCond.BC_OUT_TAG  = 'dir';
+            igaBoundCond.BC_INF_TAG    = 'dir';
+            igaBoundCond.BC_OUT_TAG    = 'dir';
             igaBoundCond.BC_UP_DATA    = 0;
             igaBoundCond.BC_DOWN_DATA  = 0;
-            igaBoundCond.BC_INF_DATA  = @(rho) 0 + 0 * rho + 0 * rho.^2;
-            igaBoundCond.BC_OUT_DATA = @(rho) 0 + 0 * rho + 0 * rho.^2;
+            igaBoundCond.BC_INF_DATA   = @(rho) 0 + 0 * rho + 0 * rho.^2;
+            igaBoundCond.BC_OUT_DATA   = @(rho) 0 + 0 * rho + 0 * rho.^2;
 
             %% Physical domain
             %---------------------------------------------------------------------%
@@ -228,13 +229,13 @@
                 geometricInfo.Hes = @(x,y) Hes(x,y);
                 geometricInfo.Type = 'Ring';
 
-            case{2}
+            case {2}
 
                 %%%%%%%%%%%%%
                 % RECTANGLE %
                 %%%%%%%%%%%%%
 
-                minX = -1.0;
+                minX = +0.0;
                 maxX = +5.0;
                 minY = +0.0;
                 maxY = +1.0;
@@ -542,7 +543,7 @@
 
             % Vertical direction
 
-            numbVerNodes = 32;
+            numbVerNodes = numbModes * 10;
 
             %% Coefficients of the bilinear form
             %-------------------------------------------------------------------------%
@@ -550,10 +551,10 @@
             switch caso
             case {1,2,3,4,5,6}
 
-                mu    = @(x,y) (  0.24 + 0*x + 0*y ); % Difusion
-                beta1 = @(x,y) (  -5.0 + 0*x + 0*y ); % Horizontal Advection
-                beta2 = @(x,y) (  0.00 + 0*x + 0*y ); % Vertical Advection
-                sigma = @(x,y) (  0.00 + 0*x + 0*y ); % Reaction
+                mu    = @(x,y) (  1.0  ); % Difusion
+                beta1 = @(x,y) (  2.0  ); % Horizontal Advection
+                beta2 = @(x,y) (  2.0  ); % Vertical Advection
+                sigma = @(x,y) (  0.0  ); % Reaction
 
             case {7,8} 
 
@@ -635,9 +636,9 @@
             case {1,2,4,5,6,7,8,9,10}
 
                 dato_dir = @(y) 0;
-                % force = @(x,y) 1 + 0 * x + 0 * y;
-
-                force = @(x,y) 50.*( (x>=2.7).*(x<=3.).*(y>=.35).*(y<=.65) + (x>=3.6).*(x<=3.9).*(y>=.35).*(y<=.65) );
+                force = @(x,y) 1 + 1 * x + 1 * y;
+    
+                % force = @(x,y) 50.*( (x>=2.7).*(x<=3.).*(y>=.35).*(y<=.65) + (x>=3.6).*(x<=3.9).*(y>=.35).*(y<=.65) );
 
             case {3}
 
@@ -702,52 +703,4 @@
         end
     end
     
-%% Convergence Analysis Plot
-
-figL2 = figure;
-for kk = 1:length(hVect)
-    loglog(mVect,matErrL2(:,kk),'-o','LineWidth',3,'MarkerSize',3);
-    set(gcf, 'Color', 'w');
-    set(gca, 'FontSize', 14);
-    xlim auto
-    ylim auto
-    grid on
-    hold on
-end
-
-loglog(mVect,mVect.^-1,'--','LineWidth',2);
-loglog(mVect,mVect.^-2,'--','LineWidth',2);
-
-LegendTitles = cell(1,length(hVect));
-for kk = 1:length(hVect)
-    LegendTitles{kk} = ['h = ' num2str(hVect(kk))];
-end
-LegendTitles{kk + 1} = ['Order 1'];
-LegendTitles{kk + 2} = ['Order 2'];
-legend(LegendTitles,'Location','northeast')
-set(figL2, 'Visible', 'on')
-export_fig(sprintf(['ConvAnalysisL2']),'-pdf');
-
-figH1 = figure;
-for kk = 1:length(hVect)
-    loglog(mVect,matErrH1(:,kk),'-o','LineWidth',3,'MarkerSize',3);
-    set(gcf, 'Color', 'w');
-    set(gca, 'FontSize', 14);
-    xlim auto
-    ylim auto
-    grid on
-    hold on
-end
-
-loglog(mVect,mVect.^-1,'--','LineWidth',2);
-loglog(mVect,mVect.^-2,'--','LineWidth',2);
-
-LegendTitles = cell(1,length(hVect));
-for kk = 1:length(hVect)
-    LegendTitles{kk} = ['h = ' num2str(hVect(kk))];
-end
-LegendTitles{kk + 1} = ['Order 1'];
-LegendTitles{kk + 2} = ['Order 2'];
-legend(LegendTitles,'Location','northeast')
-set(figL2, 'Visible', 'on')
-export_fig(sprintf(['ConvAnalysisH1']),'-pdf');
+save CA_HigaMod.mat

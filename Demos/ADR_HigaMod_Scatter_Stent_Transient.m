@@ -1,4 +1,4 @@
-        %-+--------------------------------------------------------------------
+%-+--------------------------------------------------------------------
 % HiModlab is a general purpose Hierarchical model reduction library.
 % Copyright (C) 2006-2017  by the HiMod authors (see authors.txt).
 %
@@ -46,9 +46,17 @@
     import Core.EvaluationHandler
     import Core.BasisHandler
     import Core.SolverHandler
+    
+MU = 1e-5 * [0.5 0.25];
+ww = [1 2 4];
 
+strPlotStruct = cell(length(MU),length(ww));
+
+for iii = 1:length(MU)
+    for jjj = 1:length(ww)
+        
     %% Simulation case   
-    caso  = 8;      % Analysed Case
+    caso  = 9;      % Analysed Case
     
     %-------------------------------------------------------------------------%
     % Note;
@@ -63,7 +71,7 @@
 
     switch caso
         
-    case {1,2,3,4,5,6,7,8,9,10}
+    case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
         minHor     = 0;
         maxHor     = 1;
         minVer     = 0;
@@ -76,15 +84,15 @@
     % be performed inside the class 'AssemblerIGA'.
     %-------------------------------------------------------------------------%
 
-    %% Discretization parameters
+    %% Discrtization parameters
     
     domainLimit_inX      = [minHor,maxHor];  
     domainLimit_inY      = [minVer,maxVer];
     
-    numbModes       = 10;
+    numbModes       = 30;
     nd              = length(numbModes); 
-    stepHorMesh     = (maxHor-minHor)*0.1*ones(size(numbModes));
-    numbElements    = round((maxHor-minHor)/stepHorMesh);
+    stepHorMesh     = (maxHor-minHor)*0.005*ones(size(numbModes));
+    numbKnots    = round((maxHor-minHor)/stepHorMesh);
     
     %% Isogeometric basis properties
 
@@ -98,11 +106,24 @@
     
     % Number of control points
     
-    numbControlPts = numbElements * continuityParameter + degreeSplineBasis + 1 -continuityParameter;
-
+    numbControlPoints = numbKnots*(degreeSplineBasis - continuityParameter) + 1 + continuityParameter;
+    
     if (degreeSplineBasis<continuityParameter)
     error('Wrong Choice for the Parameters!');
     end
+    
+    %% Time discretization properties
+    
+    Leff    = 3.7e-3;
+    Tp      = (3.7e-3)^2 /(1e-5);
+    
+    period          = ww(jjj) * max(Tp);
+    initialTime     = 0.0;
+    finalTime       = 2.0 * Tp;
+    numbSteps       = 400;
+    timeStep        = (finalTime - initialTime)/numbSteps;
+    timeDomain      = initialTime:timeStep:finalTime;
+    initialState    = zeros(numbControlPoints * numbModes,1);
 
     %% Boundary conditions
     
@@ -116,65 +137,27 @@
     % The algorithm works fine only if the lateral boundary conditions are the
     % same in the whole domain.
     %-------------------------------------------------------------------------%
-
-    dato_dir_up   = 0.0;
-    dato_dir_down = 0.0;
-    chi           = 1;
-    mu            = 1;
-    cest          = 1;
-
-    BC_laterali_up   ='neu';
-    BC_laterali_down ='neu';
-
-    switch caso
-    case {1,2,3,4,5,6,7,8,9,10}
-        bc_up={ BC_laterali_up };
-        dato_up={0};
-        bc_down={ BC_laterali_down};
-        dato_down={0};
-    end
-    
-    % INFLOW AND OUTFLOW BOUNDARY CONDITIONS
-    % Note: The current version of the code works only for constant
-    % boundary conditions in inflow and outflow;
-    
-    % SELECT THE SIDES
-    
-    dirSides = [1 2];
-    neuSides = [];
-    robSides = [];
-    
-    % DEFINE DIRICHLET AND NEUMANN BOUNDARY CONDITIONS
-    
-    dir  = @(x,side) (side == 1) * 0 + (side == 2) * 0;
-    neu  = @(x,side) (side == 1) * 0 + (side == 2) * 1;
-    rob.value  = @(x,side) (side == 1) * 0 + (side == 2) * 1;
-    rob.mu     = 1.0;
-    rob.chi    = 1.0;
-    
-    % CREATE DATA STRUCTURE
-    
-    igaBoundCond.dirSides   = dirSides;
-    igaBoundCond.neuSides   = neuSides;
-    igaBoundCond.robSides   = robSides;
-    igaBoundCond.dir  = @(x,side) dir(x,side);
-    igaBoundCond.neu  = @(x,side) neu(x,side);
-    igaBoundCond.rob.value  = @(x,side) rob.value;
-    igaBoundCond.rob.mu     = rob.mu;
-    igaBoundCond.rob.chi    = rob.chi;
     
     %%%%%%%%%%%%%%%%%
     % CHANGE BC HERE!
     %%%%%%%%%%%%%%%%%
     
-    igaBoundCond.BC_UP_TAG      = 'neu';
-    igaBoundCond.BC_DOWN_TAG    = 'neu';
-    igaBoundCond.BC_INF_TAG     = 'dir';
-    igaBoundCond.BC_OUT_TAG     = 'neu';
-    igaBoundCond.BC_UP_DATA     = 0;
-    igaBoundCond.BC_DOWN_DATA   = 0;
-    igaBoundCond.BC_INF_DATA    = @(rho) 0; % 0 + 1.75 * rho + 1.75 * -rho.^2;
-    igaBoundCond.BC_OUT_DATA    = @(rho) 0 + 0 * rho + 0 * rho.^2;
+    igaBoundCond.BC_UP_TAG     = 'neu';
+    igaBoundCond.BC_DOWN_TAG   = 'neu';
+    igaBoundCond.BC_INF_TAG   = 'dir';
+    igaBoundCond.BC_OUT_TAG  = 'neu';
+    igaBoundCond.BC_UP_DATA    = 0;
+    igaBoundCond.BC_DOWN_DATA  = 0;
+    igaBoundCond.BC_INF_DATA  = @(rho) 0;%0 + 1.75 * rho + 1.75 * -rho.^2;
+    igaBoundCond.BC_OUT_DATA = @(rho) 0 + 0 * rho + 0 * rho.^2;
+    
+    BC_laterali_up   = igaBoundCond.BC_UP_TAG;
+    BC_laterali_down = igaBoundCond.BC_DOWN_TAG;
+    bc_up={ BC_laterali_up };
+    dato_up={0};
+    bc_down={ BC_laterali_down};
+    dato_down={0};
+    chi = 1; 
 
     %% Physical domain
     %---------------------------------------------------------------------%
@@ -638,15 +621,15 @@
         geometricInfo.Hes = @(x,y) Hes(x,y);
         geometricInfo.Type = 'Rect';
         
-    case {8,9,10}
+    case {8,9,10,11}
         
         %%%%%%%%%%%%%%%%%%%%%%%%
         % DRUG ELUTING PROBLEM %
         %%%%%%%%%%%%%%%%%%%%%%%%
         
-        minX = 0.0;
+        minX = +0.0;
         maxX = 2 * 2 * 3.7e-3;
-        minY = 0.0;
+        minY = +0.0;
         maxY = 2 * 3.7e-3;
                 
         % IMPORT THE GEOMETRY FILES FROM "Demos/ScatterGeometry" FOLDER
@@ -672,16 +655,16 @@
         geometricInfo.Hes = @(x,y) Hes(x,y);
         geometricInfo.Type = 'Rect';
         
-    case {11}
+    case {12,13,14,15}
         
         %%%%%%%%%%%%%%%%%%%%%%%%
-        % DRUG ELUTING PROBLEM %
+        % WOMERSLEY SIMULATION %
         %%%%%%%%%%%%%%%%%%%%%%%%
         
         minX = +0.0;
-        maxX = +10.0;
+        maxX = +4.0;
         minY = +0.0;
-        maxY = +3.5;
+        maxY = +1.0;
                 
         % IMPORT THE GEOMETRY FILES FROM "Demos/ScatterGeometry" FOLDER
         
@@ -729,10 +712,10 @@
     switch caso
     case {1,2,3,4,5}
         
-        mu    = @(x,y) (  1.00 + 0*x + 0*y ); % Difusion
-        beta1 = @(x,y) (  0.00 + 0*x + 0*y ); % Horizontal Advection
-        beta2 = @(x,y) (  0.00 + 0*x + 0*y ); % Vertical Advection
-        sigma = @(x,y) (  0.00 + 0*x + 0*y ); % Reaction
+        mu    = @(x,y,t) (  1.00 + 0*x + 0*y + 0*t ); % Difusion
+        beta1 = @(x,y,t) (  0.00 + 0*x + 0*y + 0*t ); % Horizontal Advection
+        beta2 = @(x,y,t) (  0.00 + 0*x + 0*y + 0*t ); % Vertical Advection
+        sigma = @(x,y,t) (  0.00 + 0*x + 0*y + 0*t ); % Reaction
         
     case {6} 
         
@@ -760,11 +743,11 @@
         
         % Definition of the bilinear coefficients
         
-        mu    = @(x,y) (  1 + 0*x + 0*y ); % Difusion
-        beta1 = @(x,y) poiFlow1(x,y); % Horizontal Advection
-        beta2 = @(x,y) poiFlow2(x,y); % Vertical Advection
-        sigma = @(x,y) (  0 + 0*x + 0*y ); % Reaction
-
+        mu    = @(x,y,t) (  1 + 0*x + 0*y  + 0*t); % Difusion
+        beta1 = @(x,y,t) poiFlow1(x,y) + 0*t; % Horizontal Advection
+        beta2 = @(x,y,t) poiFlow2(x,y) + 0*t; % Vertical Advection
+        sigma = @(x,y,t) (  0 + 0*x + 0*y + 0*t ); % Reaction
+        
     case {7} 
         
         %%%%%%%%%%%%%%%%%%%%%%%%
@@ -773,13 +756,27 @@
         
         % Definition of the bilinear coefficients
         
-        mu    = @(x,y) (  1 + 0*x + 0*y ); % Difusion
-        beta1 = @(x,y) (  5 + 0*x + 0*y ); % Horizontal Advection
-        beta2 = @(x,y) (  0 + 0*x + 0*y ); % Vertical Advection
-        sigma = @(x,y) (  0 + 0*x + 0*y ); % Reaction
+        mu    = @(x,y,t) (  1 + 0*x + 0*y + 0*t ); % Difusion
+        beta1 = @(x,y,t) (  5 + 0*x + 0*y + 0*t ); % Horizontal Advection
+        beta2 = @(x,y,t) (  0 + 0*x + 0*y + 0*t ); % Vertical Advection
+        sigma = @(x,y,t) (  0 + 0*x + 0*y + 0*t ); % Reaction
         
-    case {8,9,10} 
+    case {8} 
         
+        %%%%%%%%%%%%%%%%%%%%%%%%
+        % DRUG ELUTING PROBLEM %
+        %%%%%%%%%%%%%%%%%%%%%%%%
+        
+        % Definition of the bilinear coefficients
+        
+        mu    = @(x,y,t) (  1 + 0*x + 0*y + 0*t ); % Difusion
+        beta1 = @(x,y,t) (  5 + 0*x + 0*y + 0*t ); % Horizontal Advection
+        beta2 = @(x,y,t) (  0 + 0*x + 0*y + 0*t ); % Vertical Advection
+        sigma = @(x,y,t) (  0 + 0*x + 0*y + 0*t ); % Reaction
+        
+            
+    case {9,10}
+            
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % DIFFUSION COEFFICIENT
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -853,10 +850,186 @@
         
         % Definition of the bilinear coefficients
         
-        mu    = @(x,y) 1e-6 * stent(x,y) + 1e-5 * ~stent(x,y);
-        beta1 = @(x,y) 4e-2 * (4/maxY^2) * (-y.^2 + y * maxY);
-        beta2 = @(x,y) 0;
-        sigma = @(x,y) 0;
+	Tbeta = Tp / ww(jjj);
+	W     = 2 * pi / Tbeta;
+
+        mu    = @(x,y,t) 1e-7 * stent(x,y) + 1e-6 * ~stent(x,y);
+        beta1 = @(x,y,t) 0.5 * (1 + sin(W * t)) .* 5e-2 * (4/maxY^2) * (-y.^2 + y * maxY);
+        beta2 = @(x,y,t) 0;
+        sigma = @(x,y,t) 0;
+        
+    case {11,12,13,14,15} 
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % DIFFUSION COEFFICIENT
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        % Lower Stent Branches
+        
+        lx1 = 0.5 * 0.25 * maxX;
+        dx1 = 0.5 * 0.07 * maxX;
+        ly1 = 0.01 * maxY;
+        dy1 = 0.05 * maxY;
+        
+        lx2 = 0.5 * 0.35 * maxX;
+        dx2 = 0.5 * 0.07 * maxX;
+        ly2 = 0.01 * maxY;
+        dy2 = 0.05 * maxY;
+        
+        lx3 = 0.5 * 0.45 * maxX;
+        dx3 = 0.5 * 0.07 * maxX;
+        ly3 = 0.01 * maxY;
+        dy3 = 0.05 * maxY;
+        
+        lx7 = 0.5 * 0.15 * maxX;
+        dx7 = 0.5 * 0.07 * maxX;
+        ly7 = 0.01 * maxY;
+        dy7 = 0.05 * maxY;
+        
+        lx8 = 0.5 * 0.05 * maxX;
+        dx8 = 0.5 * 0.07 * maxX;
+        ly8 = 0.01 * maxY;
+        dy8 = 0.05 * maxY;
+        
+        % Upper Stent Branches
+        
+        lx4 = 0.5 * 0.25 * maxX;
+        dx4 = 0.5 * 0.07 * maxX;
+        ly4 = 0.94 * maxY;
+        dy4 = 0.05 * maxY;
+
+        lx5 = 0.5 * 0.35 * maxX;
+        dx5 = 0.5 * 0.07 * maxX;
+        ly5 = 0.94 * maxY;
+        dy5 = 0.05 * maxY;
+
+        lx6 = 0.5 * 0.45 * maxX;
+        dx6 = 0.5 * 0.07 * maxX;
+        ly6 = 0.94 * maxY;
+        dy6 = 0.05 * maxY;
+
+        lx9 = 0.5 * 0.15 * maxX;
+        dx9 = 0.5 * 0.07 * maxX;
+        ly9 = 0.94 * maxY;
+        dy9 = 0.05 * maxY;
+
+        lx10 = 0.5 * 0.05 * maxX;
+        dx10 = 0.5 * 0.07 * maxX;
+        ly10 = 0.94 * maxY;
+        dy10 = 0.05 * maxY;
+        
+        % Heaviside functions
+        
+        Square1D = @(xx,l,d) heaviside(xx - l) - heaviside(xx - l - d);
+        Square2D = @(xxx,yyy,lx,ly,dx,dy) Square1D(xxx,lx,dx) .* Square1D(yyy,ly,dy);
+        
+        % Definition of the bilinear coefficients
+        
+        stent = @(x,y,t) (Square2D(x,y,lx1,ly1,dx1,dy1) + Square2D(x,y,lx2,ly2,dx2,dy2) + ...
+                          Square2D(x,y,lx3,ly3,dx3,dy3) + Square2D(x,y,lx4,ly4,dx4,dy4) + ...
+                          Square2D(x,y,lx5,ly5,dx5,dy5) + Square2D(x,y,lx6,ly6,dx6,dy6) + ...
+                          Square2D(x,y,lx7,ly7,dx7,dy7) + Square2D(x,y,lx8,ly8,dx8,dy8) + ...
+                          Square2D(x,y,lx9,ly9,dx9,dy9) + Square2D(x,y,lx10,ly10,dx10,dy10)) + 0*t;
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % FLOW PROPERTIES 
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        R         = 0.5 * maxY;
+        numbNodes = 50;
+        Y         = linspace(0,R,numbNodes);
+        Ns        = 100;
+        T         = period;
+        w         = 2 * pi ./ T;
+        rho       = 1060; 
+        mu        = 3.5e-3;
+        omega     = w;
+
+        alpha = R * sqrt(omega * rho / mu);
+        
+        disp(['Womersley Number   : ', num2str(alpha)])
+        disp(['Fluid Density      : ', num2str(rho)])
+        disp(['Dynamic Viscosity  : ', num2str(mu)])
+        disp(['Omega (Ang. Freq.) : ', num2str(w)])
+        disp(['Period Fluid       : ', num2str(period)])
+        disp(['Charac. Time Diff. : ', num2str(Tp)])
+        disp(['Rel. Period Fluid  : ', num2str(period./Tp)])
+        disp(['Diffusion Coeff.   : ', num2str(MU(iii))])
+        disp(['Initial Time       : ', num2str(initialTime)])
+        disp(['Final Time         : ', num2str(finalTime)])
+        disp(['Numb. of Steps     : ', num2str(numbSteps)])
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % EXTRACT THE BLOOD FLOW INFORMATION
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        BloodFlow = dlmread('FFTBloodFlow.txt');
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % EXTRACT FFT COEFFICIENTS
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        BloodFlowCmplx = complex(BloodFlow(:,2),BloodFlow(:,3));
+        FlowProfile = ifft(BloodFlowCmplx);
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % PLOT THE BLOOD FLOW INFORMATION
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        % figure('visible','off')
+        % plot(FlowProfile(1:length(FlowProfile) * 0.5));
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % COMPUTE WAVE FORM INFORMATION
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        PPP = FlowProfile(1:length(FlowProfile) * 0.5);% - mean(FlowProfile(1:length(FlowProfile) * 0.5));
+        fftPPP = fft(PPP);
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % COMPUTE FOURIER COEFFICIENTS
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        % NORMAL FOURIER
+
+        N   = 15;
+        dt  = T/length(PPP);
+        p   = PPP;
+        [p0,pn,phi] = FourierSeries(p,dt,N,T);
+
+        tt = 0:dt:T;
+        pt = p0;
+        for n=1:N
+          pt=pt+pn(n)*cos(2*pi*tt*n/T-phi(n));
+        end
+
+        % figure('visible','on')
+        % plot(tt,pt,'-k',0:dt:T-dt,p,'x')
+        % grid on
+
+        % figure('visible','on')
+        % plot(p0,'k-'); hold on;
+        % plot(pn,'o'); hold on;
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % COMPUTE FOURIER TRANSFORM OF THE BLOOD FLOW PROFILE
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        WoProp.R       = R;
+        WoProp.rho     = rho;
+        WoProp.mu      = mu;
+        WoProp.omega   = omega;
+        WoProp.p0      = p0;
+        WoProp.pn      = pn;
+        WoProp.phi     = phi;
+        WoProp.numbNodes = numbNodes;
+        
+        % Definition of the bilinear coefficients
+        
+        mu    = @(x,y,t) MU(iii) .* ((x - R).^2 + (y - R).^2 < (.25 * R)^2) + 1e-1 * MU(iii) .* ~((x - R).^2 + (y - R).^2 < (.25 * R)^2);%  .* ~stent(x,y,t) + 1e-10 .* stent(x,y,t);
+        beta1 = @(x,y,t) y .* (y - maxY) .* (2 * 1e-2 / maxY); % 2e2 * Woo(WoProp,y,t);
+        beta2 = @(x,y,t) 0;
+        sigma = @(x,y,t) 0;
         
     end
 
@@ -866,7 +1039,7 @@
     %% Exact solution
 
     switch caso
-    case {1,2,3,4,5,6,7,8,9,10}
+    case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
         true_sol  = @(x,y) (0.2*x.^5-0.5*(maxHor^3)*x.^2).*sin(2*pi*((y/maxVer)+0.5));
         true_solx = @(x,y) (x.^4-(maxHor^3)*x).*sin(2*pi*((y/maxVer)+0.5));
         true_soly = @(x,y) (0.2*x.^5-0.5*(maxHor^3)*x.^2)*2*pi.*cos(2*pi*((y/maxVer)+0.5));
@@ -885,12 +1058,12 @@
     case {1,2,4,5,6}
         
         dato_dir = @(y) 0;
-        force = @(x,y) 1 + 0 * x + 0 * y;
+        force = @(x,y,t) 1 + 0 * x + 0 * y + 0 * t;
     
     case {3}
         
         dato_dir = @(y) 0;
-        force = @(x,y) 1 + 0 * x + 0 * y;
+        force = @(x,y,t) 1 + 0 * x + 0 * y + 0 * t;
         
     case {7}
         
@@ -911,7 +1084,7 @@
         
         % Definition of the bilinear coefficients
         
-        force    = @(x,y) C * (Square2D(x,y,lx1,ly1,dx1,dy1) + Square2D(x,y,lx2,ly2,dx2,dy2)); % Difusion
+        force    = @(x,y,t) C * (Square2D(x,y,lx1,ly1,dx1,dy1) + Square2D(x,y,lx2,ly2,dx2,dy2)) + 0*t; % Difusion
         
         % Plot source term
         
@@ -920,26 +1093,36 @@
         [XX,YY] = meshgrid(xx,yy);
         ZZ = force(XX,YY);
         
-        figure
-        [C,h] = contourf(XX,YY,ZZ,10);
-        set(h,'LineColor','none')
+        % figure('visible','off')
+        % [C,h] = contourf(XX,YY,ZZ,10);
+        % set(h,'LineColor','none')
         
-    case {8,9,10}
+    case {8,9,10,11}
+        
+        % Circular Heaviside function
+        
+        C = 10;
         
         % Definition of the bilinear coefficients
         
-        force    = @(x,y) 10 * stent(x,y);
+        force    = @(x,y,t) C * stent(x,y); % Difusion
         
         % Plot source term
         
-        xx = linspace(minX,maxX,100);
-        yy = linspace(minY,maxY,100);
+        xx = linspace(0,maxX,100);
+        yy = linspace(0,maxY,100);
         [XX,YY] = meshgrid(xx,yy);
-        ZZ = force(XX,YY);
+        ZZ = force(XX,YY,1);
         
-        figure
-        [C,h] = contourf(XX,YY,ZZ,10);
-        set(h,'LineColor','none')
+        % figure('visible','on')
+        % [C,h] = contourf(XX,YY,ZZ,10);
+        % set(h,'LineColor','none')
+        
+    case {12,13,14,15}
+        
+        % Definition of the bilinear coefficients
+        
+        force    = @(x,y,t) 10; % Difusion
         
     end
 
@@ -980,11 +1163,32 @@
     obj_solverIGA.continuityParameter = continuityParameter;
     obj_solverIGA.numbHorQuadNodes = numbHorNodes;
     obj_solverIGA.numbVerQuadNodes = numbVerNodes;
-
+    obj_solverIGA.timeDomain = timeDomain;
+    obj_solverIGA.timeStep = timeStep;
+    obj_solverIGA.initialState = initialState;
+    obj_solverIGA.numbControlPoints = numbControlPoints;
+    
+    warning('off','all')
+    
+    % COMPUTE HIGAMOD SOLUTION
+    
     tic;
-    [plotStruct] = solverIGAScatter(obj_solverIGA);
-    toc;
+    [u2,plotStruct] = solverIGAScatterStentTransient(obj_solverIGA);
+    toc;    
     
-    %% PLOT SOLUTION
+    % STORE SOLUTION STRUCTURE
     
-    plotSolution(plotStruct);    
+    strPlotStruct{iii,jjj} = plotStruct;
+    
+    % SAVE PLOT STRUCTURE INTO .MAT FILE
+    
+    % save(sprintf(['Sim_',num2str(iii),'_',num2str(jjj),'.mat']),'-struct','plotStruct','-v7.3')
+    
+    end
+end
+
+% save StentTransient.mat -v7.3
+
+%% Plot Results
+
+plotSolutionTransientParallel(strPlotStruct);

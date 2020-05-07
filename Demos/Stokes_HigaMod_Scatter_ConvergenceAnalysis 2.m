@@ -62,11 +62,10 @@ caso  = 2;      % Analysed Case
 %  (3) :  Cubic centerline;
 %-------------------------------------------------------------------------%
 
-mVectP = [1 3 5 7 9 11 13 15 17 19];
-hVectP = [0.2 0.1 0.05 0.025 0.0125 0.00625 0.003125];
+mVectP = [1 3 5 7 9 11 13];
+hVectP = [0.2 0.1 0.05 0.025 0.0125];
 
 structError = cell(length(mVectP),length(hVectP));
-structStokes = cell(length(mVectP),length(hVectP));
 
 for ii = 1:length(mVectP)
     for jj = 1:length(hVectP)
@@ -188,7 +187,7 @@ for ii = 1:length(mVectP)
 
     % DYNAMIC VISCOSITY
 
-    nu = 0.1;
+    nu = 1;
 
     % LENGTH OF THE CYLINDER
 
@@ -229,7 +228,7 @@ for ii = 1:length(mVectP)
     boundCondStruct.bc_out_tag_Ux   = 'neu';
     boundCondStruct.bc_up_data_Ux   = 0;
     boundCondStruct.bc_down_data_Ux = 0;
-    boundCondStruct.bc_inf_data_Ux  = @(rho) 1 - cos(4 * pi * rho);
+    boundCondStruct.bc_inf_data_Ux  = @(rho) a0 + a1 * rho + a2 * rho.^2;
     boundCondStruct.bc_out_data_Ux  = @(rho) 0 + 0 * rho + 0 * rho.^2;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -301,14 +300,10 @@ for ii = 1:length(mVectP)
 
         % IMPORT THE GEOMETRY FILES FROM "Demos/ScatterGeometry" FOLDER
 
-        % line1 = nrbline([minX minY],[maxX minY]);
-        % line2 = nrbline([minX maxY],[maxX maxY]);
-        % geo_name = nrbruled (line1, line2);
-
-        line1 = nrbline([0 0],[2 0]);
-        line2 = nrbline([0 2],[2 3]);
+        line1 = nrbline([minX minY],[maxX minY]);
+        line2 = nrbline([minX maxY],[maxX maxY]);
         geo_name = nrbruled (line1, line2);
-        
+
         % CONSTRUCT THE GEOMETRY FROM THE IMPORT FILE
 
         geometry = geo_load(geo_name);
@@ -606,37 +601,37 @@ for ii = 1:length(mVectP)
     % Pressure quadrature nodes along X direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    quadProperties.numbHorNodesP = 8 * igaBasisStruct.degreeSplineBasisP;
+    quadProperties.numbHorNodesP = 16;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Pressure quadrature nodes along Y direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    quadProperties.numbVerNodesP = 10 * modesPres;
+    quadProperties.numbVerNodesP = 64;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected X quadrature nodes along X direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    quadProperties.numbHorNodesUx = 8 * igaBasisStruct.degreeSplineBasisUx;
+    quadProperties.numbHorNodesUx = 16;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected X quadrature nodes along Y direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    quadProperties.numbVerNodesUx = 10 * modesVelc;
+    quadProperties.numbVerNodesUx = 64;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected Y quadrature nodes along X direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    quadProperties.numbHorNodesUy = 8 * igaBasisStruct.degreeSplineBasisUy;
+    quadProperties.numbHorNodesUy = 16;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Velocity field projected Y quadrature nodes along Y direction %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    quadProperties.numbVerNodesUy = 10 * modesVelc;
+    quadProperties.numbVerNodesUy = 64;
 
     %% Problem parameters
 
@@ -655,12 +650,12 @@ for ii = 1:length(mVectP)
 
         % Fluid kinetic viscosity
 
-        probParameters.nu       = @(x,y) (  0.1 + 0*x + 0*y );
+        probParameters.nu    = @(x,y) (  nu + 0*x + 0*y );
 
         % Forcing term acting on the fluid
 
-        probParameters.force_x  = @(x,y) (  0.00 + 0*x + 0*y );
-        probParameters.force_y  = @(x,y) (  0.00 + 0*x + 0*y );
+        probParameters.force_x = @(x,y) (  0.00 + 0*x + 0*y );
+        probParameters.force_y = @(x,y) (  0.00 + 0*x + 0*y );
 
         % Robin coefficient for the modal basis
 
@@ -686,65 +681,16 @@ for ii = 1:length(mVectP)
     obj_solverIGA.quadProperties = quadProperties;
 
     tic;
-    [plotStruct] = solverIGAScatterStokes(obj_solverIGA);
+    [errStruct] = solverIGAScatterStokes(obj_solverIGA);
     toc;
 
     %% Store Error Information
 
-    structError{ii,jj} = plotStruct.errStruct;
-    structStokes{ii,jj} = plotStruct;
+    structError{ii,jj} = errStruct;
 
     end
 end
-
-for ii = 1:length(mVectP)
-    for jj = 1:length(hVectP)
-        
-        stiffMat{ii,jj} = structStokes{ii,jj}.AA;
-        tBuild(ii,jj)   = structStokes{ii,jj}.tBuild;
-        tSolve(ii,jj)   = structStokes{ii,jj}.tSolve;
-        DOFs(ii,jj)     = structStokes{ii,jj}.DOFs(1,1);
-        condEst(ii,jj)  = structStokes{ii,jj}.condEst;
-        % maxSigma(ii,jj)     = structStokes{ii,jj}.maxSigma;
-        % minSigma(ii,jj)     = structStokes{ii,jj}.minSigma;
-        maxLambda(ii,jj)    = structStokes{ii,jj}.maxLambda;
-        minLambda(ii,jj)    = structStokes{ii,jj}.minLambda;
-    end
-end
-
-save StokesCA.mat
-
+    
 %% EXPORT CONVERGENCE ANALYSIS RESULTS
 
-load('StokesCA_2.mat');
-
-pltStruct.structError = structError;
-    
-load('StokesCA_1.mat');
-
-mVectP = [3 5 7 9 11 13 15 17 19];
-hVectP = [0.2 0.1 0.05 0.025 0.0125 0.00625 0.003125];
-
-aux1 = cell(length(mVectP),length(hVectP));
-% aux2 = cell(length(mVectP),length(hVectP));
-
-for ii = 1:length(mVectP)
-    for jj = 1:length(hVectP)
-        aux1{ii,jj} = stiffMat{ii+1,jj};
-        aux2{ii,jj} = pltStruct.structError{ii+1,jj};
-    end
-end
-
-pltStruct.stiffMat    = aux1;
-pltStruct.structError = aux2;
-
-pltStruct.tBuild = tBuild(2:end,:);
-pltStruct.tSolve = tSolve(2:end,:);
-pltStruct.DOFs = DOFs(2:end,:);
-pltStruct.condEst = condEst(2:end,:);
-% plotStruct.maxSigma = maxSigma(2:end,:);
-% plotStruct.minSigma = minSigma(2:end,:);
-pltStruct.maxLambda = maxLambda(2:end,:);
-pltStruct.minLambda = minLambda(2:end,:);
-
-convAnalysisPlotStokes(pltStruct,mVectP,hVectP)
+exportConvAnalysisStokes(structError,mVectP.^2,hVectP)

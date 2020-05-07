@@ -1,4 +1,4 @@
-        %-+--------------------------------------------------------------------
+%-+--------------------------------------------------------------------
 % HiModlab is a general purpose Hierarchical model reduction library.
 % Copyright (C) 2006-2017  by the HiMod authors (see authors.txt).
 %
@@ -33,8 +33,8 @@
 % The following script allows the solution of an Advection - Diffusion -
 % Reaction differential problem in 2D using the HIGAMod solution.
 
-    clear
-    close all
+%     clear all
+%     close all
 
     disp('******************************************')
     disp('*           HIGAMod Simulation           *');
@@ -48,7 +48,7 @@
     import Core.SolverHandler
 
     %% Simulation case   
-    caso  = 8;      % Analysed Case
+    caso  = 2;      % Analysed Case
     
     %-------------------------------------------------------------------------%
     % Note;
@@ -76,14 +76,14 @@
     % be performed inside the class 'AssemblerIGA'.
     %-------------------------------------------------------------------------%
 
-    %% Discretization parameters
+    %% Discrtization parameters
     
     domainLimit_inX      = [minHor,maxHor];  
     domainLimit_inY      = [minVer,maxVer];
     
-    numbModes       = 10;
+    numbModes       = 15;
     nd              = length(numbModes); 
-    stepHorMesh     = (maxHor-minHor)*0.1*ones(size(numbModes));
+    stepHorMesh     = (maxHor-minHor)*0.05*ones(size(numbModes));
     numbElements    = round((maxHor-minHor)/stepHorMesh);
     
     %% Isogeometric basis properties
@@ -123,8 +123,8 @@
     mu            = 1;
     cest          = 1;
 
-    BC_laterali_up   ='neu';
-    BC_laterali_down ='neu';
+    BC_laterali_up   ='dir';
+    BC_laterali_down ='dir';
 
     switch caso
     case {1,2,3,4,5,6,7,8,9,10}
@@ -134,47 +134,18 @@
         dato_down={0};
     end
     
-    % INFLOW AND OUTFLOW BOUNDARY CONDITIONS
-    % Note: The current version of the code works only for constant
-    % boundary conditions in inflow and outflow;
-    
-    % SELECT THE SIDES
-    
-    dirSides = [1 2];
-    neuSides = [];
-    robSides = [];
-    
-    % DEFINE DIRICHLET AND NEUMANN BOUNDARY CONDITIONS
-    
-    dir  = @(x,side) (side == 1) * 0 + (side == 2) * 0;
-    neu  = @(x,side) (side == 1) * 0 + (side == 2) * 1;
-    rob.value  = @(x,side) (side == 1) * 0 + (side == 2) * 1;
-    rob.mu     = 1.0;
-    rob.chi    = 1.0;
-    
-    % CREATE DATA STRUCTURE
-    
-    igaBoundCond.dirSides   = dirSides;
-    igaBoundCond.neuSides   = neuSides;
-    igaBoundCond.robSides   = robSides;
-    igaBoundCond.dir  = @(x,side) dir(x,side);
-    igaBoundCond.neu  = @(x,side) neu(x,side);
-    igaBoundCond.rob.value  = @(x,side) rob.value;
-    igaBoundCond.rob.mu     = rob.mu;
-    igaBoundCond.rob.chi    = rob.chi;
-    
     %%%%%%%%%%%%%%%%%
     % CHANGE BC HERE!
     %%%%%%%%%%%%%%%%%
     
-    igaBoundCond.BC_UP_TAG      = 'neu';
-    igaBoundCond.BC_DOWN_TAG    = 'neu';
-    igaBoundCond.BC_INF_TAG     = 'dir';
-    igaBoundCond.BC_OUT_TAG     = 'neu';
-    igaBoundCond.BC_UP_DATA     = 0;
-    igaBoundCond.BC_DOWN_DATA   = 0;
-    igaBoundCond.BC_INF_DATA    = @(rho) 0; % 0 + 1.75 * rho + 1.75 * -rho.^2;
-    igaBoundCond.BC_OUT_DATA    = @(rho) 0 + 0 * rho + 0 * rho.^2;
+    igaBoundCond.BC_UP_TAG     = 'dir';
+    igaBoundCond.BC_DOWN_TAG   = 'dir';
+    igaBoundCond.BC_INF_TAG   = 'neu';
+    igaBoundCond.BC_OUT_TAG  = 'neu';
+    igaBoundCond.BC_UP_DATA    = 0;
+    igaBoundCond.BC_DOWN_DATA  = 0;
+    igaBoundCond.BC_INF_DATA  = @(rho) 0 + 0 * rho + 0 * -rho.^2;
+    igaBoundCond.BC_OUT_DATA = @(rho) 0 + 0 * rho + 0 * rho.^2;
 
     %% Physical domain
     %---------------------------------------------------------------------%
@@ -187,7 +158,7 @@
 
     switch caso
         
-    case {1}
+    case {1,6,7,8,9,10}
         
         %%%%%%%%%%%%%%%%%
         % CIRCULAR RING %
@@ -517,194 +488,6 @@
         geometricInfo.Jac = @(x,y) Jac(x,y);
         geometricInfo.Hes = @(x,y) Hes(x,y);
         geometricInfo.Type = 'AneurismStenosis';
-        
-    case {6}
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % STENOSIS SMOOTH HEAVISIDE %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        n = 500;
-        t = linspace(0,1,n);
-        p = 1;
-        
-        th1 = 55 * pi/180;
-        th2 = 35 * pi/180;
-        ep = 5e-2;
-        r1 = 0.3;
-        r2 = 0.3;
-        R1 = 1;
-        R2 = 2;
-        
-        theta1 = pi/5;      % Position of the beggining stenosis
-        theta2 = 3*pi/4;    % Position of the ending stenosis
-
-        stenLesion = @(tt) 0.5 .* (1 + (2/pi).*atan((tt - th1)./ep)) - 0.5 .* (1 + (2/pi).*atan((tt - th2)./ep));
-
-        lowerBorderX = @(tt) (R1 - r1 * stenLesion(tt * pi/2)) .* sin(tt * pi/2);
-        lowerBorderY = @(tt) (R1 - r1 * stenLesion(tt * pi/2)) .* cos(tt * pi/2);
-        upperBorderX = @(tt) (R2 + r2 * stenLesion(tt * pi/2)) .* sin(tt * pi/2);
-        upperBorderY = @(tt) (R2 + r2 * stenLesion(tt * pi/2)) .* cos(tt * pi/2);
-        
-        x1Coord = lowerBorderX(t);
-        y1Coord = lowerBorderY(t);
-        x2Coord = upperBorderX(t);
-        y2Coord = upperBorderY(t);
-        z1Coord = zeros(1,n);
-        z2Coord = zeros(1,n);
-        
-        %%%%%%%%%%
-        % Weights 
-        %%%%%%%%%%
-        
-        w1Coord = ones(1,n);
-        w2Coord = ones(1,n);
-       
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Create control points and knot vector
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        knot1 = linspace(0,1,n);
-        knot1 = repmat(knot1,1,p)';
-        knot1 = knot1(:)';
-        knot1 = sort(knot1);
-        
-        knot2 = linspace(0,1,n);
-        knot2 = repmat(knot2,1,p)';
-        knot2 = knot2(:)';
-        knot2 = sort(knot2);
-
-        strKnot = 0 * ones(1,p+1);
-        endKnot = ones(1,p+1);
-        knot1    = [ strKnot knot1(2:end-1) endKnot ];
-        knot2    = [ strKnot knot2(2:end-1) endKnot ];
-
-        pnts1 = [x1Coord ; y1Coord ; z1Coord; w1Coord];
-        pnts2 = [x2Coord ; y2Coord ; z2Coord; w2Coord];
-        
-        crv1 = nrbmak(pnts1,knot1);
-        crv2 = nrbmak(pnts2,knot2);
-
-        srf = nrbruled(crv1,crv2);
-        
-        % CONSTRUCT THE GEOMETRY FROM THE IMPORT FILE
-        
-        geometry = geo_load(srf);
-        
-        % EXTRACT THE MAP FROM THE PHYSICAL DOMAIN TO THE REFERENCE DOMAIN
-        % AND ITS JACOBIAN AND HESSIAN MATRICES
-        
-        map = @(x,y) geometry.map([x;y]);
-        Jac = @(x,y) geometry.map_der([x;y]);
-        Hes = @(x,y) geometry.map_der2([x;y]);
-        
-        geometricInfo.geometry = geometry;
-        geometricInfo.map = @(x,y) map(x,y);
-        geometricInfo.Jac = @(x,y) Jac(x,y);
-        geometricInfo.Hes = @(x,y) Hes(x,y);
-        geometricInfo.Type = 'StenosisHeaviside';
-        
-    case {7}
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%
-        % DRUG ELUTING PROBLEM %
-        %%%%%%%%%%%%%%%%%%%%%%%%
-        
-        minX = +0.0;
-        maxX = +42.0;
-        minY = +0.0;
-        maxY = +20.0;
-                
-        % IMPORT THE GEOMETRY FILES FROM "Demos/ScatterGeometry" FOLDER
-        
-        line1 = nrbline([minX minY],[maxX minY]);
-        line2 = nrbline([minX maxY],[maxX maxY]);
-        geo_name = nrbruled (line1, line2);
-        
-        % CONSTRUCT THE GEOMETRY FROM THE IMPORT FILE
-        
-        geometry = geo_load(geo_name);
-        
-        % EXTRACT THE MAP FROM THE PHYSICAL DOMAIN TO THE REFERENCE DOMAIN
-        % AND ITS JACOBIAN AND HESSIAN MATRICES
-        
-        map = @(x,y) geometry.map([x;y]);
-        Jac = @(x,y) geometry.map_der([x;y]);
-        Hes = @(x,y) geometry.map_der2([x;y]);
-        
-        geometricInfo.geometry = geometry;
-        geometricInfo.map = @(x,y) map(x,y);
-        geometricInfo.Jac = @(x,y) Jac(x,y);
-        geometricInfo.Hes = @(x,y) Hes(x,y);
-        geometricInfo.Type = 'Rect';
-        
-    case {8,9,10}
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%
-        % DRUG ELUTING PROBLEM %
-        %%%%%%%%%%%%%%%%%%%%%%%%
-        
-        minX = 0.0;
-        maxX = 2 * 2 * 3.7e-3;
-        minY = 0.0;
-        maxY = 2 * 3.7e-3;
-                
-        % IMPORT THE GEOMETRY FILES FROM "Demos/ScatterGeometry" FOLDER
-        
-        line1 = nrbline([minX minY],[maxX minY]);
-        line2 = nrbline([minX maxY],[maxX maxY]);
-        geo_name = nrbruled (line1, line2);
-        
-        % CONSTRUCT THE GEOMETRY FROM THE IMPORT FILE
-        
-        geometry = geo_load(geo_name);
-        
-        % EXTRACT THE MAP FROM THE PHYSICAL DOMAIN TO THE REFERENCE DOMAIN
-        % AND ITS JACOBIAN AND HESSIAN MATRICES
-        
-        map = @(x,y) geometry.map([x;y]);
-        Jac = @(x,y) geometry.map_der([x;y]);
-        Hes = @(x,y) geometry.map_der2([x;y]);
-        
-        geometricInfo.geometry = geometry;
-        geometricInfo.map = @(x,y) map(x,y);
-        geometricInfo.Jac = @(x,y) Jac(x,y);
-        geometricInfo.Hes = @(x,y) Hes(x,y);
-        geometricInfo.Type = 'Rect';
-        
-    case {11}
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%
-        % DRUG ELUTING PROBLEM %
-        %%%%%%%%%%%%%%%%%%%%%%%%
-        
-        minX = +0.0;
-        maxX = +10.0;
-        minY = +0.0;
-        maxY = +3.5;
-                
-        % IMPORT THE GEOMETRY FILES FROM "Demos/ScatterGeometry" FOLDER
-        
-        line1 = nrbline([minX minY],[maxX minY]);
-        line2 = nrbline([minX maxY],[maxX maxY]);
-        geo_name = nrbruled (line1, line2);
-        
-        % CONSTRUCT THE GEOMETRY FROM THE IMPORT FILE
-        
-        geometry = geo_load(geo_name);
-        
-        % EXTRACT THE MAP FROM THE PHYSICAL DOMAIN TO THE REFERENCE DOMAIN
-        % AND ITS JACOBIAN AND HESSIAN MATRICES
-        
-        map = @(x,y) geometry.map([x;y]);
-        Jac = @(x,y) geometry.map_der([x;y]);
-        Hes = @(x,y) geometry.map_der2([x;y]);
-        
-        geometricInfo.geometry = geometry;
-        geometricInfo.map = @(x,y) map(x,y);
-        geometricInfo.Jac = @(x,y) Jac(x,y);
-        geometricInfo.Hes = @(x,y) Hes(x,y);
-        geometricInfo.Type = 'Rect';
 
     end
     
@@ -717,24 +500,24 @@
     
     % Horizontal direction
     
-    numbHorNodes = 32;
+    numbHorNodes = 16;
     
     % Vertical direction
     
-    numbVerNodes = 10 * numbModes;
+    numbVerNodes = numbModes * 7;
 
     %% Coefficients of the bilinear form
     %-------------------------------------------------------------------------%
 
     switch caso
-    case {1,2,3,4,5}
+    case {1,2,3,4,5,6}
         
         mu    = @(x,y) (  1.00 + 0*x + 0*y ); % Difusion
         beta1 = @(x,y) (  0.00 + 0*x + 0*y ); % Horizontal Advection
         beta2 = @(x,y) (  0.00 + 0*x + 0*y ); % Vertical Advection
         sigma = @(x,y) (  0.00 + 0*x + 0*y ); % Reaction
         
-    case {6} 
+    case {7,8} 
         
         %%%%%%%%%%%%%%%%%%%
         % Poiseuille Flow %
@@ -764,99 +547,28 @@
         beta1 = @(x,y) poiFlow1(x,y); % Horizontal Advection
         beta2 = @(x,y) poiFlow2(x,y); % Vertical Advection
         sigma = @(x,y) (  0 + 0*x + 0*y ); % Reaction
-
-    case {7} 
         
-        %%%%%%%%%%%%%%%%%%%%%%%%
-        % DRUG ELUTING PROBLEM %
-        %%%%%%%%%%%%%%%%%%%%%%%%
+    case {9,10}
+            
+        %%%%%%%%%%%%%%%%%%%
+        % Heaviside Coeff %
+        %%%%%%%%%%%%%%%%%%%
+        
+        % Circular Heaviside function
+        
+        c = [0 1];
+        lag = .25;
+        delta = 100;
+        
+        Hc = @(x,y,a,d) 1./(1 + exp(-2 .* d .* (sqrt((x - c(1)).^2 + (y - c(2)).^2) - a)));
+        func = @(x,y,a,d) Hc(x,y,-a,d) - Hc(x,y,a,d);
         
         % Definition of the bilinear coefficients
         
-        mu    = @(x,y) (  1 + 0*x + 0*y ); % Difusion
-        beta1 = @(x,y) (  5 + 0*x + 0*y ); % Horizontal Advection
+        mu    = @(x,y) 1 + 100 * func(x,y,lag,delta); % Difusion
+        beta1 = @(x,y) (  0 + 0*x + 0*y ); % Horizontal Advection
         beta2 = @(x,y) (  0 + 0*x + 0*y ); % Vertical Advection
-        sigma = @(x,y) (  0 + 0*x + 0*y ); % Reaction
-        
-    case {8,9,10} 
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % DIFFUSION COEFFICIENT
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        % Lower Stent Branches
-        
-        lx1 = 0.25 * maxX;
-        dx1 = 0.07 * maxX;
-        ly1 = 0.03 * maxY;
-        dy1 = 0.10 * maxY;
-
-        lx2 = 0.35 * maxX;
-        dx2 = 0.07 * maxX;
-        ly2 = 0.03 * maxY;
-        dy2 = 0.10 * maxY;
-
-        lx3 = 0.45 * maxX;
-        dx3 = 0.07 * maxX;
-        ly3 = 0.03 * maxY;
-        dy3 = 0.10 * maxY;
-
-        lx7 = 0.15 * maxX;
-        dx7 = 0.07 * maxX;
-        ly7 = 0.03 * maxY;
-        dy7 = 0.10 * maxY;
-
-        lx8 = 0.05 * maxX;
-        dx8 = 0.07 * maxX;
-        ly8 = 0.03 * maxY;
-        dy8 = 0.10 * maxY;
-        
-        % Upper Stent Branches
-        
-        lx4 = 0.25 * maxX;
-        dx4 = 0.07 * maxX;
-        ly4 = 0.87 * maxY;
-        dy4 = 0.10 * maxY;
-
-        lx5 = 0.35 * maxX;
-        dx5 = 0.07 * maxX;
-        ly5 = 0.87 * maxY;
-        dy5 = 0.10 * maxY;
-
-        lx6 = 0.45 * maxX;
-        dx6 = 0.07 * maxX;
-        ly6 = 0.87 * maxY;
-        dy6 = 0.10 * maxY;
-
-        lx9 = 0.15 * maxX;
-        dx9 = 0.07 * maxX;
-        ly9 = 0.87 * maxY;
-        dy9 = 0.10 * maxY;
-
-        lx10 = 0.05 * maxX;
-        dx10 = 0.07 * maxX;
-        ly10 = 0.87 * maxY;
-        dy10 = 0.10 * maxY;
-        
-        % Heaviside functions
-        
-        Square1D = @(xx,l,d) heaviside(xx - l) - heaviside(xx - l - d);
-        Square2D = @(xxx,yyy,lx,ly,dx,dy) Square1D(xxx,lx,dx) .* Square1D(yyy,ly,dy);
-        
-        % Definition of the bilinear coefficients
-        
-        stent = @(x,y) (Square2D(x,y,lx1,ly1,dx1,dy1) + Square2D(x,y,lx2,ly2,dx2,dy2) + ...
-                        Square2D(x,y,lx3,ly3,dx3,dy3) + Square2D(x,y,lx4,ly4,dx4,dy4) + ...
-                        Square2D(x,y,lx5,ly5,dx5,dy5) + Square2D(x,y,lx6,ly6,dx6,dy6) + ...
-                        Square2D(x,y,lx7,ly7,dx7,dy7) + Square2D(x,y,lx8,ly8,dx8,dy8) + ...
-                        Square2D(x,y,lx9,ly9,dx9,dy9) + Square2D(x,y,lx10,ly10,dx10,dy10));
-        
-        % Definition of the bilinear coefficients
-        
-        mu    = @(x,y) 1e-6 * stent(x,y) + 1e-5 * ~stent(x,y);
-        beta1 = @(x,y) 4e-2 * (4/maxY^2) * (-y.^2 + y * maxY);
-        beta2 = @(x,y) 0;
-        sigma = @(x,y) 0;
+        sigma = @(x,y) (  0 + 0*x + 0*y ); %func(x,y,lag,delta); % Reaction
         
     end
 
@@ -882,7 +594,7 @@
     %-------------------------------------------------------------------------%
 
     switch caso
-    case {1,2,4,5,6}
+    case {1,2,4,5,6,7,8,9,10}
         
         dato_dir = @(y) 0;
         force = @(x,y) 1 + 0 * x + 0 * y;
@@ -891,55 +603,6 @@
         
         dato_dir = @(y) 0;
         force = @(x,y) 1 + 0 * x + 0 * y;
-        
-    case {7}
-        
-        % Circular Heaviside function
-        
-        C = 10;
-        lx1 = 6;
-        dx1 = 8;
-        ly1 = 1;
-        dy1 = 3;
-        lx2 = 6;
-        dx2 = 8;
-        ly2 = 16;
-        dy2 = 3;
-        
-        Square1D = @(xx,l,d) heaviside(xx - l) - heaviside(xx - l - d);
-        Square2D = @(xxx,yyy,lx,ly,dx,dy) Square1D(xxx,lx,dx) .* Square1D(yyy,ly,dy);
-        
-        % Definition of the bilinear coefficients
-        
-        force    = @(x,y) C * (Square2D(x,y,lx1,ly1,dx1,dy1) + Square2D(x,y,lx2,ly2,dx2,dy2)); % Difusion
-        
-        % Plot source term
-        
-        xx = linspace(0,42,100);
-        yy = linspace(0,20,100);
-        [XX,YY] = meshgrid(xx,yy);
-        ZZ = force(XX,YY);
-        
-        figure
-        [C,h] = contourf(XX,YY,ZZ,10);
-        set(h,'LineColor','none')
-        
-    case {8,9,10}
-        
-        % Definition of the bilinear coefficients
-        
-        force    = @(x,y) 10 * stent(x,y);
-        
-        % Plot source term
-        
-        xx = linspace(minX,maxX,100);
-        yy = linspace(minY,maxY,100);
-        [XX,YY] = meshgrid(xx,yy);
-        ZZ = force(XX,YY);
-        
-        figure
-        [C,h] = contourf(XX,YY,ZZ,10);
-        set(h,'LineColor','none')
         
     end
 
@@ -982,9 +645,11 @@
     obj_solverIGA.numbVerQuadNodes = numbVerNodes;
 
     tic;
-    [plotStruct] = solverIGAScatter(obj_solverIGA);
+    [u2,a,b,L2_2,H1_2] = solverIGAScatter(obj_solverIGA);
     toc;
     
-    %% PLOT SOLUTION
+    disp('Maximum L2 Norm Error with Matlab');
+    disp(max(max(L2_2)));
     
-    plotSolution(plotStruct);    
+    disp('Maximum H1 Norm Error with Matlab');
+    disp(max(max(H1_2)));
