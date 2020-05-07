@@ -214,13 +214,13 @@ classdef BoundaryConditionHandler
                 BC_r    = obj.bcStruct.bcOutTag;
                 nx      = obj.bcStruct.numbControlPts;
                 size_mb = obj.bcStruct.dimModalBasis;
-                uAug    = zeros(size_mb * nx);
+                uAug    = zeros(size_mb * nx,1);
                 
                 if (strcmp(BC_l,'dir') && strcmp(BC_r,'dir'))
     
                     for imb = 1 : size_mb     % Per ogni frequenza
                         
-                        uAug((imb-1) * nx + 1)                = obj.bcStruct.infStruct(imb);
+                        uAug((imb-1) * nx + 1,1)                = obj.bcStruct.infStruct(imb);
                         uAug((imb-1) * nx + 2 : imb * nx - 1) = obj.uRid((imb-1) * (nx-2) + 1 : imb * (nx-2));
                         uAug(imb * nx)                        = obj.bcStruct.outStruct(imb);
 

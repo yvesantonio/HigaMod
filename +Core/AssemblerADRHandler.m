@@ -1270,8 +1270,8 @@ classdef AssemblerADRHandler
             
             verEvalNodes = augVerNodes;
             
-            X = mapOut(horEvalNodes,verEvalNodes,map,1);
-            Y = mapOut(horEvalNodes,verEvalNodes,map,2);
+            X = mapOutParallel(horEvalNodes,verEvalNodes,map,1);
+            Y = mapOutParallel(horEvalNodes,verEvalNodes,map,2);
             
             geoData.X = X;
             geoData.Y = Y;
@@ -1332,13 +1332,13 @@ classdef AssemblerADRHandler
             % computation of the coefficients and the Jacobian contribution to be
             % inserted in the integral (quadrature formula).
             
-            evalJac     = jacOut(horEvalNodes,verEvalNodes,Jac);
-            evalDetJac  = detJac(horEvalNodes,verEvalNodes,Jac);
+            evalJac     = jacOutParallel(horEvalNodes,verEvalNodes,Jac);
+            evalDetJac  = detJacParallel(horEvalNodes,verEvalNodes,Jac);
             
-            Phi1_dx = invJac(1,1,evalJac);
-            Phi1_dy = invJac(1,2,evalJac);
-            Phi2_dx = invJac(2,1,evalJac);
-            Phi2_dy = invJac(2,2,evalJac);
+            Phi1_dx = invJacParallel(1,1,evalJac);
+            Phi1_dy = invJacParallel(1,2,evalJac);
+            Phi2_dx = invJacParallel(2,1,evalJac);
+            Phi2_dy = invJacParallel(2,2,evalJac);
             
             jacFunc.evalJac     = evalJac;
             jacFunc.evalDetJac  = evalDetJac;
@@ -2618,8 +2618,8 @@ classdef AssemblerADRHandler
 
                 verEvalNodes = augVerNodes;
 
-                X = mapOut(horEvalNodes,verEvalNodes,map,1);
-                Y = mapOut(horEvalNodes,verEvalNodes,map,2);
+                X = mapOutParallel(horEvalNodes,verEvalNodes,map,1);
+                Y = mapOutParallel(horEvalNodes,verEvalNodes,map,2);
 
                 geoData.X = X;
                 geoData.Y = Y;
@@ -2634,13 +2634,13 @@ classdef AssemblerADRHandler
                 % computation of the coefficients and the Jacobian contribution to be
                 % inserted in the integral (quadrature formula).
 
-                evalJac     = jacOut(horEvalNodes,verEvalNodes,Jac);
-                evalDetJac  = detJac(horEvalNodes,verEvalNodes,Jac);
+                evalJac     = jacOutParallel(horEvalNodes,verEvalNodes,Jac);
+                evalDetJac  = detJacParallel(horEvalNodes,verEvalNodes,Jac);
 
-                Phi1_dx = invJac(1,1,evalJac);
-                Phi1_dy = invJac(1,2,evalJac);
-                Phi2_dx = invJac(2,1,evalJac);
-                Phi2_dy = invJac(2,2,evalJac);
+                Phi1_dx = invJacParallel(1,1,evalJac);
+                Phi1_dy = invJacParallel(1,2,evalJac);
+                Phi2_dx = invJacParallel(2,1,evalJac);
+                Phi2_dy = invJacParallel(2,2,evalJac);
 
                 jacFunc.evalJac     = evalJac;
                 jacFunc.evalDetJac  = evalDetJac;
@@ -2969,21 +2969,55 @@ classdef AssemblerADRHandler
                 % the system.
                 %-------------------------------------------------------------%
 
+%                 for imb = 1:dimModBasis
+%                     for kmb = 1:dimModBasis
+% 
+%                         [Amb,Mmb,bmb] = assemblerIGAScatterTransient(imb,kmb,augVerWeights,modalBasis(:,imb),modalBasisDer(:,imb),modalBasis(:,kmb),...
+%                                                                      modalBasisDer(:,kmb),geoData,Computed,msh,space,jacFunc,spaceFunc);
+% 
+%                         % Assignment of the Block Matrix Just Assembled
+% 
+%                         A(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Amb;
+%                         M(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Mmb;
+% 
+%                     end
+% 
+%                     % Assignment of the Block Vector Just Assembled
+%                     b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb;
+%                 end
+
+                warning('off','all')
+
+                Amb = cell(dimModBasis,dimModBasis);
+                Mmb = cell(dimModBasis,dimModBasis);
+                bmb = cell(dimModBasis,dimModBasis);
+                
+                modalBasis2 = modalBasis;
+                modalBasisDer2 = modalBasisDer;
+                
+                parfor imb = 1:dimModBasis
+                    for kmb = 1:dimModBasis
+
+                        [Amb{imb,kmb},Mmb{imb,kmb},bmb{imb,kmb}] = assemblerIGAScatterTransient(imb,kmb,augVerWeights,modalBasis(:,imb),modalBasisDer(:,imb),modalBasis2(:,kmb),...
+                                                                     modalBasisDer2(:,kmb),geoData,Computed,msh,space,jacFunc,spaceFunc);
+                                                                 
+                    end
+                end
+                
                 for imb = 1:dimModBasis
                     for kmb = 1:dimModBasis
 
-                        [Amb,Mmb,bmb] = assemblerIGAScatterTransient(imb,kmb,augVerWeights,modalBasis(:,imb),modalBasisDer(:,imb),modalBasis(:,kmb),...
-                                                                     modalBasisDer(:,kmb),geoData,Computed,msh,space,jacFunc,spaceFunc);
-
                         % Assignment of the Block Matrix Just Assembled
 
-                        A(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Amb;
-                        M(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Mmb;
-
+                        A(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Amb{imb,kmb};
+                        M(1+(imb-1)*numbControlPts : imb*numbControlPts , 1+(kmb-1)*numbControlPts : kmb*numbControlPts) = Mmb{imb,kmb};
+                        
                     end
-
+                    
                     % Assignment of the Block Vector Just Assembled
-                    b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb;
+                    
+                    b( 1+(imb-1)*numbControlPts : imb*numbControlPts ) = bmb{imb,imb};
+                    
                 end
 
                 %% IMPOSE BOUNDARY CONDITIONS
@@ -3018,7 +3052,7 @@ classdef AssemblerADRHandler
                 bcStruct.numbControlPts = numbControlPts;
                 bcStruct.dimModalBasis  = dimModBasis;
 
-                [AA,MM,bb,sTS] = impose_boundary_transient(obj.dimModalBasis,BC_l, infStruct, BC_r, outStruct,A,M,b,numbControlPts,obj.assemblerStruct.currTimeSol);
+                [AA,MM,bb,sTS] = impose_boundary_transient(dimModBasis,BC_l, infStruct, BC_r, outStruct,A,M,b,numbControlPts,obj.assemblerStruct.currTimeSol);
 
             end
             
@@ -7013,6 +7047,8 @@ function [Al,Ml,bl] = assemblerIGAScatterTransient(imb,kmb,augVerWeights,mb_i,mb
     import Core.EvaluationHandler
     import Core.BasisHandler
     import Core.SolverHandler
+    
+    warning('off','all')
     
     %% EXCITATION FORCE
     %---------------------------------------------------------------------%

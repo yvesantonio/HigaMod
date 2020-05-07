@@ -561,14 +561,16 @@ classdef SolverHandler
                 %                  	      PROBLEM SOLUTION                        %
                 %-----------------------------------------------------------------%
                 
-                % Debug 
-                %---------------------------------------------------------------------%
-                % plot(linspace(0,length(b),length(b)),b);
-                %---------------------------------------------------------------------%
+                tic;
 
-                u = A\b;
+                maxit   = size(stateMatrix,1);
+                tol     = 1e-9;
                 
-                disp('Finished SOLVE SYSTEM');
+                [u,~,~,~,~] = bicgstab(A, b, tol, maxit, diag(diag(A)));
+
+                tSolve = toc;
+                
+                disp(['Finished SOLVE SYSTEM - SOL. TIME ', num2str(tSolve)]);
 
                 %-----------------------------------------------------------------%
                 %                  	       SOLUTION PLOT                          %
@@ -610,7 +612,7 @@ classdef SolverHandler
             
             %% Method 'solverIGAScatter'
             
-            function [u,liftCoeffA,liftCoeffB,errorNormL2,errorNormH1] = solverIGAScatter(obj)
+            function [plotStruct] = solverIGAScatter(obj)
 
                 %%
                 % solverIGA     - This function solves an elliptic problem definied
@@ -753,15 +755,26 @@ classdef SolverHandler
                 
                 % Call of the 'buildSystemIGA' Method
 
-                [A,b,~,liftCoeffA(1),liftCoeffB(1),space,refDomain1D,boundStruct] = buildSystemIGAScatter(build_IGA); 
-
-                disp('Finished BUILD SYSTEM IGA');                
+                tic;
+                [A,b,~,~,~,space,refDomain1D,boundStruct] = buildSystemIGAScatter(build_IGA); 
+                tBuild = toc;
+                
+                disp(['Finished BUILD SYSTEM IGA - BUILD TIME ', num2str(tBuild)]);                
                 
                 %-----------------------------------------------------------------%
                 %                  	      PROBLEM SOLUTION                        %
                 %-----------------------------------------------------------------%
 
-                u = A\b;
+                tic;
+
+                maxit   = size(A,1);
+                tol     = 1e-9;
+                
+                [u,~,~,~,~] = bicgstab(A, b, tol, maxit, diag(diag(A)));
+
+                tSolve = toc;
+                
+                disp(['Finished SOLVE SYSTEM - SOL. TIME ', num2str(tSolve)]);
                 
                 %------------------%
                 % REBUILD SOLUTION %
@@ -776,28 +789,28 @@ classdef SolverHandler
                 u = uAug;
                 
                 disp('Finished SOLVE SYSTEM');
-
-                %-----------------------------------------------------------------%
-                %                  	       SOLUTION PLOT                          %
-                %-----------------------------------------------------------------%
-
-                [errL2,errH1] = plot_solution_IGA_scatter( ...
-                obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
-                obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
-
-                errorNormH1 = errL2;
-                errorNormL2 = errH1;
                 
-                disp('Finished PLOT OPERATION / ERROR with EXACT SOLUTION')
-            
-%                 [errL2,errH1] = computeErrorIGA_scatter( ...
-%                 obj.dimModalBasis,liftCoeffA,liftCoeffB,obj.domainLimit_inX,obj.stepMeshX, u,obj.label_upBoundDomain,obj.label_downBoundDomain, ...
-%                 obj.coefficientForm,obj.simulationCase,obj.degreePolySplineBasis,obj.continuityParameter,space,refDomain1D,obj.geometricInfo.map);
-%              
-%                 disp('Finished ERROR with FREEFEM++ SOLUTION')
-% 
-%                 errorNormH1 = errH1;
-%                 errorNormL2 = errL2;
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % ASSEMBLE PLOT STRUCTURE
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                plotStruct.dimModalBasis            = obj.dimModalBasis;
+                plotStruct.numbHorQuadNodes         = obj.numbHorQuadNodes;
+                plotStruct.numbVerQuadNodes         = obj.numbVerQuadNodes;
+                plotStruct.boundCond                = obj.dirCondFuncStruct.igaBoundCond;
+                plotStruct.stepMeshX                = obj.stepMeshX;
+                plotStruct.u                        = u;
+                plotStruct.label_upBoundDomain      = obj.label_upBoundDomain;
+                plotStruct.label_downBoundDomain    = obj.label_downBoundDomain;
+                plotStruct.coefficientForm          = obj.coefficientForm;
+                plotStruct.simulationCase           = obj.simulationCase;
+                plotStruct.degreePolySplineBasis    = obj.degreePolySplineBasis;
+                plotStruct.continuityParameter      = obj.continuityParameter;
+                plotStruct.space                    = space;
+                plotStruct.refDomain1D              = refDomain1D;
+                plotStruct.map                      = obj.geometricInfo.map;
+                plotStruct.A                        = A;
+                plotStruct.b                        = b;
 
                 disp('Finished Method SOLVER IGA')
 
@@ -1812,29 +1825,57 @@ classdef SolverHandler
                     build_IGA.assemblerStruct = assemblerStruct;
 
                     % Call of the 'buildSystemIGA' Method
-
+                    
+                    tic;
                     [A,M,b,sTS,boundStruct] = buildTransientSystem(build_IGA);
+                    tAssemble = toc;
                     
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     % COMPUTE STATE MATRIX
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-                    stateMatrix = (M + obj.timeStep * A)\M;
+                    % stateMatrix = (M + obj.timeStep * A)\M;
 
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     % COMPUTE SOURCE MATRIX
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-                    inputMatrix = M + obj.timeStep*A;
+                    % inputMatrix = M + obj.timeStep*A;
                     
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     % PROBLEM SOLUTION
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     
-                    stateInovation = stateMatrix * sTS;
-                    inputContrib = inputMatrix\(obj.timeStep * b);
+                    % stateInovation = stateMatrix * sTS;
+                    % inputContrib = inputMatrix\(obj.timeStep * b);
 
+                    tic;
+                    
+                    stateMatrix = M + obj.timeStep * A;
+                    
+                    maxit   = size(stateMatrix,1);
+                    tol     = 1e-9;
+                    %[L,U]   = ilu(stateMatrix,struct('type','ilutp','droptol',1e-8));
+                    
+                    % stateDist = distributed(stateMatrix);
+                    % massDist  = distributed(M);
+                    % stsDist   = distributed(sTS);
+                    % bDist     = distributed(b);
+                    % lDist     = distributed(L);
+                    % uDist     = distributed(U);
+                    
+                    % [stateInovation,~,~,~,~] = gmres(stateMatrix, M * sTS, [], tol, maxit, L, U);
+                    % [inputContrib,~,~,~,~]   = gmres(stateMatrix, obj.timeStep * b, [], tol, maxit, L, U);
+                    
+                    % [stateInovation,~,~,~,~] = bicgstab(stateMatrix, M * sTS, tol, maxit, L, U);
+                    % [inputContrib,~,~,~,~]   = bicgstab(stateMatrix, obj.timeStep * b, tol, maxit, L, U);
+                    
+                    [stateInovation,~,~,~,~] = bicgstab(stateMatrix, M * sTS, tol, maxit, diag(diag(stateMatrix)));
+                    [inputContrib,~,~,~,~]   = bicgstab(stateMatrix, obj.timeStep * b, tol, maxit, diag(diag(stateMatrix)));
+                    
                     aux = stateInovation + inputContrib;
+                    
+                    tSolve = toc;
                     
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     % REBUILD SOLUTION
@@ -1862,7 +1903,7 @@ classdef SolverHandler
                     SM{iteration} = stateMatrix;
                     SV{iteration} = inputContrib;
                     
-                    display = ['FINISHED SIMULATION AT ITERATION ',num2str(iteration)];
+                    display = ['FINISHED SIMULATION AT ITERATION ',num2str(iteration + 1),'/',num2str(numbIterations),' (TIME ASS. ',num2str(tAssemble,'%.4e'),' - TIME SOL. ',num2str(tSolve,'%.4e'),')'];
                     disp(display);
                     
                 end
@@ -1881,34 +1922,34 @@ classdef SolverHandler
                 plotStruct.SM              = SM;
                 plotStruct.SV              = SV;
                 
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % LAUNCH PLOTTING OPERATION
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
-                %%%%%%%%%%%%%%%%%%%%%%%%%
-                % GENERATE EXPORT FOLDER
-                %%%%%%%%%%%%%%%%%%%%%%%%%
-    
-                for ii = 1:1000
-        
-                checkFolder = exist(['MatlabPlots',num2str(ii)]);
-        
-                    if (checkFolder == 7)
-                        disp(['The folder MatlabPlots',num2str(ii),' already exists!'])
-                    else
-                        fileNameF = ['MatlabPlots',num2str(ii)];
-                        mkdir(fileNameF)
-                        break
-                    end
-                end
-                
-                %%%%%%%%%%%%%%%%%%%%%%%%%
-                % EXPORT SOLUTION
-                %%%%%%%%%%%%%%%%%%%%%%%%%
-                
-                plotSolutionTransient(plotStruct);
-                
-                disp('Finished Plot Operation');
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                 % LAUNCH PLOTTING OPERATION
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                 
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%
+%                 % GENERATE EXPORT FOLDER
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%
+%     
+%                 for ii = 1:1000
+%         
+%                 checkFolder = exist(['MatlabPlots',num2str(ii)]);
+%         
+%                     if (checkFolder == 7)
+%                         disp(['The folder MatlabPlots',num2str(ii),' already exists!'])
+%                     else
+%                         fileNameF = ['MatlabPlots',num2str(ii)];
+%                         mkdir(fileNameF)
+%                         break
+%                     end
+%                 end
+%                 
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%
+%                 % EXPORT SOLUTION
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%
+%                 
+%                 plotSolutionTransient(plotStruct);
+%                 
+%                 disp('Finished Plot Operation');
 
             end
             
